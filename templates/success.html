@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<section class="section" style="text-align:center; padding-top:100px;">
+
+    <h1 style="color:#FFD700; font-size:40px;">
+        Reservation Confirmed 🎶
+    </h1>
+
+    <p style="color:#ccc; font-size:18px;">
+        Thanks {{ reservation.name }}, your table request has been received.
+    </p>
+
+    <div style="background:#111; padding:20px; margin-top:30px; display:inline-block; text-align:left;">
+        <p><strong>Event:</strong> {{ event.title }}</p>
+<p><strong>Package:</strong> {{ package.name }}</p>
+        <p><strong>Guests:</strong> {{ reservation.guests }}</p>
+        <p><strong>Status:</strong> Pending Confirmation</p>
+    </div>
+
+    <p style="margin-top:30px; color:#888;">
+        We’ll contact you shortly to confirm your table.
+    </p>
+
+    <a href="/">
+        <button class="btn" style="margin-top:20px;">Back to Home</button>
+    </a>
+
+</section>
+
+{% endblock %}

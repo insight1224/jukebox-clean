@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div style="text-align:center; padding:120px 20px;">
+
+    <h1 style="
+        color:#D4AF37;
+        font-size:40px;
+        margin-bottom:15px;
+        letter-spacing:2px;
+    ">
+        {{ title }}
+    </h1>
+
+    <p style="
+        color:#ccc;
+        font-size:18px;
+        max-width:600px;
+        margin:0 auto 30px;
+        line-height:1.6;
+    ">
+        {{ message }}
+    </p>
+
+    <a href="/" style="
+        display:inline-block;
+        padding:12px 25px;
+        background:#D4AF37;
+        color:#000;
+        text-decoration:none;
+        border-radius:8px;
+        font-weight:bold;
+        letter-spacing:1px;
+    ">
+        Return Home
+    </a>
+
+</div>
+
+{% endblock %}

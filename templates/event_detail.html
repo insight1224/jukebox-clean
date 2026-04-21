@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='event_detail.css') }}">
+
+<!-- HERO -->
+<section class="event-hero">
+
+    <img src="{{ event.flyer }}" alt="{{ event.name }} Flyer">
+
+    <div class="event-hero-overlay">
+        <h1>{{ event.name }}</h1>
+        <p>{{ event.description }}</p>
+    </div>
+
+</section>
+
+<!-- EVENT HEADER -->
+<section class="section">
+    <h2 class="section-title">{{ event.name }}</h2>
+    <p style="text-align:center; max-width:600px; margin:0 auto;">
+        {{ event.description }}
+    </p>
+</section>
+
+<!-- TICKET SECTION -->
+<section class="ticket-section">
+
+<div class="ticket-grid">
+
+    <div class="ticket-box highlight">
+        <h3>Early Bird</h3>
+        <p>Limited discounted entry</p>
+        <p class="price">$13</p>
+        <a href="{{ event.early_link }}" target="_blank" class="btn">
+            Secure Early Access
+</a>
+<p class="secure-note">
+    🔒 Secure checkout powered by Square
+</p>
+        
+    </div>
+
+    <div class="ticket-box">
+        <h3>General Admission</h3>
+        <p>Standard entry</p>
+        <p class="price">$18</p>
+        <a href="{{ event.ga_link }}" target="_blank" class="btn">
+            Reserve General Entry
+ </a>
+<p class="secure-note">
+    🔒 Secure checkout powered by Square
+</p>
+       
+    </div>
+
+    <div class="ticket-box vip">
+        <h3>VIP Section</h3>
+        <p>Premium seating + priority experience (Includes 6 tickets)</p>
+        <p class="price">$175</p>
+        <a href="{{ event.vip_link }}" target="_blank" class="btn vip-btn">
+            Book VIP Experience 
+</a>
+<p class="secure-note">
+    🔒 Secure checkout powered by Square
+</p>
+
+    </div>
+
+    <div class="ticket-box ultra">
+        <h3>DJ Booth Experience</h3>
+        <p>DJ booth experience (Includes 6 tickets)</p>
+        <p class="price">$200</p>
+        <a href="{{ event.booth_link }}" target="_blank" class="btn ultra-btn">
+            Reserve Private Booth
+</a>
+<p class="secure-note">
+    🔒 Secure checkout powered by Square
+</p>
+       
+    </div>
+
+</div>
+
+</section>
+
+{% endblock %}

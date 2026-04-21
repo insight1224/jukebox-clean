@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>The Jukebox Lounge NC</title>
+
+    <!-- CSS (correct Flask way) -->
+   <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+
+    <div class="nav-left">
+        <h1 class="logo">THE JUKEBOX LOUNGE NC</h1>
+    </div>
+
+    <div class="nav-right">
+
+        <a href="/" class="nav-link">Home</a>
+        <a href="/events" class="nav-link">Events</a>
+        <a href="/contact" class="nav-link">Contact</a>
+
+    </div>
+
+</nav>
+<!-- PAGE CONTENT -->
+{% block content %}{% endblock %}

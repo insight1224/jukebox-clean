@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+
+<div class="dashboard-wrapper">
+
+    <!-- TITLE -->
+    <h1 class="dashboard-title">Jukebox CRM Dashboard</h1>
+
+    <!-- METRICS -->
+    <div class="metrics">
+
+        <div class="metric-card">
+            <h3>Tickets Sold</h3>
+            <p>{{ total_leads }}</p>
+        </div>
+
+	<div class="metric-card">
+    <h3>Revenue</h3>
+    <p>${{ total_revenue }}</p>
+</div>
+
+<div class="metric-card">
+    <h3>Attendance</h3>
+    <p>{{ total_attendance }}</p>
+</div>
+
+        <div class="metric-card">
+            <h3>VIP Signups</h3>
+            <p>{{ vip_count }}</p>
+        </div>
+
+        <div class="metric-card">
+            <h3>DJ Applications</h3>
+            <p>{{ dj_count }}</p>
+        </div>
+
+        <div class="metric-card">
+            <h3>Inquiries</h3>
+            <p>{{ requests_count }}</p>
+        </div>
+
+    </div>
+
+    <!-- FILTERS -->
+    <div class="dashboard-controls">
+
+        <div class="filters">
+            <a href="/dashboard" class="btn">All</a>
+            <a href="/dashboard?type=VIP Signup" class="btn">VIP</a>
+            <a href="/dashboard?type=DJ Application" class="btn">DJs/Bands</a>
+            <a href="/dashboard?type=Contact Message" class="btn">Inquiries</a>
+        </div>
+
+        <!-- SEARCH -->
+        <form method="GET" action="/dashboard" class="search-form">
+            <input type="text" name="search" placeholder="Search leads...">
+            <button type="submit" class="btn">Search</button>
+        </form>
+
+    </div>
+
+    <!-- LEADS GRID -->
+    <div class="lead-grid">
+
+        {% for lead in leads %}
+
+        <div class="lead-card">
+
+            <!-- TYPE -->
+            <h3 class="lead-type">{{ lead[1] }}</h3>
+
+            <!-- INFO -->
+            <p><strong>Name:</strong> {{ lead[2] }}</p>
+            <p><strong>Email:</strong> {{ lead[3] }}</p>
+            <p><strong>Details:</strong> {{ lead[4] }}</p>
+
+            <!-- STATUS -->
+            <p>
+                <strong>Status:</strong>
+                {% set s = lead[5] %}
+                <span class="status-badge status-{{ s|lower }}">{{ s }}</span>
+            </p>
+
+            <!-- ACTIONS -->
+            <div class="lead-actions">
+
+                {% if lead[1] == "DJ Application" %}
+
+                    <a href="/update-status/{{ lead[0] }}/Contacted" class="btn small">Contacted</a>
+                    <a href="/update-status/{{ lead[0] }}/Booked" class="btn small success">Booked</a>
+                    <a href="/update-status/{{ lead[0] }}/Declined" class="btn small danger">Declined</a>
+
+                {% elif lead[1] == "Contact Message" %}
+
+                    <a href="/update-status/{{ lead[0] }}/Responded" class="btn small success">Responded</a>
+                    <a href="/update-status/{{ lead[0] }}/Closed" class="btn small">Closed</a>
+
+                {% else %}
+
+                    <span class="readonly">VIP (auto-approved)</span>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,260 @@
+/* =========================
+   GLOBAL THEME
+========================= */
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #000;          /* full black */
+    color: #D4AF37;            /* gold text */
+}
+
+/* default text styling */
+p, h1, h2, h3, h4, span, li {
+    color: #D4AF37;
+}
+
+/* =========================
+   SECTIONS
+========================= */
+
+.section {
+    padding: 70px 20px;
+    text-align: center;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+
+.btn {
+    background: #D4AF37;
+    color: #000;
+    padding: 12px 22px;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.btn:hover {
+    background: #FFD700;
+    transform: translateY(-2px);
+}
+
+/* =========================
+   INPUTS
+========================= */
+
+.input {
+    width: 100%;
+    padding: 12px;
+    margin: 8px 0;
+
+    background: #111;
+    border: 1px solid #333;
+    border-radius: 8px;
+
+    color: #D4AF37;
+}
+
+/* =========================
+   CARDS (GLOBAL)
+========================= */
+
+.card {
+    background: #111;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid rgba(212,175,55,0.15);
+}
+/* =========================
+   NAVBAR LAYOUT
+========================= */
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 20px 40px;
+    background: #000;
+    border-bottom: 1px solid rgba(212,175,55,0.2);
+}
+
+/* LEFT */
+.nav-left h1 {
+    margin: 0;
+    color: #D4AF37;
+    letter-spacing: 3px;
+}
+
+/* RIGHT LINKS */
+.nav-right a {
+    margin-left: 20px;
+    text-decoration: none;
+    color: #D4AF37;
+    transition: 0.3s ease;
+}
+
+.nav-right a:hover {
+    color: #FFD700;
+}
+
+/* =========================
+   LUXURY NAVBAR
+========================= */
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 18px 40px;
+
+    background: rgba(10, 10, 10, 0.85);
+    backdrop-filter: blur(12px);
+
+    border-bottom: 1px solid rgba(212,175,55,0.15);
+
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+/* LOGO */
+.logo {
+    color: #D4AF37;
+    margin: 0;
+    letter-spacing: 4px;
+    font-size: 20px;
+}
+
+/* LINKS */
+.nav-right {
+    display: flex;
+    gap: 25px;
+}
+
+.nav-link {
+    color: #bdbdbd;
+    text-decoration: none;
+    font-size: 20px;
+    letter-spacing: 1px;
+
+    transition: 0.3s;
+    position: relative;
+}
+
+/* HOVER EFFECT */
+.nav-link:hover {
+    color: #FFD700;
+}
+
+/* GOLD UNDERLINE ANIMATION */
+.nav-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -5px;
+
+    width: 0%;
+    height: 1px;
+    background: #D4AF37;
+
+    transition: 0.3s;
+}
+
+.nav-link:hover::after {
+    width: 100%;
+}
+/* =========================
+   GLOBAL FORM STYLE SYSTEM
+========================= */
+
+.field input,
+.field select,
+.field textarea,
+.dj-card button {
+
+    width: 100%;
+    padding: 14px;
+
+    border-radius: 10px;
+
+    font-size: 14px;
+    letter-spacing: 0.5px;
+
+    box-sizing: border-box;
+}
+
+/* =========================
+   INPUT STYLE
+========================= */
+
+.field input,
+.field select,
+.field textarea {
+
+    background: rgba(0, 0, 0, 0.4);
+
+    border: 1px solid rgba(212,175,55,0.2);
+
+    color: #fff;
+
+    transition: 0.3s ease;
+}
+
+/* focus effect */
+.field input:focus,
+.field select:focus,
+.field textarea:focus {
+    border-color: #D4AF37;
+    box-shadow: 0 0 10px rgba(212,175,55,0.15);
+}
+
+/* =========================
+   BUTTON STYLE (MATCH INPUTS)
+========================= */
+
+.dj-card button {
+
+    background: #D4AF37;
+    color: #000;
+
+    border: 1px solid #D4AF37;
+
+    font-weight: bold;
+    letter-spacing: 2px;
+
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+/* hover */
+.dj-card button:hover {
+    background: transparent;
+    color: #D4AF37;
+
+    box-shadow: 0 0 15px rgba(212,175,55,0.25);
+}
+
+/* =========================
+   DROPDOWN TEXT COLOR FIX
+========================= */
+
+.field select:invalid {
+    color: #777;
+}
+.social-links a {
+    font-size: 20px;
+    width: 45px;
+    height: 45px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+}

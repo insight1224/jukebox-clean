@@ -1,0 +1,193 @@
+/* =========================
+   CONTACT GRID (LAYOUT)
+========================= */
+
+.contact-grid {
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
+    gap: 25px;
+    padding: 40px 20px;
+    flex-wrap: nowrap;
+}
+
+/* =========================
+   CONTACT BOX (UNIFIED SIZE)
+========================= */
+
+.contact-box {
+    flex: 1;
+    max-width: 500px;
+
+    background: rgba(0,0,0,0.65);
+    border: 1px solid rgba(212,175,55,0.25);
+    border-radius: 16px;
+
+    padding: 30px;
+
+    text-align: center;
+
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+
+    transition: 0.3s ease;
+}
+
+/* hover */
+.contact-box:hover {
+    transform: translateY(-5px);
+    border-color: rgba(212,175,55,0.5);
+    box-shadow: 0 0 25px rgba(212,175,55,0.15);
+}
+
+/* =========================
+   HEADINGS
+========================= */
+
+.contact-box h3 {
+    color: #D4AF37;
+    margin-bottom: 15px;
+}
+
+/* =========================
+   INPUTS / TEXTAREA / SELECT
+========================= */
+
+.contact-box input,
+.contact-box textarea,
+.contact-box select {
+
+    width: 100%;
+    padding: 14px;
+    margin-bottom: 12px;
+
+    border-radius: 10px;
+    border: 1px solid rgba(212,175,55,0.2);
+
+    background: rgba(10,10,10,0.85);
+    color: #fff;
+
+    font-size: 14px;
+
+    box-sizing: border-box;
+
+    transition: 0.3s ease;
+}
+
+/* focus */
+.contact-box input:focus,
+.contact-box textarea:focus,
+.contact-box select:focus {
+    outline: none;
+    border-color: #D4AF37;
+    box-shadow: 0 0 12px rgba(212,175,55,0.25);
+}
+
+/* =========================
+   BUTTON
+========================= */
+
+.contact-box button {
+    width: 100%;
+    padding: 14px;
+
+    background: #D4AF37;
+    color: #000;
+
+    border: none;
+    border-radius: 10px;
+
+    font-weight: bold;
+    letter-spacing: 2px;
+
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.contact-box button:hover {
+    background: transparent;
+    color: #D4AF37;
+    border: 1px solid #D4AF37;
+}
+/* =========================
+   SOCIAL (FINAL TOUCH)
+========================= */
+
+.social {
+    text-align: center;
+    padding: 50px 20px;
+}
+
+.social h3 {
+    color: #D4AF37;
+    margin-bottom: 20px;
+}
+
+.social-icons {
+    display: flex;
+    justify-content: center;
+    gap: 35px;
+}
+
+.social-icons a {
+    color: #D4AF37;
+    font-size: 42px;
+    transition: 0.3s ease;
+}
+
+.social-icons a:hover {
+    color: #FFD700;
+    transform: scale(1.2);
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 900px) {
+    .contact-grid {
+        flex-wrap: wrap;
+    }
+
+    .contact-box {
+        width: 100%;
+    }
+}
+.social-section {
+    text-align: center;
+    margin-top: 50px;
+}
+
+.social-section h3 {
+    color: #D4AF37;
+    margin-bottom: 20px;
+    letter-spacing: 1px;
+}
+
+.social-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.social-links a {
+    font-size: 22px;
+    width: 50px;
+    height: 50px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+    border: 1px solid #D4AF37;
+    color: #D4AF37 !important;
+
+    transition: all 0.3s ease;
+}
+
+.social-links a:hover {
+    background: #D4AF37;
+    color: black !important;
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(212,175,55,0.6);
+}

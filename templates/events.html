@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='events.css') }}">
+
+<!-- HEADER -->
+<section class="section">
+    <h2 class="section-title">Upcoming Events</h2>
+</section>
+
+<!-- EVENTS GRID -->
+<div class="premium-row">
+
+    {% for event in events %}
+
+    <!-- CARD -->
+    <div class="premium-card">
+
+        <!-- LINK WRAPS ENTIRE CARD -->
+        <a href="/event/{{ event.id }}" class="card-link">
+
+            <!-- FLYER IMAGE -->
+            <img src="{{ event.flyer }}" alt="{{ event.name }} Flyer">
+
+            <!-- OVERLAY -->
+            <div class="premium-overlay">
+
+                <div class="premium-content">
+
+                    <h3>{{ event.name }}</h3>
+
+                    <p>{{ event.description }}</p>
+
+                    <!-- CALCULATE ATTENDANCE -->
+                    {% set attendance = namespace(value=0) %}
+                    {% for t in event.tickets.values() %}
+                        {% set attendance.value = attendance.value + (t.sold * t.size) %}
+                    {% endfor %}
+
+                    <!-- CAPACITY (fallback if not set) -->
+                    {% set capacity = event.capacity if event.capacity else 450 %}
+                    {% set remaining = capacity - attendance.value %}
+
+                    <!-- META INFO -->
+                    <div class="meta">
+                        {% if remaining <= 0 %}
+                            🔴 Sold Out
+                        {% elif remaining <= 50 %}
+                            ⚠️ Only {{ remaining }} spots left     
+                        {% endif %}
+                    </div>
+
+                    <!-- BUTTON -->
+                    <div class="premium-btn">
+                        View Event
+                    </div>
+
+                </div>
+
+            </div>
+
+        </a>
+
+    </div>
+
+    {% endfor %}
+
+</div>
+
+{% endblock %}

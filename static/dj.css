@@ -1,0 +1,163 @@
+/* =========================
+   PAGE WRAPPER
+========================= */
+
+.dj-page {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 60px 20px;
+
+    background: radial-gradient(circle at top, #0f0f0f, #000);
+}
+
+/* =========================
+   MAIN CARD
+========================= */
+
+.dj-card {
+    width: 100%;
+    max-width: 680px;
+
+    background: rgba(15, 15, 15, 0.95);
+    backdrop-filter: blur(10px);
+
+    border-radius: 16px;
+
+    border: 1px solid rgba(212,175,55,0.2);
+
+    padding: 30px 35px;
+
+    box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+}
+
+/* =========================
+   HEADER (SMALL LOGO)
+========================= */
+
+.dj-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.dj-header img {
+    width: 300px;   /* 🔥 smaller logo */
+    margin-bottom: 8px;
+
+    opacity: 0.9;
+    filter: drop-shadow(0 0 10px rgba(212,175,55,0.25));
+}
+
+.dj-header h2 {
+    color: #D4AF37;
+    font-size: 18px;
+    letter-spacing: 3px;
+    margin: 0;
+}
+
+.dj-header p {
+    color: #777;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* =========================
+   STACKED FIELD BOXES
+========================= */
+
+.field {
+    margin-top: 14px;
+    padding: 12px 14px;
+
+    border: 1px solid rgba(212,175,55,0.15);
+    border-radius: 10px;
+
+    background: rgba(0,0,0,0.3);
+
+    transition: 0.3s ease;
+}
+
+/* glow on focus */
+.field:focus-within {
+    border-color: rgba(212,175,55,0.5);
+    box-shadow: 0 0 15px rgba(212,175,55,0.08);
+}
+
+/* label */
+.field label {
+    display: block;
+    font-size: 11px;
+    color: #D4AF37;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+}
+
+/* inputs */
+.field input,
+.field select,
+.field textarea {
+    width: 100%;
+    background: transparent;
+
+    border: none;
+    outline: none;
+
+    color: #fff;
+    font-size: 14px;
+}
+
+/* textarea */
+.field textarea {
+    min-height: 80px;
+    resize: none;
+}
+
+/* =========================
+   SUBMIT BUTTON
+========================= */
+
+.dj-card button {
+    margin-top: 20px;
+    width: 100%;
+
+    padding: 14px;
+
+    background: #D4AF37;
+    color: #000;
+
+    border: none;
+    border-radius: 10px;
+
+    font-weight: bold;
+    letter-spacing: 2px;
+
+    cursor: pointer;
+
+    transition: 0.3s ease;
+}
+
+.dj-card button:hover {
+    background: #b8932e;
+    transform: translateY(-2px);
+    box-shadow: 0 0 20px rgba(212,175,55,0.25);
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 600px) {
+    .dj-card {
+        padding: 20px;
+    }
+}
+.field select {
+    appearance: none;
+    cursor: pointer;
+}
+
+.field select:invalid {
+    color: #777;
+}

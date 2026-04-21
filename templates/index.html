@@ -1,0 +1,295 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+
+<!-- HERO -->
+<section class="hero">
+    <h1>THE JUKEBOX LOUNGE NC</h1>
+    <h2>Old school R&B. Premium crowd. Unmatched energy.</h2>
+</section>
+
+<!-- EXPERIENCE -->
+<section class="section experience">
+    <h2 class="section-title">The Experience</h2>
+
+    <div class="experience-box">
+        <p class="experience-text">
+            The Jukebox Lounge is where grown energy meets timeless sound.
+        </p>
+
+        <p class="experience-text">
+            Designed for a 30+ crowd, this is not your typical nightlife scene — 
+            it’s a curated atmosphere of style, nostalgia, and elevated vibes.
+        </p>
+
+        <p class="experience-highlight">
+            Where the music feels better, the crowd feels right, and the night actually means something.
+        </p>
+    </div>
+</section>
+
+<!-- JUKEBOX EXPERIENCE -->
+<section class="jukebox-machine">
+
+    <div class="jukebox-stage">
+
+        <!-- LEFT SPEAKER -->
+        <div class="speaker speaker-left"></div>
+
+        <!-- CENTER -->
+        <div class="jukebox-center">
+
+            <!-- DISPLAY -->
+            <div class="jukebox-display">
+                <h2>JUKEBOX SELECTOR</h2>
+                <p id="nowPlayingText">INSERT COIN</p>
+            </div>
+
+            <!-- APPLE MUSIC PLAYER (SCREEN) -->
+            <div id="musicPlayer" class="music-player-box">
+                <p style="opacity:0.6;">Select a record to play</p>
+            </div>
+
+        </div>
+
+        <!-- RIGHT SPEAKER -->
+        <div class="speaker speaker-right"></div>
+
+    </div>
+
+    <!-- CONTROLS -->
+    <div class="jukebox-controls">
+        <button onclick="scrollRecordsLeft()">⟵</button>
+<button onclick="scrollRecordsRight()">⟶</button>
+    </div>
+
+    <!-- SCROLLING RECORDS -->
+    <div class="jukebox-scroll" id="jukeboxScroll">
+
+        {% for i in range(1,16) %}
+        <div class="album">
+            <img src="/static/images/album{{ i }}.jpg">
+            <button class="play-btn" onclick="playSong({{ i-1 }})">▶</button>
+        </div>
+        {% endfor %}
+
+    </div>
+
+</section>
+
+<!-- GRAND OPENING -->
+<section class="section">
+
+    <h2 class="section-title">Grand Opening Series</h2>
+
+    <p class="grand-opening-text">
+        <span class="accent">Three nights.</span>  
+        <span class="accent">Three experiences.</span>  
+        <span class="accent">One unforgettable launch.</span>
+    </p>
+
+    <div class="poster-grid">
+
+        <!-- PART 1 -->
+        <div class="poster-card">
+            <h3 style="color:gold;">Part 1 — Battle of the DJs</h3>
+            <p>Showcase your sound and compete for the crown.</p>
+
+            <div class="poster-image-wrapper" onclick="openFlyer('/static/images/flyer-part1.jpg')">
+                <img src="/static/images/flyer-part1.jpg">
+            </div>
+
+            <a href="/dj-signup" class="btn">Apply as DJ</a>
+        </div>
+
+        <!-- PART 2 -->
+        <div class="poster-card">
+            <h3 style="color:gold;">Part 2 — The Reveal</h3>
+            <p>The next phase announced live.</p>
+
+            <div class="poster-image-wrapper" onclick="openFlyer('/static/images/flyer-part2.jpg')">
+                <img src="/static/images/flyer-part2.jpg">
+            </div>
+        </div>
+
+        <!-- PART 3 -->
+        <div class="poster-card">
+            <h3 style="color:gold;">Part 3 — Grand Finale</h3>
+            <p>The ultimate lounge experience.</p>
+
+            <div class="poster-image-wrapper" onclick="openFlyer('/static/images/flyer-part3.jpg')">
+                <img src="/static/images/flyer-part3.jpg">
+            </div>
+        </div>
+
+    </div>
+
+</section>
+
+<!-- VIP -->
+<section class="vip">
+    <div class="vip-box">
+        <h2>Join the VIP List</h2>
+
+        <form action="/vip" method="POST">
+            <input type="text" name="name" placeholder="Full Name" required>
+            <input type="email" name="email" placeholder="Email Address" required>
+            <input type="text" name="phone" placeholder="Phone (optional)">
+            <button type="submit">Join VIP Access</button>
+        </form>
+
+        <p class="vip-subtext">
+            Exclusive invites, early access, and private events
+        </p>
+    </div>
+</section>
+
+<!-- SOCIAL -->
+<section class="social">
+    <h3>Follow The Movement</h3>
+
+    <div class="social-links">
+        <a href="https://www.instagram.com/thejukeboxloungenc" target="_blank">
+            <i class="fab fa-instagram"></i>
+        </a>
+        <a href="https://www.tiktok.com/@the.jukebox.loung" target="_blank">
+            <i class="fab fa-tiktok"></i>
+        </a>
+        <a href="https://www.facebook.com" target="_blank">
+            <i class="fab fa-facebook-f"></i>
+        </a>
+    </div>
+</section>
+
+<!-- AUDIO -->
+<audio id="clickSound" src="/static/sounds/click.mp3"></audio>
+<audio id="vinylSound" src="/static/sounds/vinyl.mp3"></audio>
+
+<!-- SCROLL SCRIPT -->
+<script>
+document.addEventListener("click", () => {
+    const click = document.getElementById("clickSound");
+    const vinyl = document.getElementById("vinylSound");
+
+    if (click) click.load();
+    if (vinyl) vinyl.load();
+}, { once: true });
+
+function scrollRecordsLeft() {
+    document.getElementById("jukeboxScroll")
+        .scrollBy({ left: -300, behavior: 'smooth' });
+}
+
+function scrollRecordsRight() {
+    document.getElementById("jukeboxScroll")
+        .scrollBy({ left: 300, behavior: 'smooth' });
+}
+
+function playSong(index) {
+
+    const click = document.getElementById("clickSound");
+    const vinyl = document.getElementById("vinylSound");
+    const player = document.getElementById("musicPlayer");
+
+    const songs = [
+        "Rock With You",
+        "Sweet Love",
+        "Outstanding",
+        "Before I Let You Go",
+        "Never Too Much",
+        "Can We Talk",
+        "I Like",
+        "Weak",
+        "Mo Money Mo Problems",
+        "Real Love",
+        "Dilemma",
+        "You Don't Have To Call",
+        "Blame It",
+        "So Fresh, So Clean",
+        "Crazy In Love"
+    ];
+
+    const links = [
+        "https://embed.music.apple.com/us/album/rock-with-you/186166282?i=186166358",
+        "https://embed.music.apple.com/us/album/sweet-love/317229859?i=317230043",
+        "https://embed.music.apple.com/us/album/outstanding/1424520684?i=1424520692",
+        "https://embed.music.apple.com/us/album/before-i-let-go/724904374?i=724905057",
+        "https://embed.music.apple.com/us/album/never-too-much/190652453?i=190652482",
+        "https://embed.music.apple.com/us/album/can-we-talk/301001045?i=301001052",
+        "https://embed.music.apple.com/us/album/i-like/1452813546?i=1452813664",
+        "https://embed.music.apple.com/us/album/weak/266799911?i=266800009",
+        "https://embed.music.apple.com/us/album/mo-money-mo-problems-feat-ma%24e-puff-daddy/906888433?i=906888513",
+        "https://embed.music.apple.com/us/album/real-love/1440817005?i=1440817021",
+        "https://embed.music.apple.com/us/album/dilemma-feat-kelly-rowland/1440769782?i=1440770466",
+        "https://embed.music.apple.com/us/album/u-dont-have-to-call/268532446?i=268532614",
+        "https://embed.music.apple.com/us/album/blame-it-feat-t-pain/298451478?i=298451835",
+        "https://embed.music.apple.com/us/album/so-fresh-so-clean/255836651?i=255836736",
+        "https://embed.music.apple.com/us/album/crazy-in-love-feat-ja%C3%BF-z/201274359?i=201274644"
+    ];
+
+    // 🔊 CLICK SOUND
+    if (click) {
+        click.pause();
+        click.currentTime = 0;
+        click.play();
+    }
+
+    // 📝 Update text
+    document.getElementById("nowPlayingText").innerText =
+        "▶ NOW SPINNING: " + songs[index];
+
+    // 💿 VINYL SOUND
+    setTimeout(() => {
+        if (vinyl) {
+            vinyl.pause();
+            vinyl.currentTime = 0;
+            vinyl.play();
+        }
+    }, 500);
+
+    // 📱 LOAD APPLE MUSIC PLAYER
+    setTimeout(() => {
+        player.innerHTML = `
+            <iframe
+                allow="autoplay *; encrypted-media *;"
+                frameborder="0"
+                height="175"
+                style="width:100%; max-width:500px; border-radius:12px;"
+                src="${links[index]}">
+            </iframe>
+        `;
+    }, 800);
+}
+window.addEventListener("load", () => {
+    const container = document.getElementById("jukeboxScroll");
+    const firstAlbum = document.querySelector(".album");
+
+    if (firstAlbum && container) {
+
+        // 👇 force exact centered position
+        const containerRect = container.getBoundingClientRect();
+        const albumRect = firstAlbum.getBoundingClientRect();
+
+        const offset = albumRect.left - containerRect.left;
+        const scroll = offset - (container.offsetWidth / 2) + (firstAlbum.offsetWidth / 2);
+
+        container.scrollLeft += scroll;
+    }
+
+    // run AFTER positioning
+    setTimeout(updateActiveAlbum, 100);
+});
+
+const speakers = document.querySelectorAll(".speaker");
+
+// reset speakers
+speakers.forEach(s => s.classList.remove("active"));
+
+// turn them on
+setTimeout(() => {
+    speakers.forEach(s => s.classList.add("active"));
+}, 100);
+</script>
+{% endblock %}

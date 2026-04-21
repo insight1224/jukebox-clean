@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='dj.css') }}">
+
+   <div class="dj-page">
+
+    <div class="dj-card">
+
+        <div class="dj-header">
+            <img src="/static/images/logo.png">
+            <h2>DJ APPLICATION</h2>
+            <p>Submit your profile for booking consideration</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('dj_signup') }}">
+
+            <div class="field">
+                <label>Name</label>
+                <input type="text" name="name">
+            </div>
+
+            <div class="field">
+                <label>Brand / Artist Name</label>
+                <input type="text" name="brand">
+            </div>
+
+            <div class="field">
+                <label>Email</label>
+                <input type="email" name="email">
+            </div>
+
+            <div class="field">
+                <label>Phone Number</label>
+                <input type="text" name="phone">
+            </div>
+
+            <div class="field">
+    <label>Type</label>
+    <select name="type" required>
+        <option value="" disabled selected>Select one</option>
+        <option value="DJ">DJ</option>
+        <option value="Solo Artist">Solo Artist</option>
+        <option value="Band">Band</option>
+    </select>
+</div>
+
+            <div class="field">
+    <label>Genre</label>
+    <select name="genre" required>
+        <option value="" disabled selected>Select one</option>
+        <option value="R&B">R&B</option>
+        <option value="Neo Soul">Neo Soul</option>
+        <option value="Jazz">Jazz</option>
+        <option value="Afrobeats">Afrobeats</option>
+        <option value="Hip Hop">Hip Hop</option>
+        <option value="House">House</option>
+        <option value="All of the above">All of the above</option>
+    </select>
+</div>
+
+            <div class="field">
+                <label>Performance Links</label>
+                <input type="text" name="links">
+            </div>
+
+            <div class="field">
+                <label>Rate / Pricing</label>
+                <input type="text" name="rate">
+            </div>
+
+            <div class="field">
+                <label>Comments</label>
+                <textarea name="comments"></textarea>
+            </div>
+
+            <button type="submit">SUBMIT APPLICATION</button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

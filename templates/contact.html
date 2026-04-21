@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='contact.css') }}">
+
+<section class="section">
+
+    <h2 class="section-title">Connect With Us</h2>
+
+    <p class="contact-subtext">
+        DJ/Band applications, VIP access, and general inquiries — connect with The Jukebox Lounge team.
+    </p>
+
+</section>
+
+<!-- GRID WRAPPER -->
+<div class="contact-grid">
+
+    <!-- DJ APPLICATION -->
+    <div class="contact-box">
+
+        <h3>DJ and Band Application</h3>
+
+        <p class="small-text">
+            If you think you have what it takes, step into the lineup. Only selected DJs will be invited to perform at The Jukebox Lounge experience.
+        </p>
+
+        <a href="/dj-signup" class="btn primary-cta">
+            Apply
+        </a>
+
+
+    </div>
+
+    <!-- VIP / CONTACT FORM (CENTER BOX) -->
+    <div class="contact-box vip-box">
+
+    <h3>VIP List</h3>
+
+    <form action="/vip" method="POST">
+
+        <input type="text" name="name" placeholder="Full Name" required>
+        <input type="email" name="email" placeholder="Email Address" required>
+        <input type="text" name="phone" placeholder="Phone (optional)">
+
+        <button type="submit">Join VIP List</button>
+
+    </form>
+
+</div>
+    <!-- GENERAL INQUIRY -->
+    <div class="contact-box">
+
+    <h3>General Inquiry</h3>
+
+    <form method="POST" action="/contact">
+
+        <input type="text" name="name" placeholder="Your Name" required>
+        <input type="email" name="email" placeholder="Your Email" required>
+        <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
+
+        <button type="submit">Send Message</button>
+
+    </form>
+
+</div>
+
+</div>
+
+<!-- SOCIAL -->
+<div class="social-section">
+    <h3>Follow The Movement</h3>
+
+    <div class="social-links">
+        <a href="https://www.instagram.com/thejukeboxloungenc?igsh=MWZueTV5MTFjZmExbg==" target="_blank">
+            <i class="fab fa-instagram"></i>
+        </a>
+
+        <a href="https://www.tiktok.com/@the.jukebox.loung?_r=1&_t=ZP-95PXl9VsEAR" target="_blank">
+            <i class="fab fa-tiktok"></i>
+        </a>
+
+        <a href="https://www.facebook.com/share/1CVMHqvCVS/?mibextid=wwXIfr" target="_blank">
+            <i class="fab fa-facebook-f"></i>
+        </a>
+    </div>
+</div>
+
+</section>
+
+{% endblock %}
