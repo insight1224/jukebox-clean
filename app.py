@@ -58,7 +58,11 @@ events_data = [
     {
         "id": 1,
         "name": "Battle of the DJs",
-        "description": "Showcase your sound and compete for the crown.",
+        "description": "Showcase your sound and compete for the crown.
+
+This is an indoor and outdoor event, so programming may adjust based on weather conditions. Tickets are transferable if plans change.
+
+Please note: this is a 30+ event. IDs will be checked at the door, and anyone under 30 will be denied entry with no refund.",
         "flyer": "/static/images/flyer-part1.jpg",
 
         "tickets": {
