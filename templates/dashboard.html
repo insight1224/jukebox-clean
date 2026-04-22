@@ -14,31 +14,52 @@
 
         <div class="metric-card">
             <h3>Tickets Sold</h3>
-            <p>{{ total_leads }}</p>
+            <p>
+{% set total_tickets = 0 %}
+{% for event in event_stats %}
+    {% set total_tickets = total_tickets + event.tickets_sold %}
+{% endfor %}
+{{ total_tickets }}
+</p>
         </div>
-
-	<div class="metric-card">
-    <h3>Revenue</h3>
-    <p>${{ total_revenue }}</p>
-</div>
 
 <div class="metric-card">
     <h3>Attendance</h3>
     <p>{{ total_attendance }}</p>
 </div>
 
+<div class="metric-card">
+    <h3>Revenue</h3>
+    <p>${{ total_revenue }}</p>
+</div>
+
+<div class="metric-card">
+    <h3>Event Revenue</h3>
+    <p>${{ event_revenue_total }}</p>
+</div>
+
+<div class="metric-card">
+    <h3>Circle Members</h3>
+    <p>{{ membership_count }}</p>
+</div>
+
+<div class="metric-card">
+    <h3>Membership Revenue</h3>
+<p>${{ membership_revenue }}</p>
+</div>
+
         <div class="metric-card">
-            <h3>VIP Signups</h3>
+            <h3>VIP Email</h3>
             <p>{{ vip_count }}</p>
         </div>
 
         <div class="metric-card">
-            <h3>DJ Applications</h3>
+            <h3>DJ/Band Applications</h3>
             <p>{{ dj_count }}</p>
         </div>
 
         <div class="metric-card">
-            <h3>Inquiries</h3>
+            <h3>General Inquiries</h3>
             <p>{{ requests_count }}</p>
         </div>
 
@@ -63,9 +84,10 @@
 
         <div class="filters">
             <a href="/dashboard" class="btn">All</a>
-            <a href="/dashboard?type=VIP Signup" class="btn">VIP</a>
+            <a href="/dashboard?type=VIP Signup" class="btn">VIP Email</a>
             <a href="/dashboard?type=DJ Application" class="btn">DJs/Bands</a>
             <a href="/dashboard?type=Contact Message" class="btn">Inquiries</a>
+	    <a href="/dashboard?type=Circle Members" class="btn">Circle Members</a>
         </div>
 
         <!-- SEARCH -->
@@ -75,6 +97,25 @@
         </form>
 
     </div>
+<h2 class="dashboard-title">Members</h2>
+
+<div class="lead-grid">
+
+    {% for member in members %}
+
+    <div class="lead-card">
+        <h3 class="lead-type">Member</h3>
+
+        <p><strong>Name:</strong> {{ member[1] }}</p>
+        <p><strong>Email:</strong> {{ member[2] }}</p>
+        <p><strong>Status:</strong> {{ member[4] }}</p>
+        <p><strong>Joined:</strong> {{ member[5] }}</p>
+
+    </div>
+
+    {% endfor %}
+
+</div>
 
     <!-- LEADS GRID -->
     <div class="lead-grid">
