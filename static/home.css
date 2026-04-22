@@ -1828,3 +1828,18 @@ body.flash {
 .speaker.active {
     animation: speakerPulse 1s infinite;
 }
+.age-badge {
+  font-size: 3rem;   /* makes it big */
+  font-weight: bold;
+  color: #ffcc00;    /* optional glow color */
+  text-shadow: 0 0 10px rgba(255, 204, 0, 0.8);
+}
+.age-badge {
+  font-size: 3.5rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 
+    0 0 5px #ffcc00,
+    0 0 10px #ffcc00,
+    0 0 20px #ff9900;
+}
