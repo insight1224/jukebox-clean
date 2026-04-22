@@ -286,17 +286,40 @@ def dashboard():
     max_capacity = 450
     remaining = max_capacity - total_attendance
 
+event_stats = []
+
+for event in events_data:
+    event_revenue = 0
+    event_attendance = 0
+
+    for ticket in event["tickets"].values():
+        event_revenue += ticket["price"] * ticket["sold"]
+        event_attendance += ticket["sold"] * ticket["size"]
+
+    event_stats.append({
+        "name": event["name"],
+        "revenue": event_revenue,
+        "attendance": event_attendance,
+        "tickets_sold": sum(t["sold"] for t in event["tickets"].values())
+    })
+
+max_capacity = event.get("capacity", 150)  # fallback if not set
+remaining = max_capacity - event_attendance
+
+"remaining": remaining
+
     return render_template(
-        "dashboard.html",
-        leads=leads,
-        total_leads=total_leads,
-        vip_count=vip_count,
-        requests_count=requests_count,
-        dj_count=dj_count,
-        total_revenue=total_revenue,
-        total_attendance=total_attendance,
-        remaining=remaining
-    )
+    "dashboard.html",
+    leads=leads,
+    total_leads=total_leads,
+    vip_count=vip_count,
+    requests_count=requests_count,
+    dj_count=dj_count,
+    total_revenue=total_revenue,
+    total_attendance=total_attendance,
+    remaining=remaining,
+    event_stats=event_stats   # 👈 ADD THIS
+)
 
 # -------------------------
 # UPDATE STATUS

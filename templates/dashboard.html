@@ -44,6 +44,20 @@
 
     </div>
 
+<h2 class="section-title">Event Performance</h2>
+
+<div class="event-grid">
+    {% for event in event_stats %}
+    <div class="event-card">
+        <h3>{{ event.name }}</h3>
+        <p><strong>Revenue:</strong> ${{ event.revenue }}</p>
+        <p><strong>Tickets Sold:</strong> {{ event.tickets_sold }}</p>
+        <p><strong>Attendance:</strong> {{ event.attendance }}</p>
+<p><strong>Remaining:</strong> {{ event.remaining }}</p>
+    </div>
+    {% endfor %}
+</div>
+
     <!-- FILTERS -->
     <div class="dashboard-controls">
 
