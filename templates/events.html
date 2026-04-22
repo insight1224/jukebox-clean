@@ -17,53 +17,48 @@
     <!-- CARD -->
     <div class="premium-card">
 
-        <!-- LINK WRAPS ENTIRE CARD -->
-        <a href="/event/{{ event.id }}" class="card-link">
+    <!-- WHOLE CARD CLICKABLE -->
+    <a href="{{ url_for('event_details', event_id=event.id) }}" class="card-link">
 
-            <!-- FLYER IMAGE -->
-            <img src="{{ event.flyer }}" alt="{{ event.name }} Flyer">
+        <!-- FLYER -->
+        <img src="{{ url_for('static', filename='images/battle1.jpg') }}">
 
-            <!-- OVERLAY -->
-            <div class="premium-overlay">
+        <!-- OVERLAY -->
+        <div class="premium-overlay">
 
-                <div class="premium-content">
+            <div class="premium-content">
 
-                    <h3>{{ event.name }}</h3>
+                <h3>{{ event.name }}</h3>
 
-                    <p>{{ event.description }}</p>
+                <!-- ATTENDANCE -->
+                {% set attendance = namespace(value=0) %}
+                {% for key, t in event.tickets.items() %}
+                    {% set attendance.value = attendance.value + (t.sold * t.size) %}
+                {% endfor %}
 
-                    <!-- CALCULATE ATTENDANCE -->
-                    {% set attendance = namespace(value=0) %}
-                    {% for t in event.tickets.values() %}
-                        {% set attendance.value = attendance.value + (t.sold * t.size) %}
-                    {% endfor %}
+                {% set capacity = event.capacity if event.capacity else 450 %}
+                {% set remaining = capacity - attendance.value %}
 
-                    <!-- CAPACITY (fallback if not set) -->
-                    {% set capacity = event.capacity if event.capacity else 450 %}
-                    {% set remaining = capacity - attendance.value %}
+                <div class="meta">
+                    {% if remaining <= 0 %}
+                        🔴 Sold Out
+                    {% elif remaining <= 50 %}
+                        ⚠️ Only {{ remaining }} spots left     
+                    {% endif %}
+                </div>
 
-                    <!-- META INFO -->
-                    <div class="meta">
-                        {% if remaining <= 0 %}
-                            🔴 Sold Out
-                        {% elif remaining <= 50 %}
-                            ⚠️ Only {{ remaining }} spots left     
-                        {% endif %}
-                    </div>
-
-                    <!-- BUTTON -->
-                    <div class="premium-btn">
-                        View Event
-                    </div>
-
+                <!-- REAL BUTTON LOOK -->
+                <div class="premium-btn">
+                    View Event
                 </div>
 
             </div>
 
-        </a>
+        </div>
 
-    </div>
+    </a>
 
+</div>
     {% endfor %}
 
 </div>

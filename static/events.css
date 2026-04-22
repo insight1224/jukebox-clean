@@ -105,3 +105,8 @@
 .premium-btn:hover {
     background: #FFD700;
 }
+.card-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
