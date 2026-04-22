@@ -64,10 +64,10 @@ This is a 30+ event — valid IDs will be checked at the door. Guests who do not
         "flyer": "/static/images/flyer-part1.jpg",
 
         "tickets": {
-            "early": {"price": 13, "sold": 30, "size": 1},
-            "ga": {"price": 18, "sold": 90, "size": 1},
-            "vip": {"price": 175, "sold": 6, "size": 1},
-            "booth": {"price": 200, "sold": 2, "size": 6}
+            "early": {"price": 13, "sold": 0, "size": 1},
+            "ga": {"price": 18, "sold": 0, "size": 1},
+            "vip": {"price": 175, "sold": 0, "size": 1},
+            "booth": {"price": 200, "sold": 0, "size": 6}
         },
 
         "early_link": "https://square.link/u/EyY0RvTh?src=sheet",
@@ -274,7 +274,7 @@ def dashboard():
 
     conn.close()
 
-    # REVENUE + ATTENDANCE
+    # TOTAL REVENUE + ATTENDANCE
     total_revenue = 0
     total_attendance = 0
 
@@ -283,43 +283,39 @@ def dashboard():
             total_revenue += ticket["price"] * ticket["sold"]
             total_attendance += ticket["sold"] * ticket["size"]
 
-    max_capacity = 450
-    remaining = max_capacity - total_attendance
+    # EVENT-LEVEL STATS ✅
+    event_stats = []
 
-event_stats = []
+    for event in events_data:
+        event_revenue = 0
+        event_attendance = 0
 
-for event in events_data:
-    event_revenue = 0
-    event_attendance = 0
+        for ticket in event["tickets"].values():
+            event_revenue += ticket["price"] * ticket["sold"]
+            event_attendance += ticket["sold"] * ticket["size"]
 
-    for ticket in event["tickets"].values():
-        event_revenue += ticket["price"] * ticket["sold"]
-        event_attendance += ticket["sold"] * ticket["size"]
+        max_capacity = event.get("capacity", 150)
+        remaining = max_capacity - event_attendance
 
-    event_stats.append({
-        "name": event["name"],
-        "revenue": event_revenue,
-        "attendance": event_attendance,
-        "tickets_sold": sum(t["sold"] for t in event["tickets"].values())
-    })
-
-max_capacity = event.get("capacity", 150)  # fallback if not set
-remaining = max_capacity - event_attendance
-
-"remaining": remaining
+        event_stats.append({
+            "name": event["name"],
+            "revenue": event_revenue,
+            "attendance": event_attendance,
+            "tickets_sold": sum(t["sold"] for t in event["tickets"].values()),
+            "remaining": remaining
+        })
 
     return render_template(
-    "dashboard.html",
-    leads=leads,
-    total_leads=total_leads,
-    vip_count=vip_count,
-    requests_count=requests_count,
-    dj_count=dj_count,
-    total_revenue=total_revenue,
-    total_attendance=total_attendance,
-    remaining=remaining,
-    event_stats=event_stats   # 👈 ADD THIS
-)
+        "dashboard.html",
+        leads=leads,
+        total_leads=total_leads,
+        vip_count=vip_count,
+        requests_count=requests_count,
+        dj_count=dj_count,
+        total_revenue=total_revenue,
+        total_attendance=total_attendance,
+        event_stats=event_stats
+    )
 
 # -------------------------
 # UPDATE STATUS
@@ -342,6 +338,24 @@ def update_status(lead_id, status):
 @app.route("/membership")
 def membership():
     return render_template("membership.html")
+
+@app.route("/join-membership", methods=["POST"])
+def join_membership():
+    name = request.form.get("name")
+    email = request.form.get("email")
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO leads (type, name, email, details, status)
+        VALUES (?, ?, ?, ?, ?)
+    """, ("Membership", name, email, "Pending Payment", "Pending"))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("https://square.link/YOUR_LINK")
 
 # -------------------------
 # RUN APP

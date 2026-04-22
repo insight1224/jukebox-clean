@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='membership.css') }}">
 
 <section class="membership-page">
@@ -21,6 +22,13 @@
     This is just the beginning. As The Jukebox Lounge grows, so will your perks—think complimentary drinks, VIP upgrades, and exclusive experiences.
   </p>
 
+<form action="/join-membership" method="POST" class="membership-form">
+
+  <input type="text" name="name" placeholder="Your Name" class="membership-input" required>
+
+<input type="email" name="email" placeholder="Your Email" class="membership-input" required>
+
+</form>
   <a href="https://square.link/u/vi5aMdAz" class="membership-btn" target="_blank">👉 Lock in now and grow with the vibe</a>
 <p style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
   Secure checkout powered by Square

@@ -317,3 +317,22 @@ nav a {
     display: flex;
   }
 }
+.membership-input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: 1px solid #333;
+    background: #111;
+    color: white;
+    font-size: 16px;
+}
+
+.membership-input::placeholder {
+    color: #aaa;
+}
+
+.membership-input:focus {
+    outline: none;
+    border-color: #ffcc00;
+}
