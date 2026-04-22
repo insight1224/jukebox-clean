@@ -316,6 +316,10 @@ def update_status(lead_id, status):
 
     return redirect("/dashboard")
 
+@app.route("/membership")
+def membership():
+    return render_template("membership.html")
+
 # -------------------------
 # RUN APP
 # -------------------------

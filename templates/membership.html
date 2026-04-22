@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='membership.css') }}">
+
+<section class="membership-page">
+  <h1>🎧 Join The Jukebox Circle – $10/month</h1>
+
+  <p class="tagline">Become part of the vibe before everyone else.</p>
+
+  <ul class="membership-perks">
+    <li>🎟️ Discounted or complimentary event entry</li>
+    <li>⏰ Early access to tickets & VIP sections</li>
+    <li>🔐 Access to members-only events & experiences</li>
+    <li>🎶 First look at DJs, themes, and upcoming drops</li>
+    <li>🎉 Birthday perks & special surprises</li>
+    <li>📲 Priority updates before the public</li>
+  </ul>
+
+  <p class="membership-note">
+    This is just the beginning. As The Jukebox Lounge grows, so will your perks—think complimentary drinks, VIP upgrades, and exclusive experiences.
+  </p>
+
+  <a href="#" class="membership-btn">👉 Lock in now and grow with the vibe</a>
+</section>
+{% endblock %}

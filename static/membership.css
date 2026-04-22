@@ -1,0 +1,43 @@
+.membership-page {
+  padding: 60px 20px;
+  text-align: center;
+  color: #fff;
+}
+
+.membership-page h1 {
+  font-size: 2.2rem;
+  margin-bottom: 10px;
+}
+
+.membership-page .tagline {
+  font-size: 1.2rem;
+  margin-bottom: 25px;
+  color: #ccc;
+}
+
+.membership-perks {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 25px;
+}
+
+.membership-perks li {
+  margin: 10px 0;
+  font-size: 1.1rem;
+}
+
+.membership-note {
+  font-size: 0.95rem;
+  color: #aaa;
+  margin-bottom: 30px;
+}
+
+.membership-btn {
+  display: inline-block;
+  padding: 12px 25px;
+  background: gold;
+  color: black;
+  font-weight: bold;
+  text-decoration: none;
+  border-radius: 5px;
+}
