@@ -264,9 +264,25 @@ def dashboard():
     cursor.execute("SELECT SUM(amount) FROM tickets")
     ticket_revenue = cursor.fetchone()[0] or 0
 
-    conn.close()
-
     total_revenue = ticket_revenue + membership_revenue
+
+    # ✅ PIPELINE (MUST BE INSIDE FUNCTION)
+    pipeline = {
+        "New": [],
+        "Contacted": [],
+        "Booked": [],
+        "Closed": []
+    }
+
+    for lead in leads:
+        status = lead[5] or "New"
+
+        if status not in pipeline:
+            pipeline["New"].append(lead)
+        else:
+            pipeline[status].append(lead)
+
+    conn.close()
 
     return render_template(
         "dashboard.html",
@@ -276,33 +292,9 @@ def dashboard():
         membership_revenue=membership_revenue,
         ticket_count=ticket_count,
         ticket_revenue=ticket_revenue,
-        total_revenue=total_revenue
+        total_revenue=total_revenue,
+        pipeline=pipeline  # ✅ PASS IT HERE
     )
-
-conn = sqlite3.connect("database.db")
-cursor = conn.cursor()
-
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS tickets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT,
-    amount REAL,
-    type TEXT,
-    status TEXT
-)
-""")
-
-conn.commit()
-conn.close()
-
-def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
 # -------------------------
 # RUN
 # -------------------------

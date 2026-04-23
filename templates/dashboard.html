@@ -120,8 +120,50 @@
     <!-- MEMBERS -->
     <h2 class="dashboard-title">Members</h2>
 
-    <div class="lead-grid">
+<h2 class="section-title">Lead Pipeline</h2>
 
+<div class="pipeline">
+
+    {% for stage, items in pipeline.items() %}
+
+    <div class="pipeline-column">
+
+        <h3>{{ stage }}</h3>
+
+        {% for lead in items %}
+
+        <div class="lead-card">
+
+            <h4>{{ lead[1] }}</h4>
+
+            <p><strong>Name:</strong> {{ lead[2] }}</p>
+            <p><strong>Email:</strong> {{ lead[3] }}</p>
+
+            <div class="lead-actions">
+
+                {% if stage == "New" %}
+                    <a href="/update-status/{{ lead[0] }}/Contacted" class="btn small">Contact</a>
+
+                {% elif stage == "Contacted" %}
+                    <a href="/update-status/{{ lead[0] }}/Booked" class="btn small success">Book</a>
+                    <a href="/update-status/{{ lead[0] }}/Closed" class="btn small">Close</a>
+
+                {% elif stage == "Booked" %}
+                    <a href="/update-status/{{ lead[0] }}/Closed" class="btn small success">Complete</a>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% endfor %}
+
+</div>
         {% for member in members %}
 
         <div class="lead-card">
