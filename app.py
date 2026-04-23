@@ -3,6 +3,27 @@ import sqlite3
 import smtplib
 from email.mime.text import MIMEText
 
+from functools import wraps
+from flask import request, Response
+
+def check_auth(username, password):
+    return username == "admin" and password == "jukebox123"
+
+def authenticate():
+    return Response(
+        "Login Required", 401,
+        {"WWW-Authenticate": 'Basic realm="Login Required"'}
+    )
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
 app = Flask(__name__)
 
 # -------------------------
@@ -172,32 +193,53 @@ def square_webhook():
     try:
         if data.get("type") == "payment.updated":
             payment = data["data"]["object"]["payment"]
+
             amount = payment["amount_money"]["amount"] / 100
             email = payment.get("buyer_email_address", "unknown")
 
-            if amount == 10:
-                conn = sqlite3.connect("database.db")
-                cursor = conn.cursor()
+            # 🎟 MAP AMOUNT → EVENT + TICKET TYPE
+            if amount == 13:
+                ticket_type = "Early Bird"
+                event_name = "Battle of the DJs"
 
-                cursor.execute("""
-                    INSERT INTO memberships (email, amount, status)
-                    VALUES (?, ?, ?)
-                """, (email, amount, "active"))
+            elif amount == 18:
+                ticket_type = "General Admission"
+                event_name = "Battle of the DJs"
 
-                conn.commit()
-                conn.close()
+            elif amount == 175:
+                ticket_type = "VIP"
+                event_name = "Battle of the DJs"
 
-                print("✅ Membership added")
+            elif amount == 200:
+                ticket_type = "Booth"
+                event_name = "Battle of the DJs"
+
+            else:
+                ticket_type = "Other"
+                event_name = "Unknown Event"
+
+            conn = sqlite3.connect("database.db")
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                INSERT INTO tickets (email, amount, type, event_name, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (email, amount, ticket_type, event_name, "paid"))
+
+            conn.commit()
+            conn.close()
+
+            print("✅ Ticket saved")
 
     except Exception as e:
         print("Webhook error:", e)
 
     return "ok", 200
-
 # -------------------------
 # DASHBOARD
 # -------------------------
 @app.route("/dashboard")
+@requires_auth
 def dashboard():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
@@ -210,67 +252,57 @@ def dashboard():
     cursor.execute("SELECT COUNT(*) FROM leads")
     total_leads = cursor.fetchone()[0]
 
-    cursor.execute("SELECT COUNT(*) FROM leads WHERE type='VIP Signup'")
-    vip_count = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leads WHERE type='DJ Application'")
-    dj_count = cursor.fetchone()[0]
-
-    cursor.execute("SELECT COUNT(*) FROM leads WHERE type='Contact Message'")
-    requests_count = cursor.fetchone()[0]
-
     # MEMBERSHIPS
-    cursor.execute("SELECT * FROM memberships ORDER BY id DESC")
-    members = cursor.fetchall()
-
     cursor.execute("SELECT COUNT(*) FROM memberships")
     membership_count = cursor.fetchone()[0] or 0
-
     membership_revenue = membership_count * 10
+
+    # TICKETS
+    cursor.execute("SELECT COUNT(*) FROM tickets")
+    ticket_count = cursor.fetchone()[0] or 0
+
+    cursor.execute("SELECT SUM(amount) FROM tickets")
+    ticket_revenue = cursor.fetchone()[0] or 0
 
     conn.close()
 
-    # EVENTS
-    event_revenue_total = 0
-    total_attendance = 0
-    event_stats = []
-
-    for event in events_data:
-        event_revenue = 0
-        event_attendance = 0
-
-        for ticket in event["tickets"].values():
-            event_revenue += ticket["price"] * ticket["sold"]
-            event_attendance += ticket["sold"] * ticket["size"]
-
-        event_revenue_total += event_revenue
-        total_attendance += event_attendance
-
-        event_stats.append({
-            "name": event["name"],
-            "revenue": event_revenue,
-            "attendance": event_attendance,
-            "tickets_sold": sum(t["sold"] for t in event["tickets"].values())
-        })
-
-    total_revenue = event_revenue_total + membership_revenue
+    total_revenue = ticket_revenue + membership_revenue
 
     return render_template(
         "dashboard.html",
         leads=leads,
         total_leads=total_leads,
-        vip_count=vip_count,
-        dj_count=dj_count,
-        requests_count=requests_count,
         membership_count=membership_count,
         membership_revenue=membership_revenue,
-        event_revenue_total=event_revenue_total,
-        total_revenue=total_revenue,
-        total_attendance=total_attendance,
-        event_stats=event_stats,
-        members=members
+        ticket_count=ticket_count,
+        ticket_revenue=ticket_revenue,
+        total_revenue=total_revenue
     )
 
+conn = sqlite3.connect("database.db")
+cursor = conn.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS tickets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT,
+    amount REAL,
+    type TEXT,
+    status TEXT
+)
+""")
+
+conn.commit()
+conn.close()
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
 # -------------------------
 # RUN
 # -------------------------

@@ -9,137 +9,154 @@
     <!-- TITLE -->
     <h1 class="dashboard-title">Jukebox CRM Dashboard</h1>
 
-    <!-- METRICS -->
-    <div class="metrics">
+    <!-- KPI SECTION -->
+    <div class="kpi-section">
 
-        <div class="metric-card">
-            <h3>Tickets Sold</h3>
-            <p>
-{% set total_tickets = 0 %}
-{% for event in event_stats %}
-    {% set total_tickets = total_tickets + event.tickets_sold %}
-{% endfor %}
-{{ total_tickets }}
-</p>
+        <!-- EVENT KPIs -->
+        <div class="kpi-group">
+            <h2>Event Sales</h2>
+
+            <div class="kpi-box" onclick="window.location='#event-breakdown'">
+                <h3>Tickets Sold</h3>
+                <p>{{ ticket_count }}</p>
+            </div>
+
+            <div class="kpi-box">
+                <h3>Attendance</h3>
+                <p>{{ total_attendance }}</p>
+            </div>
+
+            <div class="kpi-box">
+                <h3>Ticket Revenue</h3>
+                <p>${{ ticket_revenue }}</p>
+            </div>
         </div>
 
-<div class="metric-card">
-    <h3>Attendance</h3>
-    <p>{{ total_attendance }}</p>
-</div>
+        <!-- MEMBERSHIP KPIs -->
+        <div class="kpi-group">
+            <h2>Membership</h2>
 
-<div class="metric-card">
-    <h3>Revenue</h3>
-    <p>${{ total_revenue }}</p>
-</div>
+            <div class="kpi-box">
+                <h3>Circle Members</h3>
+                <p>{{ membership_count }}</p>
+            </div>
 
-<div class="metric-card">
-    <h3>Event Revenue</h3>
-    <p>${{ event_revenue_total }}</p>
-</div>
-
-<div class="metric-card">
-    <h3>Circle Members</h3>
-    <p>{{ membership_count }}</p>
-</div>
-
-<div class="metric-card">
-    <h3>Membership Revenue</h3>
-<p>${{ membership_revenue }}</p>
-</div>
-
-        <div class="metric-card">
-            <h3>VIP Email</h3>
-            <p>{{ vip_count }}</p>
+            <div class="kpi-box">
+                <h3>Revenue</h3>
+                <p>${{ membership_revenue }}</p>
+            </div>
         </div>
 
-        <div class="metric-card">
-            <h3>DJ/Band Applications</h3>
-            <p>{{ dj_count }}</p>
-        </div>
+        <!-- TOTAL KPIs -->
+        <div class="kpi-group">
+            <h2>Total Revenue</h2>
 
-        <div class="metric-card">
-            <h3>General Inquiries</h3>
-            <p>{{ requests_count }}</p>
+            <div class="kpi-box highlight">
+                <h3>Total</h3>
+                <p>${{ total_revenue }}</p>
+            </div>
         </div>
 
     </div>
 
-<h2 class="section-title">Event Performance</h2>
+    <!-- EVENT BREAKDOWN -->
+    <h2 id="event-breakdown" class="section-title">Event Breakdown</h2>
 
-<div class="event-grid">
-    {% for event in event_stats %}
-    <div class="event-card">
-        <h3>{{ event.name }}</h3>
-        <p><strong>Revenue:</strong> ${{ event.revenue }}</p>
-        <p><strong>Tickets Sold:</strong> {{ event.tickets_sold }}</p>
-        <p><strong>Attendance:</strong> {{ event.attendance }}</p>
-<p><strong>Remaining:</strong> {{ event.remaining }}</p>
-    </div>
-    {% endfor %}
-</div>
+    {% if event_breakdown %}
 
-    <!-- FILTERS -->
-    <div class="dashboard-controls">
+        <div class="event-grid">
 
-        <div class="filters">
-            <a href="/dashboard" class="btn">All</a>
-            <a href="/dashboard?type=VIP Signup" class="btn">VIP Email</a>
-            <a href="/dashboard?type=DJ Application" class="btn">DJs/Bands</a>
-            <a href="/dashboard?type=Contact Message" class="btn">Inquiries</a>
-	    <a href="/dashboard?type=Circle Members" class="btn">Circle Members</a>
+        {% for event_name, data in event_breakdown.items() %}
+
+            <div class="event-card">
+
+                <h3>{{ event_name }}</h3>
+
+                <p><strong>Total Tickets:</strong> {{ data.total_tickets }}</p>
+                <p><strong>Revenue:</strong> ${{ data.total_revenue }}</p>
+
+                <h4>Ticket Types</h4>
+
+                {% for type, t in data.tickets.items() %}
+                    <p>
+                        {{ type }} — Sold: {{ t.count }} | Revenue: ${{ t.revenue }}
+                    </p>
+                {% endfor %}
+
+            </div>
+
+        {% endfor %}
+
         </div>
 
-        <!-- SEARCH -->
-        <form method="GET" action="/dashboard" class="search-form">
-            <input type="text" name="search" placeholder="Search leads...">
-            <button type="submit" class="btn">Search</button>
-        </form>
+    {% else %}
+        <p>No ticket data yet.</p>
+    {% endif %}
 
-    </div>
-<h2 class="dashboard-title">Members</h2>
+ 
+<!-- LEAD KPIs -->
+<div class="kpi-group lead-kpis">
+    <h2>Lead Activity</h2>
 
-<div class="lead-grid">
-
-    {% for member in members %}
-
-    <div class="lead-card">
-        <h3 class="lead-type">Member</h3>
-
-        <p><strong>Name:</strong> {{ member[1] }}</p>
-        <p><strong>Email:</strong> {{ member[2] }}</p>
-        <p><strong>Status:</strong> {{ member[4] }}</p>
-        <p><strong>Joined:</strong> {{ member[5] }}</p>
-
+    <div class="kpi-box" onclick="filterLeads('DJ Application')">
+        <h3>DJ / Band Applications</h3>
+        <p>{{ dj_count }}</p>
     </div>
 
-    {% endfor %}
+    <div class="kpi-box" onclick="filterLeads('VIP Signup')">
+        <h3>VIP Email List</h3>
+        <p>{{ vip_count }}</p>
+    </div>
 
+    <div class="kpi-box" onclick="filterLeads('Contact Message')">
+        <h3>General Inquiries</h3>
+        <p>{{ requests_count }}</p>
+    </div>
+
+    <div class="kpi-box" onclick="filterLeads('ALL')">
+        <h3>View All</h3>
+    </div>
 </div>
+    <!-- MEMBERS -->
+    <h2 class="dashboard-title">Members</h2>
 
-    <!-- LEADS GRID -->
+    <div class="lead-grid">
+
+        {% for member in members %}
+
+        <div class="lead-card">
+            <h3 class="lead-type">Member</h3>
+
+            <p><strong>Name:</strong> {{ member[1] }}</p>
+            <p><strong>Email:</strong> {{ member[2] }}</p>
+            <p><strong>Status:</strong> {{ member[4] }}</p>
+            <p><strong>Joined:</strong> {{ member[5] }}</p>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    <!-- LEADS -->
     <div class="lead-grid">
 
         {% for lead in leads %}
 
         <div class="lead-card">
 
-            <!-- TYPE -->
             <h3 class="lead-type">{{ lead[1] }}</h3>
 
-            <!-- INFO -->
             <p><strong>Name:</strong> {{ lead[2] }}</p>
             <p><strong>Email:</strong> {{ lead[3] }}</p>
             <p><strong>Details:</strong> {{ lead[4] }}</p>
 
-            <!-- STATUS -->
             <p>
                 <strong>Status:</strong>
                 {% set s = lead[5] %}
                 <span class="status-badge status-{{ s|lower }}">{{ s }}</span>
             </p>
 
-            <!-- ACTIONS -->
             <div class="lead-actions">
 
                 {% if lead[1] == "DJ Application" %}
@@ -168,5 +185,19 @@
     </div>
 
 </div>
+<script>
+function filterLeads(type) {
+    const cards = document.querySelectorAll(".lead-card");
 
+    cards.forEach(card => {
+        const leadType = card.querySelector(".lead-type").innerText;
+
+        if (type === "ALL" || leadType === type) {
+            card.style.display = "block";
+        } else {
+            card.style.display = "none";
+        }
+    });
+}
+</script>
 {% endblock %}

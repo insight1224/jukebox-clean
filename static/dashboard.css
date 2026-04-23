@@ -214,3 +214,105 @@ body {
     border-radius: 10px;
     color: white;
 }
+/* WRAPPER */
+.dashboard-wrapper {
+    padding: 40px;
+    font-family: Arial, sans-serif;
+}
+
+/* TITLE */
+.dashboard-title {
+    font-size: 32px;
+    margin-bottom: 20px;
+}
+
+/* KPI SECTION */
+.kpi-section {
+    display: flex;
+    gap: 30px;
+    margin-bottom: 40px;
+}
+
+/* GROUP */
+.kpi-group {
+    flex: 1;
+}
+
+/* KPI BOX */
+.kpi-box {
+    background: #111;
+    color: white;
+    padding: 20px;
+    margin-bottom: 15px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.kpi-box:hover {
+    transform: translateY(-3px);
+    background: #222;
+}
+
+/* HIGHLIGHT BOX */
+.kpi-box.highlight {
+    background: linear-gradient(135deg, #d4af37, #f5d76e);
+    color: #000 !important;
+}
+
+.kpi-box.highlight h3,
+.kpi-box.highlight p {
+    color: #000 !important;
+}
+/* GRID */
+.event-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+/* CARDS */
+.event-card {
+    background: #f5f5f5;
+    padding: 20px;
+    border-radius: 12px;
+}
+
+/* SECTION TITLES */
+.section-title {
+    margin-top: 40px;
+    margin-bottom: 20px;
+}
+
+/* LEADS */
+.lead-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+}
+
+.lead-card {
+    background: #fafafa;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+/* BUTTONS */
+.btn {
+    background: black;
+    color: white;
+    padding: 8px 12px;
+    text-decoration: none;
+    border-radius: 6px;
+}
+.lead-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.lead-kpis h2 {
+    grid-column: 1 / -1;
+    text-align: center;
+}
