@@ -17,49 +17,98 @@
     <!-- CARD -->
     <div class="premium-card">
 
-    <!-- WHOLE CARD CLICKABLE -->
-    <a href="{{ url_for('event_details', event_id=event.id) }}" class="card-link">
+        <!-- WHOLE CARD CLICKABLE -->
+        <a href="{{ url_for('event_details', event_id=event.id) }}" class="card-link">
 
-        <!-- FLYER -->
-        <img src="{{ url_for('static', filename='images/battle1.jpg') }}">
+            <!-- FLYER -->
+            <img src="{{ url_for('static', filename='images/battle1.jpg') }}">
 
-        <!-- OVERLAY -->
-        <div class="premium-overlay">
+            <!-- OVERLAY -->
+            <div class="premium-overlay">
 
-            <div class="premium-content">
+                <div class="premium-content">
 
-                <h3>{{ event.name }}</h3>
+                    <h3>{{ event.name }}</h3>
 
-                <!-- ATTENDANCE -->
-                {% set attendance = namespace(value=0) %}
-                {% for key, t in event.tickets.items() %}
-                    {% set attendance.value = attendance.value + (t.sold * t.size) %}
-                {% endfor %}
+                    <!-- ATTENDANCE -->
+                    {% set attendance = namespace(value=0) %}
+                    {% for key, t in event.tickets.items() %}
+                        {% set attendance.value = attendance.value + (t.sold * t.size) %}
+                    {% endfor %}
 
-                {% set capacity = event.capacity if event.capacity else 450 %}
-                {% set remaining = capacity - attendance.value %}
+                    {% set capacity = event.capacity if event.capacity else 450 %}
+                    {% set remaining = capacity - attendance.value %}
 
-                <div class="meta">
-                    {% if remaining <= 0 %}
-                        🔴 Sold Out
-                    {% elif remaining <= 50 %}
-                        ⚠️ Only {{ remaining }} spots left     
-                    {% endif %}
-                </div>
+                    <div class="meta">
+                        {% if remaining <= 0 %}
+                            🔴 Sold Out
+                        {% elif remaining <= 50 %}
+                            ⚠️ Only {{ remaining }} spots left     
+                        {% endif %}
+                    </div>
 
-                <!-- REAL BUTTON LOOK -->
-                <div class="premium-btn">
-                    View Event
+                    <!-- BUTTON LOOK -->
+                    <div class="premium-btn">
+                        View Event
+                    </div>
+
                 </div>
 
             </div>
 
+        </a>
+
+    </div>
+
+    {% endfor %}
+
+</div> <!-- ✅ CLOSE GRID -->
+
+<div class="vinyl-section">
+
+    <h2>🎧 Vote for the Next Vibe</h2>
+
+    <div class="vinyl-row">
+
+    {% for v in event_votes %}
+
+    <div class="vinyl-card">
+
+        <!-- RECORD -->
+        <div class="record">
+            <div class="label">{{ v[0] }}</div>
         </div>
 
-    </a>
+        <!-- VOTES -->
+        <p class="vote-count">{{ v[1] }} votes</p>
+
+        <!-- VOTE BUTTON -->
+        <form method="POST" action="/vote-event">
+            <input type="hidden" name="event_name" value="{{ v[0]|trim }}">
+            <button type="submit" class="vote-btn">Vote</button>
+        </form>
+
+    </div>
+
+    {% endfor %}
 
 </div>
-    {% endfor %}
+
+    </div>
+
+</div>
+<!-- ✅ EVENT REQUEST BOX -->
+<div class="interest-box">
+
+    <h2>What Event Do You Want Next?</h2>
+
+    <form method="POST" action="/event-interest">
+
+        <textarea name="event_name" placeholder="Type the event you want to see..." required></textarea>
+
+        <button type="submit">Submit</button>
+
+    </form>
 
 </div>
 

@@ -6,6 +6,23 @@ from email.mime.text import MIMEText
 from functools import wraps
 from flask import request, Response
 
+def clean_event_name(name):
+    name = name.lower().strip()
+
+    mapping = {
+        "line dancing": "Line Dancing",
+        "line dance": "Line Dancing",
+        "linedancing": "Line Dancing",
+
+        "afrobeats": "Afrobeats",
+        "afro beats": "Afrobeats",
+
+        "hip hop": "Hip Hop",
+        "hiphop": "Hip Hop"
+    }
+
+    return mapping.get(name, name.title())
+
 def check_auth(username, password):
     return username == "admin" and password == "jukebox123"
 
@@ -49,6 +66,21 @@ CREATE TABLE IF NOT EXISTS memberships (
     email TEXT,
     amount REAL,
     status TEXT
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS event_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_name TEXT
+)
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS event_votes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_name TEXT,
+    votes INTEGER DEFAULT 1
 )
 """)
 
@@ -113,8 +145,44 @@ def home():
 # -------------------------
 @app.route("/events")
 def events():
-    return render_template("events.html", events=events_data)
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
 
+    global events_data
+
+    # ✅ CURATED VINYL OPTIONS
+    vinyl_options = [
+        "Grown and Sexy Ball",
+        "Line Dancing",
+        "Afrobeats",
+        "Live Bands",
+        "Open Mic"
+    ]
+
+    # ✅ ENSURE THEY EXIST IN DB
+    for event in vinyl_options:
+        cursor.execute("SELECT * FROM event_votes WHERE event_name = ?", (event,))
+        exists = cursor.fetchone()
+
+        if not exists:
+            cursor.execute(
+                "INSERT INTO event_votes (event_name, votes) VALUES (?, 0)",
+                (event,)
+            )
+
+    # ✅ GET VOTES
+    cursor.execute("SELECT event_name, votes FROM event_votes ORDER BY votes DESC")
+    event_votes = cursor.fetchall()
+
+    conn.commit()
+    conn.close()
+
+    return render_template(
+        "events.html",
+        events=events_data,
+        event_votes=event_votes,
+        vinyl_options=vinyl_options
+    )
 @app.route("/events/<int:event_id>")
 def event_details(event_id):
     event = next((e for e in events_data if e["id"] == event_id), None)
@@ -248,58 +316,29 @@ def dashboard():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    # LEADS
-    cursor.execute("SELECT * FROM leads ORDER BY id DESC")
-    leads = cursor.fetchall()
+    # ✅ GET VOTES (VINYL PERFORMANCE)
+    cursor.execute("""
+        SELECT event_name, votes
+        FROM event_votes
+        ORDER BY votes DESC
+    """)
+    event_votes = cursor.fetchall()
 
-    # METRICS
-    cursor.execute("SELECT COUNT(*) FROM leads")
-    total_leads = cursor.fetchone()[0]
-
-    # MEMBERSHIPS
-    cursor.execute("SELECT COUNT(*) FROM memberships")
-    membership_count = cursor.fetchone()[0] or 0
-    membership_revenue = membership_count * 10
-
-    # TICKETS
-    cursor.execute("SELECT COUNT(*) FROM tickets")
-    ticket_count = cursor.fetchone()[0] or 0
-
-    cursor.execute("SELECT SUM(amount) FROM tickets")
-    ticket_revenue = cursor.fetchone()[0] or 0
-
-    total_revenue = ticket_revenue + membership_revenue
-
-    # ✅ PIPELINE (MUST BE INSIDE FUNCTION)
-    pipeline = {
-        "New": [],
-        "Contacted": [],
-        "Booked": [],
-        "Closed": []
-    }
-
-    for lead in leads:
-        status = lead[5] or "New"
-
-        if status not in pipeline:
-            pipeline["New"].append(lead)
-        else:
-            pipeline[status].append(lead)
+    # ✅ GET REQUESTS (IDEAS PIPELINE)
+    cursor.execute("""
+        SELECT id, event_name, status
+        FROM event_requests
+        ORDER BY id DESC
+    """)
+    event_requests = cursor.fetchall()
 
     conn.close()
 
     return render_template(
         "dashboard.html",
-        leads=leads,
-        total_leads=total_leads,
-        membership_count=membership_count,
-        membership_revenue=membership_revenue,
-        ticket_count=ticket_count,
-        ticket_revenue=ticket_revenue,
-        total_revenue=total_revenue,
-        pipeline=pipeline  # ✅ PASS IT HERE
+        event_votes=event_votes,
+        event_requests=event_requests
     )
-
 @app.route("/dj-signup", methods=["GET", "POST"])
 def dj_signup():
 
@@ -371,6 +410,62 @@ def vip_signup():
         title="WELCOME TO THE VIP EMAIL LIST",
         message="You're officially on the VIP Email list. Get ready for exclusive drops, early access, and curated experiences."
     )
+
+@app.route("/event-interest", methods=["POST"])
+def event_interest():
+
+    raw_name = request.form.get("event_name")
+    event_name = clean_event_name(raw_name)
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    # ✅ ONLY STORE REQUEST (NO AUTO VOTING)
+    cursor.execute("""
+INSERT INTO event_requests (event_name, status)
+VALUES (?, 'New')
+""", (event_name,))
+
+    conn.commit()
+    conn.close()
+
+    return render_template(
+        "thank_you.html",
+        title="SUBMITTED",
+        message="Your input helps shape future Jukebox events."
+    )
+@app.route("/vote-event", methods=["POST"])
+def vote_event():
+    event_name = request.form.get("event_name")
+
+    # 🔥 normalize EVERYTHING
+    event_name = event_name.strip().lower()
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE event_votes
+        SET votes = votes + 1
+        WHERE LOWER(event_name) = ?
+    """, (event_name,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/events")
+@app.route("/complete-request/<int:id>", methods=["POST"])
+def complete_request(id):
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    # 🔥 DELETE the request instead of updating it
+    cursor.execute("DELETE FROM event_requests WHERE id = ?", (id,))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/dashboard")
 # -------------------------
 # RUN
 # -------------------------
