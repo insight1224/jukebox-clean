@@ -1829,17 +1829,50 @@ body.flash {
     animation: speakerPulse 1s infinite;
 }
 .age-badge {
-  font-size: 3rem;   /* makes it big */
+  font-size: 1rem;   /* makes it big */
   font-weight: bold;
   color: #ffcc00;    /* optional glow color */
   text-shadow: 0 0 10px rgba(255, 204, 0, 0.8);
 }
 .age-badge {
-  font-size: 3.5rem;
+  font-size: 2.1rem;
   font-weight: 900;
   color: #fff;
   text-shadow: 
     0 0 5px #ffcc00,
     0 0 10px #ffcc00,
     0 0 20px #ff9900;
+}
+.divider-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 15px 0; /* controls spacing above/below */
+}
+
+.divider-logo img {
+    width: 500px;
+    opacity: 0.85;
+    filter: drop-shadow(0 0 8px rgba(212, 175, 55, 0.4)); /* gold glow */
+}
+.age-badge {
+    margin-bottom: .05px;
+}
+
+.divider-logo {
+    margin: .05px 0;
+}
+.hero {
+    position: relative;
+}
+.hero-logo {
+    position: absolute;
+    bottom: -100px; /* pulls it slightly into next section */
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.hero-logo img {
+    width: 500px;
+    opacity: 0.9;
 }

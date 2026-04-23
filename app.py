@@ -150,7 +150,11 @@ def contact():
             EMAIL_ADDRESS
         )
 
-        return render_template("thank_you.html")
+        return render_template(
+            "thank_you.html",
+            title="MESSAGE RECEIVED",
+            message="Your message has been sent. Our team will get back to you shortly."
+        )
 
     return render_template("contact.html")
 
@@ -294,6 +298,78 @@ def dashboard():
         ticket_revenue=ticket_revenue,
         total_revenue=total_revenue,
         pipeline=pipeline  # ✅ PASS IT HERE
+    )
+
+@app.route("/dj-signup", methods=["GET", "POST"])
+def dj_signup():
+
+    if request.method == "POST":
+
+        name = request.form.get("name")
+        brand = request.form.get("brand")
+        email = request.form.get("email")
+        phone = request.form.get("phone")
+        performer_type = request.form.get("type")
+        genre = request.form.get("genre")
+        links = request.form.get("links")
+        rate = request.form.get("rate")
+        comments = request.form.get("comments")
+
+        details = f"""
+        Brand: {brand}
+        Phone: {phone}
+        Type: {performer_type}
+        Genre: {genre}
+        Links: {links}
+        Rate: {rate}
+        Comments: {comments}
+        """
+
+        conn = sqlite3.connect("database.db")
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO leads (type, name, email, details, status)
+            VALUES (?, ?, ?, ?, ?)
+        """, ("DJ Application", name, email, details, "New"))
+
+        conn.commit()
+        conn.close()
+
+        return render_template(
+            "thank_you.html",
+            title="APPLICATION RECEIVED",
+            message="Your application has been submitted successfully. Our team will review your sound and reach out if you're a fit for an upcoming Jukebox experience."
+        )
+
+    return render_template("dj_signup.html")
+
+@app.route("/vip", methods=["POST"])
+def vip_signup():
+
+    name = request.form.get("name")
+    email = request.form.get("email")
+    phone = request.form.get("phone")
+
+    details = f"""
+    Phone: {phone}
+    """
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO leads (type, name, email, details, status)
+        VALUES (?, ?, ?, ?, ?)
+    """, ("VIP Signup", name, email, details, "New"))
+
+    conn.commit()
+    conn.close()
+
+    return render_template(
+        "thank_you.html",
+        title="WELCOME TO THE VIP EMAIL LIST",
+        message="You're officially on the VIP Email list. Get ready for exclusive drops, early access, and curated experiences."
     )
 # -------------------------
 # RUN
