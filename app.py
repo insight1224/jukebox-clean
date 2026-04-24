@@ -538,7 +538,7 @@ from urllib.parse import unquote
 def event_detail(event_name):
     from urllib.parse import unquote
 
-    event_name = unquote(event_name)
+    event_name = unquote(event_name).strip()
 
     print("🔥 EVENT PAGE HIT:", event_name)
 
@@ -546,35 +546,43 @@ def event_detail(event_name):
     cursor = conn.cursor()
 
     # -------------------------
-    # GET EVENT FROM DATABASE
+    # SAFE EVENT LOOKUP (NO CRASH)
     # -------------------------
-    cursor.execute("""
-        SELECT id, name
-        FROM events
-        WHERE LOWER(name) = LOWER(?)
-    """, (event_name,))
-
-    row = cursor.fetchone()
-
-    if not row:
+    try:
+        cursor.execute("""
+            SELECT id, name
+            FROM events
+        """)
+        all_events = cursor.fetchall()
+    except Exception as e:
         conn.close()
-        return "Event not found", 404
+        return f"DB ERROR (events table missing): {e}", 500
 
-    event = {
-        "id": row[0],
-        "name": row[1]
-    }
+    event = None
+    for e in all_events:
+        if e[1].strip().lower() == event_name.lower():
+            event = {"id": e[0], "name": e[1]}
+            break
+
+    if not event:
+        conn.close()
+        return f"Event not found: {event_name}", 404
 
     # -------------------------
-    # GET TICKETS
+    # SAFE TICKETS QUERY
     # -------------------------
-    cursor.execute("""
-        SELECT ticket_name, price, max_quantity, sold
-        FROM ticket_types
-        WHERE LOWER(event_name) = LOWER(?)
-    """, (event_name,))
+    try:
+        cursor.execute("""
+            SELECT ticket_name, price, max_quantity, sold
+            FROM ticket_types
+            WHERE LOWER(event_name) = LOWER(?)
+        """, (event_name,))
 
-    tickets = cursor.fetchall()
+        tickets = cursor.fetchall()
+
+    except Exception as e:
+        conn.close()
+        return f"TICKET ERROR: {e}", 500
 
     ticket_data = []
 
