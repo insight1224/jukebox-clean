@@ -576,45 +576,6 @@ def event_detail(event_name):
         event=event,
         ticket_data=ticket_data
     )
-@app.route("/rebuild-db")
-def rebuild_db():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    # CREATE TABLE
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS ticket_types (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        event_name TEXT,
-        ticket_name TEXT,
-        price REAL,
-        max_quantity INTEGER,
-        sold INTEGER DEFAULT 0
-    )
-    """)
-
-    # ✅ ADD THIS SEED DATA
-    tickets = [
-        ("Battle of the DJs", "Early Bird", 13, 30),
-        ("Battle of the DJs", "General Admission", 18, 366),
-        ("Battle of the DJs", "VIP Section", 175, 6),
-        ("Battle of the DJs", "DJ VIP Section", 200, 3),
-    ]
-
-    for event, name, price, max_q in tickets:
-        cursor.execute("""
-        INSERT INTO ticket_types (event_name, ticket_name, price, max_quantity)
-        SELECT ?, ?, ?, ?
-        WHERE NOT EXISTS (
-            SELECT 1 FROM ticket_types 
-            WHERE event_name = ? AND ticket_name = ?
-        )
-        """, (event, name, price, max_q, event, name))
-
-    conn.commit()
-    conn.close()
-
-    return "DB rebuilt + tickets added"
 
 @app.route("/check-tickets")
 def check_tickets():
