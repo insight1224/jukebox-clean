@@ -41,9 +41,7 @@ def requires_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-app = Flask(__name__)
 
-init_db()
 # -------------------------
 # DATABASE SETUP
 # -------------------------
@@ -154,6 +152,14 @@ def purchase_ticket(event_name, ticket_name):
             print("❌ SOLD OUT")
 
     conn.close()
+
+app = Flask(__name__)
+
+@app.before_request
+def before_request():
+    init_db()
+
+init_db()   # ✅ AFTER function exists
 # -------------------------
 # EMAIL CONFIG
 # -------------------------
