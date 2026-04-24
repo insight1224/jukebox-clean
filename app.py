@@ -582,6 +582,7 @@ def rebuild_db():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
+    # EVENTS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -589,6 +590,7 @@ def rebuild_db():
     )
     """)
 
+    # TICKETS
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS ticket_types (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -597,6 +599,27 @@ def rebuild_db():
         price REAL,
         max_quantity INTEGER,
         sold INTEGER DEFAULT 0
+    )
+    """)
+
+    # VOTES
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS event_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT UNIQUE,
+        votes INTEGER DEFAULT 0
+    )
+    """)
+
+    # LEADS
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS leads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT,
+        name TEXT,
+        email TEXT,
+        details TEXT,
+        status TEXT
     )
     """)
 
