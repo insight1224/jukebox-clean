@@ -215,24 +215,6 @@ def events():
     cursor = conn.cursor()
 
     # -------------------------
-    # EVENTS (FROM DATABASE - SAFE)
-    # -------------------------
-    try:
-        cursor.execute("SELECT id, name FROM events")
-        rows = cursor.fetchall()
-
-        events_list = [
-            {"id": r[0], "name": r[1]}
-            for r in rows
-        ]
-
-    except Exception as e:
-        print("EVENTS ERROR:", e)
-        events_list = [
-            {"id": 1, "name": "Battle of the DJs"}
-        ]
-
-    # -------------------------
     # VOTES (SAFE)
     # -------------------------
     try:
@@ -247,6 +229,11 @@ def events():
         event_votes = []
 
     conn.close()
+
+    # -------------------------
+    # EVENTS (USE PYTHON DATA ONLY)
+    # -------------------------
+    events_list = events_data
 
     return render_template(
         "events.html",
@@ -538,51 +525,35 @@ from urllib.parse import unquote
 def event_detail(event_name):
     from urllib.parse import unquote
 
-    event_name = unquote(event_name).strip()
+    event_name = unquote(event_name).strip().lower()
 
     print("🔥 EVENT PAGE HIT:", event_name)
+
+    # -------------------------
+    # FIND EVENT FROM PYTHON DATA ONLY
+    # -------------------------
+    event = next(
+        (e for e in events_data if e["name"].lower() == event_name),
+        None
+    )
+
+    if not event:
+        return f"Event not found: {event_name}", 404
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    # -------------------------
-    # SAFE EVENT LOOKUP (NO CRASH)
-    # -------------------------
-    try:
-        cursor.execute("""
-            SELECT id, name
-            FROM events
-        """)
-        all_events = cursor.fetchall()
-    except Exception as e:
-        conn.close()
-        return f"DB ERROR (events table missing): {e}", 500
-
-    event = None
-    for e in all_events:
-        if e[1].strip().lower() == event_name.lower():
-            event = {"id": e[0], "name": e[1]}
-            break
-
-    if not event:
-        conn.close()
-        return f"Event not found: {event_name}", 404
-
-    # -------------------------
-    # SAFE TICKETS QUERY
-    # -------------------------
     try:
         cursor.execute("""
             SELECT ticket_name, price, max_quantity, sold
             FROM ticket_types
-            WHERE LOWER(event_name) = LOWER(?)
+            WHERE LOWER(event_name) = ?
         """, (event_name,))
-
         tickets = cursor.fetchall()
 
     except Exception as e:
         conn.close()
-        return f"TICKET ERROR: {e}", 500
+        return f"TICKET DB ERROR: {e}", 500
 
     ticket_data = []
 
@@ -606,6 +577,33 @@ def event_detail(event_name):
         event=event,
         ticket_data=ticket_data
     )
+@app.route("/rebuild-db")
+def rebuild_db():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ticket_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT,
+        ticket_name TEXT,
+        price REAL,
+        max_quantity INTEGER,
+        sold INTEGER DEFAULT 0
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+    return "DB rebuilt successfully"
 # -------------------------
 # RUN
 # -------------------------
