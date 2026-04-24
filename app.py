@@ -42,6 +42,7 @@ def requires_auth(f):
     return decorated
 
 app = Flask(__name__)
+init_db()
 # -------------------------
 # DATABASE SETUP
 # -------------------------
@@ -591,5 +592,4 @@ def check_tickets():
 # RUN
 # -------------------------
 if __name__ == "__main__":
-    init_db()   # ✅ ADD THIS
     app.run(debug=True, use_reloader=False)
