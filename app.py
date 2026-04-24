@@ -43,6 +43,8 @@ def requires_auth(f):
 
 app = Flask(__name__)
 
+with app.app_context():
+    init_db()
 # -------------------------
 # DATABASE SETUP
 # -------------------------
@@ -328,13 +330,13 @@ def square_webhook():
 
     print("AMOUNT:", amount)
 
-    if amount == 13:
+    if amount == 1300:
         ticket_name = "Early Bird"
-    elif amount == 18:
+    elif amount == 1800:
         ticket_name = "General Admission"
-    elif amount == 175:
+    elif amount == 17500:
         ticket_name = "VIP Section"
-    elif amount == 200:
+    elif amount == 20000:
         ticket_name = "DJ VIP Section"
     else:
         conn.close()
