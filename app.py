@@ -42,9 +42,6 @@ def requires_auth(f):
     return decorated
 
 app = Flask(__name__)
-
-with app.app_context():
-    init_db()
 # -------------------------
 # DATABASE SETUP
 # -------------------------
