@@ -82,7 +82,7 @@ def init_db():
     )
     """)
 
-    # EVENT VOTES
+    # EVENT VOTES ✅ (FIXED INDENT)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS event_votes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +91,25 @@ def init_db():
     )
     """)
 
-    # ✅ TICKET TABLE (FIXED COLUMN NAME)
+    # ✅ SEED VOTING OPTIONS
+    vinyl_options = [
+        "Grown and Sexy Ball",
+        "Line Dancing",
+        "Afrobeats",
+        "Live Bands",
+        "Open Mic"
+    ]
+
+    for option in vinyl_options:
+        cursor.execute("""
+            INSERT INTO event_votes (event_name, votes)
+            SELECT ?, 0
+            WHERE NOT EXISTS (
+                SELECT 1 FROM event_votes WHERE event_name = ?
+            )
+        """, (option, option))
+
+    # TICKET TABLE ✅ (FIXED POSITION)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS ticket_types (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,7 +121,7 @@ def init_db():
     )
     """)
 
-    # ✅ SEED DATA
+    # SEED TICKETS
     tickets = [
         ("Battle of the DJs", "Early Bird", 13, 30),
         ("Battle of the DJs", "General Admission", 18, 366),
