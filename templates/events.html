@@ -17,42 +17,29 @@
     <!-- CARD -->
     <div class="premium-card">
 
-        <!-- WHOLE CARD CLICKABLE -->
-<a href="/event/{{ event.name | replace(' ', '%20') }}" class="card-link">
+        <!-- CLICKABLE CARD -->
+        <a href="{{ url_for('event_detail', event_name=event.name) }}" class="card-link">
+
             <!-- FLYER -->
-            <img src="{{ url_for('static', filename='images/battle1.jpg') }}">
+            <img src="{{ url_for('static', filename='images/battle1.jpg') }}" alt="{{ event.name }}">
 
             <!-- OVERLAY -->
             <div class="premium-overlay">
-
                 <div class="premium-content">
 
                     <h3>{{ event.name }}</h3>
 
-                    <!-- ATTENDANCE -->
-                    {% set attendance = namespace(value=0) %}
-                    {% for key, t in event.tickets.items() %}
-                        {% set attendance.value = attendance.value + (t.sold * t.size) %}
-                    {% endfor %}
-
-                    {% set capacity = event.capacity if event.capacity else 450 %}
-                    {% set remaining = capacity - attendance.value %}
-
+                    <!-- SAFE META (NO DB DEPENDENCY) -->
                     <div class="meta">
-                        {% if remaining <= 0 %}
-                            🔴 Sold Out
-                        {% elif remaining <= 50 %}
-                            ⚠️ Only {{ remaining }} spots left     
-                        {% endif %}
+                        ⚡ Limited Availability
                     </div>
 
-                    <!-- BUTTON LOOK -->
+                    <!-- BUTTON STYLE -->
                     <div class="premium-btn">
                         View Event
                     </div>
 
                 </div>
-
             </div>
 
         </a>
@@ -61,42 +48,42 @@
 
     {% endfor %}
 
-</div> <!-- ✅ CLOSE GRID -->
+</div>
 
+<!-- VOTING SECTION -->
 <div class="vinyl-section">
 
     <h2>🎧 Vote for the Next Vibe</h2>
 
     <div class="vinyl-row">
 
-    {% for v in event_votes %}
+        {% for v in event_votes %}
 
-    <div class="vinyl-card">
+        <div class="vinyl-card">
 
-        <!-- RECORD -->
-        <div class="record">
-            <div class="label">{{ v[0] }}</div>
+            <!-- RECORD -->
+            <div class="record">
+                <div class="label">{{ v[0] }}</div>
+            </div>
+
+            <!-- VOTES -->
+            <p class="vote-count">{{ v[1] }} votes</p>
+
+            <!-- VOTE BUTTON -->
+            <form method="POST" action="/vote-event">
+                <input type="hidden" name="event_name" value="{{ v[0]|trim }}">
+                <button type="submit" class="vote-btn">Vote</button>
+            </form>
+
         </div>
 
-        <!-- VOTES -->
-        <p class="vote-count">{{ v[1] }} votes</p>
-
-        <!-- VOTE BUTTON -->
-        <form method="POST" action="/vote-event">
-            <input type="hidden" name="event_name" value="{{ v[0]|trim }}">
-            <button type="submit" class="vote-btn">Vote</button>
-        </form>
-
-    </div>
-
-    {% endfor %}
-
-</div>
+        {% endfor %}
 
     </div>
 
 </div>
-<!-- ✅ EVENT REQUEST BOX -->
+
+<!-- EVENT REQUEST -->
 <div class="interest-box">
 
     <h2>What Event Do You Want Next?</h2>
