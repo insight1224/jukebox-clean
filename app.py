@@ -214,42 +214,52 @@ def events():
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    global events_data
+    # -------------------------
+    # EVENTS (FROM DATABASE - SAFE)
+    # -------------------------
+    try:
+        cursor.execute("SELECT id, name FROM events")
+        rows = cursor.fetchall()
 
-    # ✅ CURATED VINYL OPTIONS
-    vinyl_options = [
-        "Grown and Sexy Ball",
-        "Line Dancing",
-        "Afrobeats",
-        "Live Bands",
-        "Open Mic"
-    ]
+        events_list = [
+            {"id": r[0], "name": r[1]}
+            for r in rows
+        ]
 
-    # ✅ ENSURE THEY EXIST IN DB
-    for event in vinyl_options:
-        cursor.execute("SELECT * FROM event_votes WHERE event_name = ?", (event,))
-        exists = cursor.fetchone()
+    except Exception as e:
+        print("EVENTS ERROR:", e)
+        events_list = [
+            {"id": 1, "name": "Battle of the DJs"}
+        ]
 
-        if not exists:
-            cursor.execute(
-                "INSERT INTO event_votes (event_name, votes) VALUES (?, 0)",
-                (event,)
-            )
+    # -------------------------
+    # VOTES (SAFE)
+    # -------------------------
+    try:
+        cursor.execute("""
+            SELECT event_name, votes
+            FROM event_votes
+            ORDER BY votes DESC
+        """)
+        event_votes = cursor.fetchall()
+    except Exception as e:
+        print("VOTES ERROR:", e)
+        event_votes = []
 
-    # ✅ GET VOTES
-    cursor.execute("SELECT event_name, votes FROM event_votes ORDER BY votes DESC")
-    event_votes = cursor.fetchall()
-
-    conn.commit()
     conn.close()
 
     return render_template(
         "events.html",
-        events=events_data,
+        events=events_list,
         event_votes=event_votes,
-        vinyl_options=vinyl_options
+        vinyl_options=[
+            "Grown and Sexy Ball",
+            "Line Dancing",
+            "Afrobeats",
+            "Live Bands",
+            "Open Mic"
+        ]
     )
-
 # -------------------------
 # CONTACT (FULLY WORKING)
 # -------------------------
