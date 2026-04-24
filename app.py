@@ -536,6 +536,8 @@ from urllib.parse import unquote
 
 @app.route("/event/<path:event_name>")
 def event_detail(event_name):
+    from urllib.parse import unquote
+
     event_name = unquote(event_name)
 
     print("🔥 EVENT PAGE HIT:", event_name)
@@ -543,17 +545,33 @@ def event_detail(event_name):
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    # ✅ Get event from your Python data
-    event = next((e for e in events_data if e["name"] == event_name), None)
+    # -------------------------
+    # GET EVENT FROM DATABASE
+    # -------------------------
+    cursor.execute("""
+        SELECT id, name
+        FROM events
+        WHERE LOWER(name) = LOWER(?)
+    """, (event_name,))
 
-    if not event:
-        return f"Event not found: {event_name}"
+    row = cursor.fetchone()
 
-    # ✅ Get tickets
+    if not row:
+        conn.close()
+        return "Event not found", 404
+
+    event = {
+        "id": row[0],
+        "name": row[1]
+    }
+
+    # -------------------------
+    # GET TICKETS
+    # -------------------------
     cursor.execute("""
         SELECT ticket_name, price, max_quantity, sold
         FROM ticket_types
-        WHERE event_name = ?
+        WHERE LOWER(event_name) = LOWER(?)
     """, (event_name,))
 
     tickets = cursor.fetchall()
@@ -565,8 +583,9 @@ def event_detail(event_name):
 
         ticket_data.append({
             "name": name,
-            "price": price,
+            "price": round(price, 2),
             "sold": sold,
+            "quantity": quantity,
             "remaining": remaining,
             "sold_out": remaining <= 0,
             "almost_gone": 0 < remaining <= 5
