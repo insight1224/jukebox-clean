@@ -627,6 +627,17 @@ def rebuild_db():
     conn.close()
 
     return "DB rebuilt successfully"
+
+@app.route("/check-tickets")
+def check_tickets():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM ticket_types")
+    data = cursor.fetchall()
+
+    conn.close()
+    return str(data)
 # -------------------------
 # RUN
 # -------------------------
