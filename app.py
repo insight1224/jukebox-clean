@@ -46,47 +46,113 @@ app = Flask(__name__)
 # -------------------------
 # DATABASE SETUP
 # -------------------------
-conn = sqlite3.connect("database.db")
-cursor = conn.cursor()
+# ✅ DATABASE SETUP (RUN ON APP START)
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS leads (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT,
-    name TEXT,
-    email TEXT,
-    details TEXT,
-    status TEXT
-)
-""")
+def init_db():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS memberships (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT,
-    amount REAL,
-    status TEXT
-)
-""")
+    # LEADS
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS leads (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        type TEXT,
+        name TEXT,
+        email TEXT,
+        details TEXT,
+        status TEXT DEFAULT 'New'
+    )
+    """)
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS event_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_name TEXT
-)
-""")
+    # MEMBERSHIPS
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS memberships (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT,
+        amount REAL,
+        status TEXT DEFAULT 'Active'
+    )
+    """)
 
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS event_votes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    event_name TEXT,
-    votes INTEGER DEFAULT 1
-)
-""")
+    # EVENT REQUESTS
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS event_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT,
+        status TEXT DEFAULT 'New'
+    )
+    """)
 
-conn.commit()
-conn.close()
+    # EVENT VOTES
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS event_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT UNIQUE,
+        votes INTEGER DEFAULT 0
+    )
+    """)
 
+    # ✅ TICKET TABLE (FIXED COLUMN NAME)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ticket_types (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT,
+        ticket_name TEXT,
+        price REAL,
+        max_quantity INTEGER,
+        sold INTEGER DEFAULT 0
+    )
+    """)
+
+    # ✅ SEED DATA
+    tickets = [
+        ("Battle of the DJs", "Early Bird", 13, 30),
+        ("Battle of the DJs", "General Admission", 18, 366),
+        ("Battle of the DJs", "VIP Section", 175, 6),
+        ("Battle of the DJs", "DJ VIP Section", 200, 3),
+    ]
+
+    for event, name, price, max_q in tickets:
+        cursor.execute("""
+        INSERT INTO ticket_types (event_name, ticket_name, price, max_quantity)
+        SELECT ?, ?, ?, ?
+        WHERE NOT EXISTS (
+            SELECT 1 FROM ticket_types 
+            WHERE event_name = ? AND ticket_name = ?
+        )
+        """, (event, name, price, max_q, event, name))
+
+    conn.commit()
+    conn.close()
+
+def purchase_ticket(event_name, ticket_name):
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT sold, max_quantity
+        FROM ticket_types
+        WHERE event_name = ? AND ticket_name = ?
+    """, (event_name, ticket_name))
+
+    result = cursor.fetchone()
+
+    if result:
+        sold, max_q = result
+
+        if sold < max_q:
+            cursor.execute("""
+                UPDATE ticket_types
+                SET sold = sold + 1
+                WHERE event_name = ? AND ticket_name = ?
+            """, (event_name, ticket_name))
+
+            conn.commit()
+            print("✅ Ticket purchased")
+        else:
+            print("❌ SOLD OUT")
+
+    conn.close()
 # -------------------------
 # EMAIL CONFIG
 # -------------------------
@@ -183,14 +249,7 @@ def events():
         event_votes=event_votes,
         vinyl_options=vinyl_options
     )
-@app.route("/events/<int:event_id>")
-def event_details(event_id):
-    event = next((e for e in events_data if e["id"] == event_id), None)
 
-    if not event:
-        return "Event not found"
-
-    return render_template("event_details.html", event=event)
 # -------------------------
 # CONTACT (FULLY WORKING)
 # -------------------------
@@ -259,52 +318,39 @@ def join_membership():
 # -------------------------
 @app.route("/square-webhook", methods=["POST"])
 def square_webhook():
+    print("🔥 WEBHOOK HIT")
+
     data = request.json
-    print("WEBHOOK HIT:", data)
+    print(data)
 
-    try:
-        if data.get("type") == "payment.updated":
-            payment = data["data"]["object"]["payment"]
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
 
-            amount = payment["amount_money"]["amount"] / 100
-            email = payment.get("buyer_email_address", "unknown")
+    payment = data.get("data", {}).get("object", {}).get("payment", {})
+    amount = payment.get("amount_money", {}).get("amount")
 
-            # 🎟 MAP AMOUNT → EVENT + TICKET TYPE
-            if amount == 13:
-                ticket_type = "Early Bird"
-                event_name = "Battle of the DJs"
+    print("AMOUNT:", amount)
 
-            elif amount == 18:
-                ticket_type = "General Admission"
-                event_name = "Battle of the DJs"
+    if amount == 13:
+        ticket_name = "Early Bird"
+    elif amount == 18:
+        ticket_name = "General Admission"
+    elif amount == 175:
+        ticket_name = "VIP Section"
+    elif amount == 200:
+        ticket_name = "DJ VIP Section"
+    else:
+        conn.close()
+        return "ignored", 200
 
-            elif amount == 175:
-                ticket_type = "VIP"
-                event_name = "Battle of the DJs"
+    cursor.execute("""
+        UPDATE ticket_types
+        SET sold = sold + 1
+        WHERE event_name = ? AND ticket_name = ?
+    """, ("Battle of the DJs", ticket_name))
 
-            elif amount == 200:
-                ticket_type = "Booth"
-                event_name = "Battle of the DJs"
-
-            else:
-                ticket_type = "Other"
-                event_name = "Unknown Event"
-
-            conn = sqlite3.connect("database.db")
-            cursor = conn.cursor()
-
-            cursor.execute("""
-                INSERT INTO tickets (email, amount, type, event_name, status)
-                VALUES (?, ?, ?, ?, ?)
-            """, (email, amount, ticket_type, event_name, "paid"))
-
-            conn.commit()
-            conn.close()
-
-            print("✅ Ticket saved")
-
-    except Exception as e:
-        print("Webhook error:", e)
+    conn.commit()
+    conn.close()
 
     return "ok", 200
 # -------------------------
@@ -466,9 +512,66 @@ def complete_request(id):
     conn.close()
 
     return redirect("/dashboard")
+
+@app.route("/buy-ticket", methods=["POST"])
+def buy_ticket():
+    event_name = request.form.get("event_name")
+    ticket_name = request.form.get("ticket_name")
+
+    purchase_ticket(event_name, ticket_name)
+
+    return redirect("/events")
+
+from urllib.parse import unquote
+
+@app.route("/event/<path:event_name>")
+def event_detail(event_name):
+    event_name = unquote(event_name)
+
+    print("🔥 EVENT PAGE HIT:", event_name)
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    # ✅ Get event from your Python data
+    event = next((e for e in events_data if e["name"] == event_name), None)
+
+    if not event:
+        return f"Event not found: {event_name}"
+
+    # ✅ Get tickets
+    cursor.execute("""
+        SELECT ticket_name, price, max_quantity, sold
+        FROM ticket_types
+        WHERE event_name = ?
+    """, (event_name,))
+
+    tickets = cursor.fetchall()
+
+    ticket_data = []
+
+    for name, price, quantity, sold in tickets:
+        remaining = quantity - sold
+
+        ticket_data.append({
+            "name": name,
+            "price": price,
+            "sold": sold,
+            "remaining": remaining,
+            "sold_out": remaining <= 0,
+            "almost_gone": 0 < remaining <= 5
+        })
+
+    conn.close()
+
+    return render_template(
+        "event_detail.html",
+        event=event,
+        ticket_data=ticket_data
+    )
 # -------------------------
 # RUN
 # -------------------------
 if __name__ == "__main__":
-    print("🚀 STARTING APP...")
-    app.run(debug=True, port=5050)
+    init_db()   # ✅ ADD THIS
+    app.run(debug=True, use_reloader=False)

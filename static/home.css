@@ -1876,3 +1876,29 @@ body.flash {
     width: 500px;
     opacity: 0.9;
 }
+.flyer-container {
+    position: relative;
+    display: inline-block;
+}
+
+.flyer-container img {
+    width: 100%;
+    display: block;
+}
+
+.flyer-btn {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+
+    background: black;
+    color: white;
+    padding: 12px 20px;
+    text-decoration: none;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+.flyer-btn:hover {
+    background: #222;
+}

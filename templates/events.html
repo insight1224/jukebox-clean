@@ -18,8 +18,7 @@
     <div class="premium-card">
 
         <!-- WHOLE CARD CLICKABLE -->
-        <a href="{{ url_for('event_details', event_id=event.id) }}" class="card-link">
-
+<a href="/event/{{ event.name | replace(' ', '%20') }}" class="card-link">
             <!-- FLYER -->
             <img src="{{ url_for('static', filename='images/battle1.jpg') }}">
 

@@ -148,3 +148,43 @@ font-size: 13px;
     margin-top: 6px;
     letter-spacing: 0.5px;
 }
+.event-hero {
+    height: 65vh; /* 👈 shorter hero */
+    min-height: 400px; /* keeps it clean on small screens */
+    background: url("/static/images/flyer-part1.jpg") top center / cover no-repeat;
+    position: relative;
+}
+
+.hero-overlay {
+    background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.5) 10%,
+        rgba(0,0,0,0.85) 90%
+    );
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+}
+
+.hero-content {
+    width: 100%;              /* 👈 FULL WIDTH */
+    color: white;
+    padding: 40px 60px;       /* spacing left/right */
+}
+
+.hero-content h1 {
+    font-size: 48px;
+    margin-bottom: 10px;
+    width: 100%;              /* 👈 stretch */
+}
+
+.hero-description {
+    font-size: 18px;
+    line-height: 1.6;
+    width: 100%;              /* 👈 stretch across */
+}
+.price {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
