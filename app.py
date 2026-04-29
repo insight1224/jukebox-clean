@@ -1619,6 +1619,69 @@ def tickets_admin():
     print(f"[tickets_admin] rows fetched: {len(tickets)}")
     conn.close()
     return render_template("tickets_admin.html", tickets=tickets, status_filter=status_filter)
+
+
+@app.route("/admin/backfill")
+@requires_auth
+def run_backfill():
+    """
+    Temporary admin route to backfill completed Square payments into event_tickets
+    using the same database file as the Flask app.
+    """
+    payments = square_list_payments(limit=100)
+    db_path = os.path.join(os.path.dirname(__file__), "database.db")
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    created = 0
+    skipped = 0
+
+    for payment in payments:
+        payment_id = (payment.get("id") or "").strip()
+        status = (payment.get("status") or "").strip().upper()
+        amount_cents = int(payment.get("amount_money", {}).get("amount") or 0)
+        email = (payment.get("buyer_email_address") or "").strip()
+
+        if status != "COMPLETED" or not payment_id:
+            continue
+
+        if already_logged_payment(cursor, payment_id):
+            skipped += 1
+            continue
+
+        ticket_id = create_ticket_from_square_payment(cursor, payment, amount_cents, email)
+        ticket_hit = apply_ticket_sale_from_square(cursor, payment)
+        membership_hit = apply_membership_from_square(
+            cursor,
+            payment,
+            amount_cents,
+            " ".join(
+                str(part).strip().lower()
+                for part in (
+                    payment.get("note", ""),
+                    payment.get("reference_id", ""),
+                    payment.get("receipt_number", ""),
+                )
+                if part
+            ),
+            email,
+        )
+
+        if ticket_id:
+            send_ticket_email_once(cursor, ticket_id)
+
+        if ticket_hit or membership_hit or ticket_id:
+            log_square_payment(
+                cursor,
+                payment_id,
+                "ticket" if (ticket_hit or ticket_id) else "membership",
+                amount_cents,
+            )
+            created += 1
+
+    conn.commit()
+    conn.close()
+    return f"Backfill complete. Created: {created}, Skipped duplicates: {skipped}", 200
 # -------------------------
 # RUN
 # -------------------------
