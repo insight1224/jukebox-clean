@@ -26,7 +26,6 @@
 <section class="ticket-section">
 
 <div class="ticket-grid">
-
     {% for t in ticket_data %}
 
     <div class="ticket-box
@@ -71,30 +70,19 @@
             <p class="tag">🔥 Almost Gone</p>
         {% endif %}
 
-        <!-- BUTTON LOGIC -->
         {% if t.sold_out %}
             <span class="btn disabled">Sold Out</span>
         {% else %}
-
-            {% if t.name == "Early Bird" and event["early_link"] %}
-                <a href="{{ event['early_link'] }}" target="_blank" class="btn">Secure Early Access</a>
-
-            {% elif t.name == "General Admission" and event["ga_link"] %}
-                <a href="{{ event['ga_link'] }}" target="_blank" class="btn">Reserve General Entry</a>
-
-            {% elif t.name == "VIP Section" and event["vip_link"] %}
-                <a href="{{ event['vip_link'] }}" target="_blank" class="btn vip-btn">Book VIP Experience</a>
-
-            {% elif t.name == "DJ VIP Section" and event["booth_link"] %}
-                <a href="{{ event['booth_link'] }}" target="_blank" class="btn ultra-btn">Reserve Private Section</a>
-
-            {% else %}
-                <span class="btn disabled">Coming Soon</span>
+            {% if t.name == "Early Bird" %}
+                <a class="btn" href="{{ event.early_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
+            {% elif t.name == "General Admission" %}
+                <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
+            {% elif t.name == "VIP Section" %}
+                <a class="btn vip-btn" href="{{ event.vip_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
+            {% elif t.name == "DJ VIP Section" %}
+                <a class="btn ultra-btn" href="{{ event.booth_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
             {% endif %}
-
         {% endif %}
-
-        <p class="secure-note">🔒 Secure checkout powered by Square</p>
 
     </div>
 

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Ticket Checkout | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<section class="section">
+  <div class="container">
+    <h1 class="section-title">Ticket Checkout</h1>
+    <article class="card" style="max-width:720px;">
+      <h3>Choose Ticket Type</h3>
+      <p>Secure checkout is hosted by Square.</p>
+      <select id="ticketCheckoutSelect">
+        <option value="">Choose your ticket</option>
+        {% for key, item in payment_links.items() %}
+        <option value="{{ item.url }}">{{ item.label }} — ${{ "%.2f"|format(item.amount_cents / 100) }}</option>
+        {% endfor %}
+      </select>
+      <p class="secure-note">Checkout opens automatically when you select a ticket.</p>
+    </article>
+  </div>
+</section>
+<script>
+  (function () {
+    const select = document.getElementById("ticketCheckoutSelect");
+    if (!select) return;
+    const params = new URLSearchParams(window.location.search);
+    const initial = params.get("ticket_type");
+    if (initial) {
+      const option = Array.from(select.options).find((opt) => opt.value && opt.textContent.toLowerCase().includes(initial.replaceAll("_", " ")));
+      if (option) {
+        select.value = option.value;
+      }
+    }
+    select.addEventListener("change", function () {
+      if (this.value) window.location.href = this.value;
+    });
+  })();
+</script>
+{% endblock %}

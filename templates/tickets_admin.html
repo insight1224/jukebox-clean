@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Ticket Admin | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<style>
+  .tickets-admin-wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .tickets-admin-card {
+    background: rgba(12, 12, 12, 0.92);
+    border: 1px solid rgba(212, 175, 55, 0.2);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  }
+  .tickets-admin-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.16);
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.12), rgba(212, 175, 55, 0.03));
+  }
+  .tickets-admin-head h2 {
+    margin: 0;
+  }
+  .tickets-count {
+    color: #d4af37;
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+  .tickets-table-wrap {
+    overflow-x: auto;
+  }
+  .tickets-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 920px;
+  }
+  .tickets-table thead th {
+    text-align: left;
+    padding: 13px 14px;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    color: #f2cb58;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .tickets-table tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #f1f1f1;
+    vertical-align: middle;
+  }
+  .tickets-table tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+  }
+  .tickets-table tbody tr:hover {
+    background: rgba(212, 175, 55, 0.08);
+  }
+  .ticket-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.82rem;
+    color: #f6df8f;
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+  }
+  .status-pill.checked {
+    color: #8cf6be;
+    border-color: rgba(140, 246, 190, 0.45);
+    background: rgba(74, 201, 141, 0.14);
+  }
+  .status-pill.open {
+    color: #f9d77c;
+    border-color: rgba(249, 215, 124, 0.4);
+    background: rgba(249, 215, 124, 0.12);
+  }
+  @media (max-width: 760px) {
+    .tickets-admin-head {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+</style>
+
+<section class="section tickets-admin-wrap">
+  <div class="tickets-admin-card">
+    <div class="tickets-admin-head">
+      <h2 class="section-title">Ticket Admin</h2>
+      <div class="tickets-count">{{ tickets|length }} tickets</div>
+    </div>
+    <div style="padding: 12px 18px; border-bottom: 1px solid rgba(212, 175, 55, 0.12); display:flex; gap:10px; flex-wrap:wrap;">
+      <a class="btn" href="/tickets/admin">All</a>
+      <a class="btn" href="/tickets/admin?status=unused">Unused</a>
+      <a class="btn" href="/tickets/admin?status=used">Used</a>
+    </div>
+
+    <div class="tickets-table-wrap">
+      <table class="tickets-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Ticket ID</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Status</th>
+          <th>Payment ID</th>
+          <th>QR</th>
+          <th>Actions</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+        <tr>
+          <td>{{ t["id"] }}</td>
+          <td class="ticket-id">{{ t["ticket_id"] }}</td>
+          <td>{{ t["name"] }}</td>
+          <td>{{ t["email"] }}</td>
+          <td>{{ t["ticket_type"] }}</td>
+          <td>${{ "%.2f"|format((t["amount_cents"] or 0) / 100) }}</td>
+          <td>
+            <span class="status-pill {% if (t['status'] or '') == 'checked_in' %}checked{% else %}open{% endif %}">
+              {{ t["status"] }}
+            </span>
+          </td>
+          <td class="ticket-id">{{ t["payment_id"] }}</td>
+          <td><a href="{{ t['qr_url'] }}" target="_blank" rel="noopener noreferrer">View QR</a></td>
+          <td><a href="/checkin/{{ t['ticket_id'] }}" target="_blank" rel="noopener noreferrer">Check In</a></td>
+          <td>{{ t["created_at"] }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="11">No tickets found.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+{% endblock %}

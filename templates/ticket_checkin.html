@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Ticket Check-in | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<section class="section" style="max-width:640px;margin:0 auto;">
+  <div class="card" style="text-align:left;">
+    {% if state == "ok" %}
+      <h2 style="color:#7df0b0;">Checked in successfully</h2>
+    {% elif state == "used" %}
+      <h2 style="color:#ffb07a;">Ticket already used</h2>
+    {% else %}
+      <h2 style="color:#ff8f8f;">Invalid ticket</h2>
+    {% endif %}
+
+    {% if ticket %}
+      <p><strong>Name:</strong> {{ ticket[1] }}</p>
+      <p><strong>Email:</strong> {{ ticket[2] }}</p>
+      <p><strong>Ticket Type:</strong> {{ ticket[3] }}</p>
+      <p><strong>Ticket ID:</strong> {{ ticket[4] }}</p>
+      <p><strong>Status:</strong> {{ ticket[5] }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

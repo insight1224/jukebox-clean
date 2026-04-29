@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jukebox Ticket Checkout</title>
+    <script src="https://sandbox.web.squarecdn.com/v1/square.js"></script>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0a0a0a;
+        color: #f6f6f6;
+      }
+      .wrap {
+        width: min(760px, calc(100vw - 2rem));
+        margin: 1.2rem auto 2rem;
+      }
+      .card {
+        border: 1px solid rgba(212, 175, 55, 0.24);
+        border-radius: 12px;
+        background: #121212;
+        padding: 1rem;
+      }
+      h1, h2 {
+        margin: 0 0 .65rem;
+        color: #d4af37;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .7rem;
+      }
+      label {
+        display: block;
+        font-size: .85rem;
+        margin-bottom: .3rem;
+        color: #ccc;
+      }
+      input, select {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #333;
+        background: #161616;
+        color: #fff;
+        padding: .55rem .6rem;
+      }
+      #card-container {
+        margin-top: .7rem;
+        border: 1px solid #2d2d2d;
+        border-radius: 8px;
+        padding: .65rem;
+        background: #151515;
+      }
+      .row {
+        display: flex;
+        gap: .65rem;
+        align-items: center;
+        justify-content: space-between;
+        margin-top: .7rem;
+      }
+      button {
+        border: 0;
+        border-radius: 8px;
+        background: #d4af37;
+        color: #111;
+        font-weight: 700;
+        padding: .62rem .95rem;
+        cursor: pointer;
+      }
+      .muted { color: #b6b6b6; font-size: .9rem; }
+      .error { color: #ff8e8e; min-height: 1.2rem; }
+      .hidden { display: none; }
+      #qrImage {
+        width: 220px;
+        max-width: 100%;
+        border-radius: 8px;
+        border: 1px solid #2f2f2f;
+        background: #fff;
+      }
+      @media (max-width: 700px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="card" id="checkoutCard">
+        <h1>Jukebox Event Ticket Checkout</h1>
+        <p class="muted">Embedded Square checkout. You stay on this page.</p>
+
+        <div class="grid">
+          <div>
+            <label for="name">Full Name</label>
+            <input id="name" type="text" required />
+          </div>
+          <div>
+            <label for="email">Email</label>
+            <input id="email" type="email" required />
+          </div>
+        </div>
+
+        <div style="margin-top:.7rem;">
+          <label for="ticketType">Ticket Type</label>
+          <select id="ticketType"></select>
+        </div>
+
+        <div id="card-container"></div>
+
+        <div class="row">
+          <strong id="priceText">$0.00</strong>
+          <button id="buyBtn" type="button">Buy Ticket</button>
+        </div>
+        <p id="errorText" class="error"></p>
+      </section>
+
+      <section class="card hidden" id="successCard" style="margin-top:1rem;">
+        <h2>Payment successful</h2>
+        <p><strong>Ticket ID:</strong> <span id="ticketIdText"></span></p>
+        <p><strong>Name:</strong> <span id="ticketNameText"></span></p>
+        <p><strong>Email:</strong> <span id="ticketEmailText"></span></p>
+        <p><strong>Type:</strong> <span id="ticketTypeText"></span></p>
+        <p><strong>Check-in URL:</strong> <a id="checkinLink" href="#" target="_blank" rel="noopener noreferrer"></a></p>
+        <img id="qrImage" alt="Ticket QR code" />
+      </section>
+    </div>
+
+    <script src="./checkout.js"></script>
+  </body>
+</html>

@@ -1,40 +1,49 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>The Jukebox Lounge NC</title>
-
-    <!-- CSS (correct Flask way) -->
-   <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-</head>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-<body>
-
-<!-- NAVBAR -->
-<nav class="navbar">
-  <div class="logo">The Jukebox Lounge NC</div>
-
-  <!-- Hamburger button -->
-  <div class="menu-toggle" onclick="toggleMenu()">
-    ☰
-  </div>
-
-  <!-- Nav links -->
-  <div class="nav-links" id="navLinks">
-    <a href="/">Home</a>
-    <a href="/events">Events</a>
-    <a href="/contact">Contact</a>
-    <a href="/membership">Membership</a>
-  </div>
-</nav>
-<!-- PAGE CONTENT -->
-<script>
-function toggleMenu() {
-  const menu = document.getElementById("navLinks");
-  menu.classList.toggle("active");
-}
-</script>
-{% block content %}{% endblock %}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}The Jukebox Lounge NC{% endblock %}</title>
+    {% set default_og_title = "The Jukebox Lounge NC" %}
+    {% set default_og_description = "Old school R&B. Premium crowd. Unmatched energy." %}
+    {% set default_og_image = request.url_root.rstrip('/') + url_for('static', filename='images/battle1.jpg') %}
+    <meta name="description" content="{% block meta_description %}{{ default_og_description }}{% endblock %}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{% block og_title %}{{ default_og_title }}{% endblock %}" />
+    <meta property="og:description" content="{% block og_description %}{{ default_og_description }}{% endblock %}" />
+    <meta property="og:image" content="{% block og_image %}{{ default_og_image }}{% endblock %}" />
+    <meta property="og:url" content="{{ request.url }}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{% block twitter_title %}{{ default_og_title }}{% endblock %}" />
+    <meta name="twitter:description" content="{% block twitter_description %}{{ default_og_description }}{% endblock %}" />
+    <meta name="twitter:image" content="{% block twitter_image %}{{ default_og_image }}{% endblock %}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+  </head>
+  <body>
+    <nav class="navbar">
+      <div class="logo">The Jukebox Lounge NC</div>
+      <button
+        class="menu-toggle"
+        type="button"
+        onclick="toggleMenu()"
+        aria-label="Toggle navigation menu"
+        aria-controls="navLinks"
+        aria-expanded="false"
+      >
+        ☰
+      </button>
+      <div class="nav-links" id="navLinks">
+        <a class="nav-link" href="/">Home</a>
+        <a class="nav-link" href="/events">Events</a>
+        <a class="nav-link" href="/contact">Contact</a>
+        <a class="nav-link" href="/membership">Membership</a>
+      </div>
+    </nav>
+    {% block content %}{% endblock %}
+    <script src="{{ url_for('static', filename='base.js') }}"></script>
+  </body>
+</html>

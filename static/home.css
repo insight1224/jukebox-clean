@@ -1902,3 +1902,133 @@ body.flash {
 .flyer-btn:hover {
     background: #222;
 }
+
+/* ---------- Mobile cleanup overrides ---------- */
+@media (max-width: 900px) {
+    .jukebox-stage {
+        flex-direction: column;
+        gap: 14px;
+        padding: 18px 12px;
+    }
+
+    .speaker {
+        width: min(220px, 100%);
+        height: 88px;
+    }
+
+    .music-player-box {
+        width: 100%;
+        max-width: 100%;
+        min-height: 180px;
+    }
+}
+
+@media (max-width: 768px) {
+    .hero {
+        min-height: 80vh;
+        height: auto;
+        padding: 88px 14px 42px;
+        background-size: 720px;
+    }
+
+    .hero h1 {
+        font-size: clamp(30px, 10vw, 42px);
+        letter-spacing: 1px;
+        line-height: 1.1;
+    }
+
+    .hero h2 {
+        font-size: 17px;
+        line-height: 1.4;
+        margin-top: 8px;
+    }
+
+    .hero-logo {
+        position: static;
+        transform: none;
+        margin-top: 14px;
+    }
+
+    .hero-logo img {
+        width: min(220px, 68vw);
+    }
+
+    .jukebox-machine {
+        padding: 30px 10px;
+    }
+
+    .jukebox-controls {
+        gap: 10px;
+    }
+
+    .jukebox-controls button {
+        min-width: 44px;
+        height: 44px;
+        font-size: 18px;
+    }
+
+    .jukebox-scroll {
+        gap: 12px;
+        padding: 14px 8px;
+    }
+
+    .album {
+        min-width: 132px;
+    }
+
+    .album img {
+        width: 132px;
+        height: 132px;
+    }
+
+    .play-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 14px;
+    }
+
+    .experience-box {
+        padding: 16px;
+    }
+
+    .experience-text {
+        font-size: 15px;
+        line-height: 1.65;
+    }
+
+    .experience-features {
+        text-align: left;
+    }
+
+    .experience-features p {
+        margin: 8px 0;
+    }
+
+    .poster-grid {
+        gap: 14px;
+    }
+
+    .poster-card {
+        width: 100%;
+        padding: 14px;
+    }
+
+    .vip-box {
+        padding: 18px 14px;
+    }
+
+    .vip-box input,
+    .vip-box button {
+        width: 100%;
+    }
+
+    .social-links {
+        gap: 10px;
+    }
+
+    .social-links a {
+        width: 42px;
+        height: 42px;
+        font-size: 17px;
+    }
+}
