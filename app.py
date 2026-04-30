@@ -13,7 +13,7 @@ from functools import wraps
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
-from flask import Flask, Response, redirect, render_template, request
+from flask import Flask, Response, redirect, render_template, request, url_for
 
 try:
     from dotenv import load_dotenv
@@ -787,7 +787,7 @@ events_data = [
     {
         "id": 1,
         "name": "Battle of the DJs",
-        "flyer": "images/flyer-part1.jpg",
+        "flyer": "images/battle1.jpg",
         "description": """Step into an elevated indoor/outdoor experience at Battle of the DJs — where top talent goes head-to-head, delivering high-energy sets and unforgettable vibes all night long. Expect great music, curated energy, and a crowd that knows how to move.
 
 In the event of unfavorable weather conditions, the experience will be rescheduled. All tickets will remain valid for the new date, with options available for transfer or refund.
