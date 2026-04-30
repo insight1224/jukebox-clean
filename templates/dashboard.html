@@ -1,248 +1,102 @@
 {% extends "base.html" %}
-
 {% block title %}Dashboard | The Jukebox Lounge NC{% endblock %}
-
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
 
-<div class="dash-shell">
-  <header class="dash-header">
+<section class="dash-shell">
+  <div class="dash-header">
     <h1>Jukebox Dashboard</h1>
     <div class="sync-controls">
-      <button id="squareReportBtn" class="btn" type="button">Preview Sync</button>
-      <button id="squareSyncBtn" class="btn" type="button">Sync Square</button>
-      <button id="squareFullSyncBtn" class="btn" type="button">Full Rebuild Sync</button>
+      <button class="btn" type="button" id="previewSyncBtn">Preview Sync</button>
+      <button class="btn" type="button" id="syncBtn">Sync Square</button>
+      <button class="btn" type="button" id="fullSyncBtn">Full Rebuild Sync</button>
     </div>
-  </header>
-  <p id="syncMessage" class="sync-message"></p>
-  <pre id="syncReport" class="sync-report" hidden></pre>
+  </div>
+  <p class="sync-message" id="syncMessage"></p>
+  <pre class="sync-report" id="syncReport" hidden></pre>
 
-  <section class="kpi-row top-kpis">
+  <div class="kpi-row top-kpis">
     <article class="kpi-group">
       <h2>Ticket Sales</h2>
       <div class="kpi-group-cards cols-3">
-        <div class="kpi-box"><h3>Tickets Sold</h3><p id="ticket-count">{{ ticket_count }}</p></div>
-        <div class="kpi-box"><h3>Attendance</h3><p id="attendance-count">{{ total_attendance }}</p></div>
-        <div class="kpi-box"><h3>Ticket Revenue</h3><p id="ticket-revenue">${{ ticket_revenue }}</p></div>
+        <div class="kpi-box">
+          <h3>Tickets Sold</h3>
+          <p>{{ ticket_count }}</p>
+        </div>
+        <div class="kpi-box">
+          <h3>Attendance</h3>
+          <p>{{ total_attendance }}</p>
+        </div>
+        <div class="kpi-box">
+          <h3>Ticket Revenue</h3>
+          <p>${{ "%.2f"|format(ticket_revenue) }}</p>
+        </div>
       </div>
     </article>
 
     <article class="kpi-group">
       <h2>Membership</h2>
       <div class="kpi-group-cards cols-2">
-        <div class="kpi-box"><h3>Active Members</h3><p>{{ membership_count }}</p></div>
-        <div class="kpi-box"><h3>Membership Revenue</h3><p>${{ membership_revenue }}</p></div>
+        <div class="kpi-box">
+          <h3>Active Members</h3>
+          <p>{{ membership_count }}</p>
+        </div>
+        <div class="kpi-box">
+          <h3>Membership Revenue</h3>
+          <p>${{ "%.2f"|format(membership_revenue) }}</p>
+        </div>
       </div>
     </article>
 
     <article class="kpi-group">
       <h2>Total Revenue</h2>
       <div class="kpi-group-cards cols-1">
-        <div class="kpi-box highlight"><h3>Total</h3><p>${{ total_revenue }}</p></div>
+        <div class="kpi-box highlight">
+          <h3>Total</h3>
+          <p>${{ "%.2f"|format(total_revenue) }}</p>
+        </div>
       </div>
     </article>
-  </section>
+  </div>
 
-  <section>
-    <h2 class="section-title">Event Breakdown</h2>
-    <div class="event-list">
-      {% for event_name, data in event_breakdown.items() %}
-      <article class="event-card">
-        <button class="event-toggle" type="button" aria-expanded="false">
-          <span>{{ event_name }}</span>
-          <span>{{ data.total_tickets }} sold | {{ data.total_attendance }} attendance | ${{ "%.2f"|format(data.total_revenue) }}</span>
-        </button>
-        <div class="event-body">
-          {% for t in data.tickets %}
-          <div class="ticket-row">
-            <div class="ticket-top">
-              <span>{{ t.name }}</span>
-              <span>{{ t.sold }}/{{ t.max }} sold | {{ t.attendance }} attendance | ${{ "%.2f"|format(t.revenue) }}</span>
-            </div>
-            <div class="progress-track">
-              <div class="progress-fill" style="width: {{ (t.sold / t.max * 100) if t.max else 0 }}%"></div>
-            </div>
-          </div>
-          {% endfor %}
-        </div>
-      </article>
-      {% endfor %}
-    </div>
-  </section>
-
-  <section>
-    <h2 class="section-title">Lead Activity</h2>
-    <div class="activity-grid">
-      <article class="activity-card">
-        <h3>DJ / Band Applications ({{ dj_count }})</h3>
-        <div class="table-wrap">
-          <table class="styled-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead>
-            <tbody>
-              {% for lead in dj_leads %}
-              <tr>
-                <td>{{ lead[2] }}</td>
-                <td>{{ lead[3] }}</td>
-                <td>
-                  <form method="POST" action="/update-lead/{{ lead[0] }}" class="inline-form">
-                    <select name="status">
-                      <option value="New" {% if lead[5]|lower == "new" %}selected{% endif %}>New</option>
-                      <option value="Contacted" {% if lead[5]|lower == "contacted" %}selected{% endif %}>Contacted</option>
-                      <option value="Booked" {% if lead[5]|lower == "booked" %}selected{% endif %}>Booked</option>
-                      <option value="Declined" {% if lead[5]|lower == "declined" %}selected{% endif %}>Declined</option>
-                    </select>
-                    <button type="submit">Save</button>
-                  </form>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="activity-card">
-        <h3>VIP Email List ({{ vip_count }})</h3>
-        <div class="table-wrap">
-          <table class="styled-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead>
-            <tbody>
-              {% for lead in vip_leads %}
-              <tr>
-                <td>{{ lead[2] }}</td>
-                <td>{{ lead[3] }}</td>
-                <td>
-                  <form method="POST" action="/update-lead/{{ lead[0] }}" class="inline-form">
-                    <select name="status">
-                      <option value="Active" {% if lead[5]|lower == "active" %}selected{% endif %}>Active</option>
-                      <option value="Inactive" {% if lead[5]|lower == "inactive" %}selected{% endif %}>Inactive</option>
-                    </select>
-                    <button type="submit">Save</button>
-                  </form>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="activity-card">
-        <h3>Inquiries ({{ requests_count }})</h3>
-        <div class="table-wrap">
-          <table class="styled-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead>
-            <tbody>
-              {% for lead in inquiry_leads %}
-              <tr>
-                <td>{{ lead[2] }}</td>
-                <td>{{ lead[3] }}</td>
-                <td>
-                  <form method="POST" action="/update-lead/{{ lead[0] }}" class="inline-form">
-                    <select name="status">
-                      <option value="New" {% if lead[5]|lower == "new" %}selected{% endif %}>New</option>
-                      <option value="Responded" {% if lead[5]|lower == "responded" %}selected{% endif %}>Responded</option>
-                      <option value="Closed" {% if lead[5]|lower == "closed" %}selected{% endif %}>Closed</option>
-                    </select>
-                    <button type="submit">Save</button>
-                  </form>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      <article class="activity-card">
-        <h3>Membership Leads ({{ membership_lead_count }})</h3>
-        <div class="table-wrap">
-          <table class="styled-table">
-            <thead><tr><th>Name</th><th>Email</th><th>Status</th></tr></thead>
-            <tbody>
-              {% for lead in membership_leads %}
-              <tr>
-                <td>{{ lead[2] }}</td>
-                <td>{{ lead[3] }}</td>
-                <td>
-                  <form method="POST" action="/update-lead/{{ lead[0] }}" class="inline-form">
-                    <select name="status">
-                      <option value="Active" {% if lead[5]|lower == "active" %}selected{% endif %}>Active</option>
-                      <option value="Inactive" {% if lead[5]|lower == "inactive" %}selected{% endif %}>Inactive</option>
-                    </select>
-                    <button type="submit">Save</button>
-                  </form>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <section>
-    <div class="lead-head">
-      <h2 class="section-title">Lead Log</h2>
-      <input type="text" id="leadSearch" class="lead-search" placeholder="Search lead log...">
-    </div>
-    <div class="kpi-row lead-filter-row">
-      <button class="kpi-box lead-filter-kpi" data-filter="dj" type="button"><h3>DJ / Band</h3><p>{{ dj_count }}</p></button>
-      <button class="kpi-box lead-filter-kpi" data-filter="vip" type="button"><h3>VIP</h3><p>{{ vip_count }}</p></button>
-      <button class="kpi-box lead-filter-kpi" data-filter="inquiry" type="button"><h3>Inquiries</h3><p>{{ requests_count }}</p></button>
-      <button class="kpi-box lead-filter-kpi" data-filter="membership" type="button"><h3>Membership</h3><p>{{ membership_lead_count }}</p></button>
-      <button class="kpi-box lead-filter-kpi" data-filter="all" type="button"><h3>All</h3><p>{{ total_leads }}</p></button>
-    </div>
-    <div class="table-wrap">
-      <table class="styled-table">
-        <thead><tr><th>Type</th><th>Name</th><th>Email</th><th>Details</th><th>Status</th></tr></thead>
-        <tbody id="leadLogBody">
-          {% for lead in leads %}
-          <tr class="lead-row" data-type="{{ lead[1]|lower|trim }}">
-            <td>{{ lead[1] }}</td>
-            <td>{{ lead[2] }}</td>
-            <td>{{ lead[3] }}</td>
-            <td>{{ lead[4] }}</td>
-            <td>{{ lead[5] }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section class="bottom-grid">
-    <article>
-      <h2 class="section-title">Vinyl Vote Leaderboard</h2>
-      <div class="kpi-row vote-row">
-        {% for v in event_votes[:5] %}
-        <div class="kpi-box vote-box">
-          <h3>{{ v[0] }}</h3>
-          <p>{{ v[1] }} votes</p>
-        </div>
-        {% endfor %}
-      </div>
+  <h2 class="section-title">Ticket Breakdown</h2>
+  {% for event_name, totals in event_totals.items() %}
+  <h3 style="color:#d4af37; margin: 0.75rem 0 0.4rem;">{{ event_name }} — {{ totals.count }} sold | ${{ "%.2f"|format(totals.revenue) }}</h3>
+  <div class="event-list">
+    {% for ticket in ticket_data %}
+    {% if ticket[0] == event_name %}
+    <article class="event-card open">
+      <button type="button" class="event-toggle">
+        <span>{{ ticket[1] }}</span>
+        <span>{{ ticket[2] }} sold | ${{ "%.2f"|format(ticket[3]) }}</span>
+      </button>
     </article>
+    {% endif %}
+    {% endfor %}
+  </div>
+  {% endfor %}
 
-    <article>
-      <h2 class="section-title">Event Request Log</h2>
+  <h2 class="section-title">Lead Activity</h2>
+  <div class="activity-grid">
+    <article class="activity-card">
+      <h3>DJ / Band Applications ({{ dj_count }})</h3>
       <div class="table-wrap">
         <table class="styled-table">
-          <thead><tr><th>Request</th><th>Status</th><th>Archived</th><th>Update</th></tr></thead>
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Update</th></tr></thead>
           <tbody>
-            {% for req in event_request_log %}
+            {% for lead in dj_leads %}
             <tr>
-              <td>{{ req[1] }}</td>
-              <td>{{ req[2] }}</td>
-              <td>{{ "Yes" if req[3] == 1 else "No" }}</td>
+              <td>{{ lead[2] }}</td><td>{{ lead[3] }}</td>
+              <td>{{ lead[5] }}</td>
               <td>
-                <form method="POST" action="/update-event-request/{{ req[0] }}" class="inline-form">
+                <form method="POST" action="/update-lead/{{ lead[0] }}">
                   <select name="status">
-                    <option value="New" {% if req[2]|lower == "new" %}selected{% endif %}>New</option>
-                    <option value="Completed" {% if req[2]|lower == "completed" %}selected{% endif %}>Completed</option>
+                    <option {% if lead[5] == "New" %}selected{% endif %}>New</option>
+                    <option {% if lead[5] == "Contacted" %}selected{% endif %}>Contacted</option>
+                    <option {% if lead[5] == "Booked" %}selected{% endif %}>Booked</option>
+                    <option {% if lead[5] == "Declined" %}selected{% endif %}>Declined</option>
                   </select>
-                  <button type="submit">Save</button>
+                  <button class="btn" type="submit">Save</button>
                 </form>
               </td>
             </tr>
@@ -251,153 +105,170 @@
         </table>
       </div>
     </article>
-  </section>
-</div>
+
+    <article class="activity-card">
+      <h3>VIP Email List ({{ vip_count }})</h3>
+      <div class="table-wrap">
+        <table class="styled-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Update</th></tr></thead>
+          <tbody>
+            {% for lead in vip_leads %}
+            <tr>
+              <td>{{ lead[2] }}</td><td>{{ lead[3] }}</td>
+              <td>{{ lead[5] }}</td>
+              <td>
+                <form method="POST" action="/update-lead/{{ lead[0] }}">
+                  <select name="status">
+                    <option {% if lead[5] == "Active" %}selected{% endif %}>Active</option>
+                    <option {% if lead[5] == "Inactive" %}selected{% endif %}>Inactive</option>
+                  </select>
+                  <button class="btn" type="submit">Save</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="activity-card">
+      <h3>Inquiries ({{ requests_count }})</h3>
+      <div class="table-wrap">
+        <table class="styled-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Update</th></tr></thead>
+          <tbody>
+            {% for lead in inquiry_leads %}
+            <tr>
+              <td>{{ lead[2] }}</td><td>{{ lead[3] }}</td>
+              <td>{{ lead[5] }}</td>
+              <td>
+                <form method="POST" action="/update-lead/{{ lead[0] }}">
+                  <select name="status">
+                    <option {% if lead[5] == "New" %}selected{% endif %}>New</option>
+                    <option {% if lead[5] == "Responded" %}selected{% endif %}>Responded</option>
+                    <option {% if lead[5] == "Closed" %}selected{% endif %}>Closed</option>
+                  </select>
+                  <button class="btn" type="submit">Save</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="activity-card">
+      <h3>Membership Leads ({{ membership_lead_count }})</h3>
+      <div class="table-wrap">
+        <table class="styled-table">
+          <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Update</th></tr></thead>
+          <tbody>
+            {% for lead in membership_leads %}
+            <tr>
+              <td>{{ lead[2] }}</td><td>{{ lead[3] }}</td>
+              <td>{{ lead[5] }}</td>
+              <td>
+                <form method="POST" action="/update-lead/{{ lead[0] }}">
+                  <select name="status">
+                    <option {% if lead[5] == "Active" %}selected{% endif %}>Active</option>
+                    <option {% if lead[5] == "Inactive" %}selected{% endif %}>Inactive</option>
+                  </select>
+                  <button class="btn" type="submit">Save</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </article>
+  </div>
+
+  <h2 class="section-title">Lead Log</h2>
+  <div class="kpi-row lead-filter-row">
+    <div class="kpi-box"><h3>DJ / Band</h3><p>{{ dj_count }}</p></div>
+    <div class="kpi-box"><h3>VIP</h3><p>{{ vip_count }}</p></div>
+    <div class="kpi-box"><h3>Inquiries</h3><p>{{ requests_count }}</p></div>
+    <div class="kpi-box"><h3>Membership</h3><p>{{ membership_lead_count }}</p></div>
+    <div class="kpi-box"><h3>All</h3><p>{{ total_leads }}</p></div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="styled-table">
+      <thead><tr><th>Type</th><th>Name</th><th>Email</th><th>Details</th><th>Status</th></tr></thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr>
+          <td>{{ lead[1] }}</td>
+          <td>{{ lead[2] }}</td>
+          <td>{{ lead[3] }}</td>
+          <td>{{ lead[4] }}</td>
+          <td>{{ lead[5] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="section-title">Vinyl Vote Leaderboard</h2>
+  <div class="table-wrap">
+    <table class="styled-table">
+      <thead><tr><th>Event</th><th>Votes</th></tr></thead>
+      <tbody>
+        {% for v in event_votes[:5] %}
+        <tr><td>{{ v[0] }}</td><td>{{ v[1] }} votes</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="section-title">Event Request Log</h2>
+  <div class="table-wrap">
+    <table class="styled-table">
+      <thead><tr><th>Request</th><th>Status</th><th>Archived</th><th>Update</th></tr></thead>
+      <tbody>
+        {% for req in event_request_log %}
+        <tr>
+          <td>{{ req[1] }}</td>
+          <td>{{ req[2] }}</td>
+          <td>{{ "Yes" if req[3] == 1 else "No" }}</td>
+          <td>
+            <form method="POST" action="/update-event-request/{{ req[0] }}">
+              <select name="status">
+                <option {% if req[2] == "New" %}selected{% endif %}>New</option>
+                <option {% if req[2] == "Completed" %}selected{% endif %}>Completed</option>
+              </select>
+              <button class="btn" type="submit">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
 
 <script>
-function normalizeLeadType(raw) {
-  const t = (raw || "").toLowerCase().trim();
-  if (t.includes("dj") || t.includes("band")) return "dj";
-  if (t.includes("vip")) return "vip";
-  if (t.includes("membership")) return "membership";
-  if (t.includes("contact") || t.includes("inquiry")) return "inquiry";
-  return "other";
-}
-
-let activeLeadFilter = "all";
-
-function applyLeadLogFilters() {
-  const search = (document.getElementById("leadSearch").value || "").toLowerCase();
-  document.querySelectorAll(".lead-row").forEach((row) => {
-    const type = normalizeLeadType(row.dataset.type || "");
-    const text = row.innerText.toLowerCase();
-    const matchesType = activeLeadFilter === "all" || type === activeLeadFilter;
-    const matchesSearch = text.includes(search);
-    row.style.display = matchesType && matchesSearch ? "" : "none";
-  });
-}
-
-function setActiveLeadKpi() {
-  document.querySelectorAll(".lead-filter-kpi").forEach((kpi) => {
-    kpi.classList.toggle("active-filter", (kpi.dataset.filter || "all") === activeLeadFilter);
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  document.querySelectorAll(".event-toggle").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const card = btn.closest(".event-card");
-      const isOpen = card.classList.toggle("open");
-      btn.setAttribute("aria-expanded", String(isOpen));
-    });
-  });
-
-  document.getElementById("leadSearch").addEventListener("input", () => {
-    applyLeadLogFilters();
-  });
-
-  document.querySelectorAll(".lead-filter-kpi").forEach((kpi) => {
-    kpi.addEventListener("click", () => {
-      activeLeadFilter = (kpi.dataset.filter || "all").toLowerCase().trim();
-      setActiveLeadKpi();
-      applyLeadLogFilters();
-    });
-  });
-
-  const syncBtn = document.getElementById("squareSyncBtn");
-  const fullSyncBtn = document.getElementById("squareFullSyncBtn");
-  const reportBtn = document.getElementById("squareReportBtn");
-  const syncMessage = document.getElementById("syncMessage");
-  const syncReport = document.getElementById("syncReport");
-
-  function renderReport(payload) {
-    if (!syncReport) return;
-    const lines = [
-      `Mode: ${payload.mode || "n/a"}`,
-      `Seen: ${payload.total_seen ?? 0}`,
-      `Processed: ${payload.processed ?? 0}`,
-      `Tickets: ${payload.tickets ?? 0}`,
-      `Memberships: ${payload.memberships ?? 0}`,
-      `Duplicates: ${payload.duplicates ?? 0}`,
-      `Unmatched: ${payload.unmatched ?? 0}`,
-      "",
-      "Details (first 40):",
-    ];
-    (payload.details || []).forEach((item) => {
-      lines.push(
-        `- ${item.category} | $${((item.amount_cents || 0) / 100).toFixed(2)} | ${item.payment_id || "n/a"} | ${item.ticket_name || ""} | ${item.email || ""} | ${item.note || ""}`
-      );
-    });
-    syncReport.textContent = lines.join("\n");
-    syncReport.hidden = false;
-  }
-
-  async function doSync(url, modeLabel, reloadAfter) {
-    if (syncMessage) syncMessage.textContent = `${modeLabel}...`;
+  async function runSync(url, message) {
+    const msg = document.getElementById("syncMessage");
+    const report = document.getElementById("syncReport");
+    msg.textContent = message;
+    report.hidden = false;
+    report.textContent = "";
     try {
-      const res = await fetch(url, { method: "POST" });
-      const payload = await res.json();
-      if (!res.ok || payload.status !== "ok") {
-        throw new Error(payload.error || "Sync request failed");
-      }
-      if (syncMessage) {
-        syncMessage.textContent = `${modeLabel} complete: processed ${payload.processed}, tickets ${payload.tickets}, memberships ${payload.memberships}, unmatched ${payload.unmatched}.`;
-      }
-      renderReport(payload);
-      if (reloadAfter) {
-        setTimeout(() => window.location.reload(), 900);
-      }
+      const res = await fetch(url, { method: url.includes("report") ? "GET" : "POST" });
+      const data = await res.json();
+      report.textContent = JSON.stringify(data, null, 2);
+      msg.textContent = "Sync action complete.";
     } catch (err) {
-      if (syncMessage) syncMessage.textContent = `Sync failed: ${err.message}`;
+      msg.textContent = "Sync action failed.";
+      report.textContent = String(err);
     }
   }
-
-  syncBtn?.addEventListener("click", async () => {
-    syncBtn.disabled = true;
-    await doSync("/square-sync", "Incremental sync", true);
-    syncBtn.disabled = false;
-  });
-
-  fullSyncBtn?.addEventListener("click", async () => {
-    const ok = window.confirm("Full rebuild sync will reset Square-derived ticket/member counts and rebuild from recent Square payments. Continue?");
-    if (!ok) return;
-    fullSyncBtn.disabled = true;
-    await doSync("/square-sync?mode=full", "Full rebuild sync", true);
-    fullSyncBtn.disabled = false;
-  });
-
-  reportBtn?.addEventListener("click", async () => {
-    if (syncMessage) syncMessage.textContent = "Generating sync preview...";
-    try {
-      const res = await fetch("/square-sync-report");
-      const payload = await res.json();
-      if (!res.ok || payload.status !== "ok") {
-        throw new Error(payload.error || "Preview failed");
-      }
-      if (syncMessage) {
-        syncMessage.textContent = `Preview ready: processed ${payload.processed}, unmatched ${payload.unmatched}, duplicates ${payload.duplicates}.`;
-      }
-      renderReport(payload);
-    } catch (err) {
-      if (syncMessage) syncMessage.textContent = `Preview failed: ${err.message}`;
-    }
-  });
-
-  setActiveLeadKpi();
-  applyLeadLogFilters();
-});
-
-async function updateDashboard() {
-  const res = await fetch("/dashboard-data");
-  const data = await res.json();
-  const ticketCount = document.getElementById("ticket-count");
-  const attendance = document.getElementById("attendance-count");
-  const revenue = document.getElementById("ticket-revenue");
-  if (ticketCount) ticketCount.textContent = data.ticket_count;
-  if (attendance) attendance.textContent = data.attendance;
-  if (revenue) revenue.textContent = "$" + data.revenue;
-}
-
-setInterval(updateDashboard, 5000);
+  document.getElementById("previewSyncBtn")?.addEventListener("click", () => runSync("/square-sync-report", "Running preview sync..."));
+  document.getElementById("syncBtn")?.addEventListener("click", () => runSync("/square-sync", "Running incremental sync..."));
+  document.getElementById("fullSyncBtn")?.addEventListener("click", () => runSync("/square-sync?mode=full", "Running full rebuild sync..."));
 </script>
 {% endblock %}

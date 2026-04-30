@@ -7,6 +7,7 @@ import secrets
 import sqlite3
 import smtplib
 import urllib.parse
+import requests
 from email.mime.text import MIMEText
 from functools import wraps
 from urllib import error as urlerror
@@ -191,6 +192,7 @@ def init_db():
     )
     """)
     ensure_column("event_tickets", "ticket_email_sent_at", "TEXT")
+    ensure_column("event_tickets", "event_name", "TEXT")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS webhook_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -208,6 +210,10 @@ def init_db():
         ("Battle of the DJs", "General Admission", 18, 366),
         ("Battle of the DJs", "VIP Section", 175, 6),
         ("Battle of the DJs", "DJ VIP Section", 200, 3),
+        ("Part 2 - The Quiet Storm Live", "Early Bird", 13, 30),
+        ("Part 2 - The Quiet Storm Live", "General Admission", 18, 366),
+        ("Part 2 - The Quiet Storm Live", "VIP Section", 175, 6),
+        ("Part 2 - The Quiet Storm Live", "DJ VIP Section", 200, 3),
     ]
 
     for event, name, price, max_q in tickets:
@@ -277,30 +283,95 @@ WEB_TICKET_TYPES = {
     "dj_vip_section": {"label": "DJ VIP Section", "amount_cents": 20000},
 }
 
+SQUARE_TO_DB_MAP = {
+    "Battle - Early Bird General": "Early Bird",
+    "Battle - General": "General Admission",
+    "Battle - VIP": "VIP Section",
+    "Battle - VIP DJ Section": "DJ VIP Section",
+    "The Jukebox Circle Membership": "Jukebox Circle Membership",
+}
+
+DISPLAY_NAME_MAP = {
+    "Early Bird": "Early Bird (Limited Discounted Entry)",
+    "General Admission": "General Admission",
+    "VIP Section": "VIP Section (Shaded Booth for 6)",
+    "DJ VIP Section": "DJ VIP Section (Upper Deck Booth for 6)",
+    "Jukebox Circle Membership": "Jukebox Circle Membership",
+}
+
+CANONICAL_TICKET_TYPES = {
+    "Early Bird",
+    "General Admission",
+    "VIP Section",
+    "DJ VIP Section",
+}
+
+
+def extract_square_name(payment):
+    note = (payment.get("note") or "").strip()
+    reference_id = (payment.get("reference_id") or "").strip()
+    receipt_number = (payment.get("receipt_number") or "").strip()
+    blob = " ".join(part for part in (note, reference_id, receipt_number) if part)
+
+    for square_name in SQUARE_TO_DB_MAP.keys():
+        if square_name.lower() in blob.lower():
+            return square_name
+    return note or reference_id or receipt_number or ""
+
+
+def canonical_ticket_type_from_payment(payment):
+    square_name = extract_square_name(payment)
+    mapped = SQUARE_TO_DB_MAP.get(square_name)
+    if mapped in CANONICAL_TICKET_TYPES:
+        return mapped
+    return None
+
+
+def event_name_from_payment(payment):
+    blob = " ".join(
+        str(part).strip().lower()
+        for part in (
+            payment.get("note", ""),
+            payment.get("reference_id", ""),
+            payment.get("receipt_number", ""),
+        )
+        if part
+    )
+    if "quiet storm" in blob:
+        return "Part 2 - The Quiet Storm Live"
+    return "Battle of the DJs"
+
 
 def map_ticket_from_payment(payment):
     """
     Map ticket using Square payment text metadata, not amount.
     """
-    note = (payment.get("note") or "").lower()
-    reference_id = (payment.get("reference_id") or "").lower()
-    receipt_number = (payment.get("receipt_number") or "").lower()
-    blob = f"{note} {reference_id} {receipt_number}".strip()
-
+    square_name = extract_square_name(payment)
+    mapped = SQUARE_TO_DB_MAP.get(square_name)
     print("TICKET MAP SOURCE NOTE:", payment.get("note"))
-    print("TICKET MAP SOURCE BLOB:", blob)
+    print("TICKET MAP SOURCE NAME:", square_name)
+    print("TICKET MAP RESULT:", mapped)
+    if mapped in CANONICAL_TICKET_TYPES:
+        return mapped
+    return None
 
-    if "dj vip" in blob:
-        return "DJ VIP Section"
-    if "early" in blob:
-        return "Early Bird"
-    if "vip" in blob:
-        return "VIP Section"
-    if "general" in blob:
-        return "General Admission"
 
-    # Safe fallback for sandbox/test payments missing metadata.
-    return "General Admission"
+def is_membership_payment_from_payment(payment, amount_cents, note_blob):
+    square_name = extract_square_name(payment)
+    mapped = SQUARE_TO_DB_MAP.get(square_name)
+    if mapped == "Jukebox Circle Membership":
+        return True
+    blob = " ".join(
+        str(part).strip().lower()
+        for part in (
+            payment.get("note", ""),
+            payment.get("reference_id", ""),
+            payment.get("receipt_number", ""),
+            note_blob or "",
+        )
+        if part
+    )
+    return is_membership_payment(amount_cents, blob)
 
 def send_email(subject, body, to_email):
     email_address = (
@@ -442,9 +513,14 @@ def parse_square_payment(webhook_payload):
 
 def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     print("[ticket-create] called")
-    ticket_name = map_ticket_from_payment(payment)
+    square_name = extract_square_name(payment)
+    ticket_name = SQUARE_TO_DB_MAP.get(square_name, square_name)
+    if ticket_name not in CANONICAL_TICKET_TYPES:
+        ticket_name = None
     payment_id = (payment.get("id") or "").strip()
-    print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name}")
+    event_name = event_name_from_payment(payment)
+    print(f"[ticket-create] square_name={square_name}")
+    print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name} event_name={event_name}")
     if not ticket_name or not payment_id:
         print("[ticket-create] skip insert: missing ticket mapping or payment_id")
         return None
@@ -474,8 +550,8 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
             """
             INSERT INTO event_tickets (
                 name, email, ticket_type, amount_cents, ticket_id, status,
-                payment_id, checkin_url, qr_url
-            ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?)
+                payment_id, checkin_url, qr_url, event_name
+            ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?)
             """,
             (
                 full_name,
@@ -486,6 +562,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                 payment_id,
                 checkin_url,
                 qr_url,
+                event_name,
             ),
         )
         cursor.connection.commit()
@@ -540,7 +617,7 @@ def is_membership_payment(amount_cents, note_blob):
 
 
 def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email):
-    if not is_membership_payment(amount_cents, note_blob):
+    if not is_membership_payment_from_payment(payment, amount_cents, note_blob):
         return False
 
     payment_id = (payment.get("id") or "").strip()
@@ -562,11 +639,11 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
 
 
 def classify_square_payment(payment, amount_cents, note_blob):
+    if is_membership_payment_from_payment(payment, amount_cents, note_blob):
+        return "membership", None
     ticket_name = map_ticket_from_payment(payment)
     if ticket_name:
         return "ticket", ticket_name
-    if is_membership_payment(amount_cents, note_blob):
-        return "membership", None
     return "unmatched", None
 
 
@@ -728,7 +805,24 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
             "vip": {"price": 175, "sold": 0, "size": 1},
             "booth": {"price": 200, "sold": 0, "size": 6}
         }
-    }
+    },
+    {
+        "id": 2,
+        "name": "Part 2 - The Quiet Storm Live",
+        "flyer": "/static/images/flyer-part2.jpg",
+        "description": "The Intimate R&B Experience",
+        "ticket_link": "https://square.link/u/p4eAdd8g",
+        "early_link": "https://square.link/u/p4eAdd8g",
+        "ga_link": "https://square.link/u/p4eAdd8g",
+        "vip_link": "https://square.link/u/p4eAdd8g",
+        "booth_link": "https://square.link/u/p4eAdd8g",
+        "tickets": {
+            "early": {"price": 13, "sold": 0, "size": 1},
+            "ga": {"price": 18, "sold": 0, "size": 1},
+            "vip": {"price": 175, "sold": 0, "size": 1},
+            "booth": {"price": 200, "sold": 0, "size": 6}
+        }
+    },
 ]
 
 
@@ -847,8 +941,10 @@ def join_membership():
 # WEBHOOK
 # -------------------------
 @app.route("/webhook/square", methods=["POST"], strict_slashes=False)
+@app.route("/square-webhook", methods=["POST"], strict_slashes=False)
 def square_webhook():
     print("🔥 WEBHOOK HIT")
+    print("=== WEBHOOK START ===")
 
     raw_body = request.get_data(as_text=True)
     print("[headers]:", dict(request.headers))
@@ -868,12 +964,16 @@ def square_webhook():
 
     payment, payment_id, amount_cents, note_blob, email, status = parse_square_payment(data)
     is_duplicate_payment = already_logged_payment(cursor, payment_id) if payment_id else False
+    square_name = extract_square_name(payment)
+    mapped_ticket_type = SQUARE_TO_DB_MAP.get(square_name, square_name)
 
     print("DEBUG STATUS:", status)
     print("DEBUG PAYMENT ID:", payment_id)
     print("DEBUG AMOUNT:", amount_cents)
     print("DEBUG EMAIL:", email)
     print("DEBUG DUPLICATE PAYMENT:", is_duplicate_payment)
+    print("DEBUG SQUARE ITEM NAME:", square_name)
+    print("DEBUG MAPPED TICKET TYPE:", mapped_ticket_type)
 
     cursor.execute(
         """
@@ -892,7 +992,11 @@ def square_webhook():
         print("Missing payment_id; skipping ticket create.")
     elif status == "COMPLETED" and event_type in ("payment.updated", "payment.created"):
         print("CREATING TICKET")
-        ticket_id = create_ticket_from_square_payment(cursor, payment, amount_cents, email)
+        try:
+            ticket_id = create_ticket_from_square_payment(cursor, payment, amount_cents, email)
+        except Exception as exc:
+            print("❌ TICKET INSERT FAILED:", exc)
+            ticket_id = None
         print("TICKET ID:", ticket_id)
         if ticket_id:
             print("SENDING EMAIL")
@@ -916,6 +1020,7 @@ def square_webhook():
 
     conn.commit()
     conn.close()
+    print("=== WEBHOOK END ===")
     return "ignored", 200
 # -------------------------
 # DASHBOARD
@@ -937,64 +1042,62 @@ def dashboard():
             return sold * 6
         return sold
 
-    # Ticket sales + event breakdown
+    # Ticket metrics: always sourced directly from event_tickets
+    test_filter = """
+        (payment_id IS NULL OR (
+            UPPER(payment_id) NOT LIKE '%TEST%'
+            AND UPPER(payment_id) NOT LIKE '%FINAL_TEST%'
+            AND UPPER(payment_id) NOT LIKE '%FREE_TEST%'
+        ))
+    """
+
     cursor.execute(
         """
-        SELECT event_name, ticket_name, price, max_quantity, sold
-        FROM ticket_types
-        ORDER BY event_name, id
+        SELECT COALESCE(event_name, 'Battle of the DJs') as event_name,
+               ticket_type,
+               COUNT(*) as count,
+               COALESCE(SUM(amount_cents), 0) as revenue_cents
+        FROM event_tickets
+        WHERE """ + test_filter + """
+        GROUP BY COALESCE(event_name, 'Battle of the DJs'), ticket_type
+        ORDER BY COALESCE(event_name, 'Battle of the DJs'), ticket_type
         """
     )
-    tickets = cursor.fetchall()
+    ticket_rows = cursor.fetchall()
+    ticket_data = [
+        (row[0], row[1], int(row[2] or 0), round((float(row[3] or 0) / 100.0), 2))
+        for row in ticket_rows
+    ]
+    event_totals = {}
+    for event_name, _ticket_type, count, revenue in ticket_data:
+        if event_name not in event_totals:
+            event_totals[event_name] = {"count": 0, "revenue": 0.0}
+        event_totals[event_name]["count"] += count
+        event_totals[event_name]["revenue"] += revenue
 
-    event_breakdown = {}
-    ticket_count = 0
-    total_attendance = 0
-    ticket_revenue = 0.0
+    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE " + test_filter)
+    total_tickets = int(cursor.fetchone()[0] or 0)
 
-    for event_name, ticket_name, price, max_qty, sold in tickets:
-        price = float(price or 0)
-        sold = int(sold or 0)
-        max_qty = int(max_qty or 0)
-        revenue = round(price * sold, 2)
-        attendance = attendance_units(ticket_name, sold)
+    cursor.execute("SELECT COALESCE(SUM(amount_cents), 0) FROM event_tickets WHERE " + test_filter)
+    total_ticket_revenue = round((float(cursor.fetchone()[0] or 0) / 100.0), 2)
 
-        ticket_count += sold
-        total_attendance += attendance
-        ticket_revenue += revenue
-
-        if event_name not in event_breakdown:
-            event_breakdown[event_name] = {
-                "total_tickets": 0,
-                "total_attendance": 0,
-                "total_revenue": 0.0,
-                "tickets": [],
-            }
-
-        event_breakdown[event_name]["total_tickets"] += sold
-        event_breakdown[event_name]["total_attendance"] += attendance
-        event_breakdown[event_name]["total_revenue"] += revenue
-        event_breakdown[event_name]["tickets"].append(
-            {
-                "name": ticket_name,
-                "sold": sold,
-                "max": max_qty,
-                "revenue": revenue,
-                "attendance": attendance,
-            }
-        )
+    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE status = 'checked_in' AND " + test_filter)
+    checked_in_count = int(cursor.fetchone()[0] or 0)
 
     # Membership metrics
     cursor.execute(
         """
-        SELECT COUNT(*), SUM(amount)
-        FROM memberships
-        WHERE LOWER(status) = 'active'
+        SELECT COUNT(*), SUM(amount_cents)
+        FROM square_payment_log
+        WHERE LOWER(category) = 'membership'
         """
     )
-    membership_count, membership_revenue = cursor.fetchone()
-    membership_count = membership_count or 0
-    membership_revenue = float(membership_revenue or 0)
+    membership_count, membership_revenue_cents = cursor.fetchone()
+    membership_count = int(membership_count or 0)
+    membership_revenue = round((float(membership_revenue_cents or 0) / 100.0), 2)
+    print("DASHBOARD memberships source: square_payment_log (category=membership)")
+    print("DASHBOARD memberships count:", membership_count)
+    print("DASHBOARD memberships revenue:", membership_revenue)
 
     # Lead activity
     cursor.execute(
@@ -1043,10 +1146,31 @@ def dashboard():
     )
     event_request_log = cursor.fetchall()
 
+    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE " + test_filter)
+    print("DASHBOARD event_tickets COUNT:", cursor.fetchone()[0])
+    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE " + test_filter)
+    total = cursor.fetchone()[0]
+    print("TOTAL TICKETS (BACKEND):", total)
+
+    cursor.execute("SELECT COUNT(*) FROM square_payment_log")
+    print("DASHBOARD payment_log COUNT:", cursor.fetchone()[0])
+
+    cursor.execute(
+        """
+        SELECT ticket_type, COUNT(*)
+        FROM event_tickets
+        WHERE """ + test_filter + """
+        GROUP BY ticket_type
+        """
+    )
+    print("DASHBOARD ticket breakdown:", cursor.fetchall())
+
     conn.close()
 
-    total_revenue = round(ticket_revenue + membership_revenue, 2)
-    ticket_revenue = round(ticket_revenue, 2)
+    ticket_count = total_tickets
+    total_attendance = checked_in_count
+    ticket_revenue = total_ticket_revenue
+    total_revenue = round(total_ticket_revenue + membership_revenue, 2)
     membership_revenue = round(membership_revenue, 2)
 
     return render_template(
@@ -1055,11 +1179,14 @@ def dashboard():
         ticket_count=ticket_count,
         total_attendance=total_attendance,
         ticket_revenue=ticket_revenue,
+        total_tickets=total_tickets,
+        total_checked_in=checked_in_count,
         membership_count=membership_count,
         membership_revenue=membership_revenue,
         total_revenue=total_revenue,
-        # Event details
-        event_breakdown=event_breakdown,
+        # Ticket details from event_tickets
+        ticket_data=ticket_data,
+        event_totals=event_totals,
         # Lead activity + lead log
         dj_count=len(dj_leads),
         vip_count=len(vip_leads),
@@ -1279,6 +1406,22 @@ def event_detail(event_name):
             WHERE LOWER(event_name) = ?
         """, (event_name,))
         tickets = cursor.fetchall()
+        sold_lookup = {}
+        for ticket_name, _price, _quantity, _sold in tickets:
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM event_tickets
+                WHERE ticket_type = ?
+                  AND COALESCE(event_name, 'Battle of the DJs') = ?
+                  AND (payment_id IS NULL OR (
+                        UPPER(payment_id) NOT LIKE 'FREE_TEST_%'
+                    AND UPPER(payment_id) NOT LIKE 'TEST_%'
+                  ))
+                """,
+                (ticket_name, event["name"]),
+            )
+            sold_lookup[ticket_name] = int(cursor.fetchone()[0] or 0)
 
     except Exception as e:
         conn.close()
@@ -1287,6 +1430,7 @@ def event_detail(event_name):
     ticket_data = []
 
     for name, price, quantity, sold in tickets:
+        sold = sold_lookup.get(name, 0)
         remaining = quantity - sold
 
         ticket_data.append({
@@ -1301,10 +1445,20 @@ def event_detail(event_name):
 
     conn.close()
 
+    is_quiet_storm = event["name"] == "Part 2 - The Quiet Storm Live"
+    hero_flyer_url = event.get("flyer", "")
+    if isinstance(hero_flyer_url, str) and hero_flyer_url.startswith("/static/"):
+        hero_flyer_url = hero_flyer_url
+    else:
+        hero_flyer_url = url_for("static", filename=hero_flyer_url)
+
     return render_template(
         "event_detail.html",
         event=event,
         ticket_data=ticket_data,
+        display_name_map=DISPLAY_NAME_MAP,
+        is_quiet_storm=is_quiet_storm,
+        hero_flyer_url=hero_flyer_url,
     )
 
 @app.route("/check-tickets")
@@ -1628,7 +1782,34 @@ def run_backfill():
     Temporary admin route to backfill completed Square payments into event_tickets
     using the same database file as the Flask app.
     """
-    payments = square_list_payments(limit=100)
+    print("=== BACKFILL DEBUG START ===")
+
+    print("TOKEN EXISTS:", bool(os.getenv("SQUARE_ACCESS_TOKEN")))
+    print("LOCATION:", os.getenv("SQUARE_LOCATION_ID"))
+
+    url = "https://connect.squareup.com/v2/payments"
+
+    headers = {
+        "Authorization": f"Bearer {os.getenv('SQUARE_ACCESS_TOKEN')}",
+        "Content-Type": "application/json"
+    }
+
+    params = {
+        "location_id": os.getenv("SQUARE_LOCATION_ID"),
+        "limit": 100
+    }
+
+    response = requests.get(url, headers=headers, params=params)
+
+    print("STATUS CODE:", response.status_code)
+    print("RAW RESPONSE:", response.text[:500])  # first 500 chars
+
+    data = response.json()
+    payments = data.get("payments", [])
+
+    print("PAYMENTS FOUND:", len(payments))
+    print("=== BACKFILL DEBUG END ===")
+
     db_path = os.path.join(os.path.dirname(__file__), "database.db")
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
@@ -1682,6 +1863,38 @@ def run_backfill():
     conn.commit()
     conn.close()
     return f"Backfill complete. Created: {created}, Skipped duplicates: {skipped}", 200
+
+
+@app.route("/admin/rebuild-ticket-data", methods=["POST"])
+@requires_auth
+def rebuild_ticket_data():
+    """
+    One-click cleanup + resync for ticket/membership metrics.
+    Clears derived ticket rows and ticket/membership payment logs, then re-syncs from Square.
+    """
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM event_tickets")
+    cursor.execute("DELETE FROM square_payment_log WHERE category IN ('ticket','membership')")
+    cursor.execute("UPDATE ticket_types SET sold = 0")
+    conn.commit()
+    conn.close()
+
+    summary = sync_square_payments(
+        limit=SQUARE_SYNC_LIMIT,
+        full_resync=False,
+        include_diagnostics=True,
+    )
+    return {
+        "status": "ok",
+        "message": "Rebuild complete",
+        "processed": summary["processed"],
+        "tickets": summary["tickets"],
+        "memberships": summary["memberships"],
+        "duplicates": summary["duplicates"],
+        "unmatched": summary["unmatched"],
+        "details": summary["details"],
+    }, 200
 # -------------------------
 # RUN
 # -------------------------

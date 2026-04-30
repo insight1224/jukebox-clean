@@ -88,8 +88,9 @@
 
 .poster-grid {
     display: flex;
-    justify-content: center;
     gap: 25px;
+    justify-content: center;
+    align-items: flex-start;
     flex-wrap: wrap;
 }
 
@@ -103,7 +104,6 @@
     border: 1px solid rgba(255,255,255,0.08);
 
     text-align: center;
-
     transition: 0.3s ease;
 }
 
@@ -127,6 +127,9 @@
 
 .poster-image-wrapper img {
     width: 100%;
+    aspect-ratio: 4 / 5;
+    object-fit: contain;
+    background: #0b0b0b;
     display: block;
     transition: 0.3s ease;
 }

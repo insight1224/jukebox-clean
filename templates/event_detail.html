@@ -4,16 +4,24 @@
 
 <link rel="stylesheet" href="{{ url_for('static', filename='event_detail.css') }}">
 <!-- 🔥 HERO SECTION -->
-<section class="event-hero">
+<section class="event-hero" style="background-image: url('{{ hero_flyer_url }}');">
 
     <div class="hero-overlay">
 
         <div class="hero-content">
 
+            {% if is_quiet_storm %}
+            <h1>The Quiet Storm Live</h1>
+            {% else %}
             <h1>{{ event["name"] }}</h1>
+            {% endif %}
 
             <p class="hero-description">
+                {% if is_quiet_storm %}
+                The Quiet Storm Live is an intimate R&B experience featuring smooth sounds, curated vibes, and an upscale atmosphere designed for music lovers who appreciate the essence of soul.
+                {% else %}
                 {{ event["description"] }}
+                {% endif %}
             </p>
 
         </div>
@@ -26,6 +34,14 @@
 <section class="ticket-section">
 
 <div class="ticket-grid">
+    {% if is_quiet_storm %}
+    <div class="ticket-box">
+        <h3>General Admission</h3>
+        <p>Access to The Quiet Storm Live experience.</p>
+        <p>${{ "%.2f"|format(12) }}</p>
+        <a class="btn" href="https://square.link/u/p4eAdd8g" target="_blank" rel="noopener noreferrer">Get Tickets</a>
+    </div>
+    {% else %}
     {% for t in ticket_data %}
 
     <div class="ticket-box
@@ -36,17 +52,7 @@
 
         <!-- TITLE -->
         <h3>
-            {% if t.name == "Early Bird" %}
-                Early Bird (Limited Discounted Entry)
-            {% elif t.name == "General Admission" %}
-                General Admission
-            {% elif t.name == "VIP Section" %}
-                VIP Section (Shaded Booth for 6)
-            {% elif t.name == "DJ VIP Section" %}
-                DJ VIP Section (Upper Deck Booth for 6)
-            {% else %}
-                {{ t.name }}
-            {% endif %}
+            {{ display_name_map.get(t.name, t.name) }}
         </h3>
 
         <!-- DESCRIPTION -->
@@ -87,6 +93,7 @@
     </div>
 
     {% endfor %}
+    {% endif %}
 
 </div>
 

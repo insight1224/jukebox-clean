@@ -21,13 +21,17 @@
         <a href="{{ url_for('event_detail', event_name=event.name) }}" class="card-link">
 
             <!-- FLYER -->
-            <img src="{{ url_for('static', filename='images/battle1.jpg') }}" alt="{{ event.name }}">
+            {% if event.flyer.startswith('/static/') %}
+            <img src="{{ event.flyer }}" alt="{{ event.name }}">
+            {% else %}
+            <img src="{{ url_for('static', filename=event.flyer) }}" alt="{{ event.name }}">
+            {% endif %}
 
             <!-- OVERLAY -->
             <div class="premium-overlay">
                 <div class="premium-content">
 
-                    <h3>{{ event.name }}</h3>
+                    <h3>{% if event.name == "Part 2 - The Quiet Storm Live" %}Quiet Storm Live{% else %}{{ event.name }}{% endif %}</h3>
 
                     <!-- SAFE META (NO DB DEPENDENCY) -->
                     <div class="meta">
