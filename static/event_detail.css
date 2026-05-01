@@ -196,6 +196,68 @@ font-size: 13px;
 .event-details p {
     margin: 5px 0;
 }
+
+.event-card {
+    background: #111;
+    padding: 25px;
+    border-radius: 12px;
+    text-align: center;
+    max-width: 500px;
+    margin: 30px auto 0;
+    color: #fff;
+    border: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.event-title {
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+.event-subtitle {
+    font-size: 16px;
+    color: #ccc;
+    margin-bottom: 20px;
+}
+
+.event-info {
+    margin-top: 20px;
+}
+
+.info-block {
+    margin-bottom: 20px;
+}
+
+.btn-primary {
+    display: block;
+    margin-top: 20px;
+    padding: 14px;
+    background: #D4AF37;
+    color: #000;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 700;
+}
+
+.btn-primary:hover {
+    background: #FFD700;
+}
+
+.event-actions {
+    margin-top: 15px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    gap: 12px;
+}
+
+.event-actions a {
+    color: #ccc;
+    text-decoration: none;
+}
+
+.event-actions a:hover {
+    color: #D4AF37;
+}
 .price {
     font-size: 28px;
     font-weight: 600;
@@ -246,5 +308,19 @@ font-size: 13px;
 
     .event-details {
         padding: 15px;
+    }
+
+    .event-card {
+        padding: 20px;
+    }
+
+    .event-actions {
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .btn-primary {
+        width: 100%;
     }
 }

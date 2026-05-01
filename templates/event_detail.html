@@ -24,86 +24,86 @@
                 {% endif %}
             </p>
 
-            <div class="event-details">
-                <h3>Event Details</h3>
-                <p><strong>Time:</strong> {{ event["event_details"]["time"] }}</p>
-                <p><strong>Doors Open:</strong> {{ event["event_details"]["doors_open"] }}</p>
-                <p><strong>Location:</strong> {{ event["event_details"]["location"] }}</p>
-            </div>
-
         </div>
 
     </div>
 
 </section>
 
-<!-- 🎟️ TICKETS -->
 <section class="ticket-section">
-
-<div class="ticket-grid">
-    {% if is_quiet_storm %}
-    <div class="ticket-box">
-        <h3>General Admission</h3>
-        <p>Access to The Quiet Storm Live experience.</p>
-        <p>${{ "%.2f"|format(12) }}</p>
-        <a class="btn" href="https://square.link/u/p4eAdd8g" target="_blank" rel="noopener noreferrer">Get Tickets</a>
-    </div>
-    {% else %}
-    {% for t in ticket_data %}
-
-    <div class="ticket-box
-        {% if t.name == 'Early Bird' %}highlight{% endif %}
-        {% if t.name == 'VIP Section' %}vip{% endif %}
-        {% if t.name == 'DJ VIP Section' %}ultra{% endif %}
-    ">
-
-        <!-- TITLE -->
-        <h3>
-            {{ display_name_map.get(t.name, t.name) }}
-        </h3>
-
-        <!-- DESCRIPTION -->
-        <p>
-            {% if t.name == "Early Bird" %}
-                Enjoy access to the event with standing room on the lawn. This ticket is perfect for guests who want a casual, open-air experience.
-            {% elif t.name == "General Admission" %}
-                Enjoy access to the event with standing room on the lawn and full freedom to move around and enjoy the vibe.
-            {% elif t.name == "VIP Section" %}
-                Upgrade your experience with a reserved VIP booth in a shaded area for up to six guests.
-            {% elif t.name == "DJ VIP Section" %}
-                Reserved booth behind the DJ with an elevated view. Seating for six guests. Not shaded.
-            {% endif %}
-        </p>
-
-        <!-- PRICE -->
-	<p>${{ "%.2f"|format(t.price) }}</p>
-
-        <!-- ALMOST GONE -->
-        {% if t.almost_gone %}
-            <p class="tag">🔥 Almost Gone</p>
+    <div class="event-card">
+        <h2 class="event-title">{{ event.name }}</h2>
+        {% if is_quiet_storm %}
+        <p class="event-subtitle">{{ event.description }}</p>
         {% endif %}
+        <div class="event-info">
+            <div class="info-block">
+                <p>📍 <strong>Location</strong></p>
+                <p>{{ event.location }}</p>
+            </div>
+            <div class="info-block">
+                <p>🕒 <strong>Date & Time</strong></p>
+                <p>{{ event.event_datetime }}</p>
+                <p>Doors Open: {{ event.doors }}</p>
+            </div>
+            <div class="info-block">
+                <p>🎟️ <strong>Tickets</strong></p>
+                <p>{{ event.ticket_label }}</p>
+            </div>
+        </div>
+        <div class="event-actions">
+            <a href="{{ event.map_link }}" target="_blank" rel="noopener noreferrer">📍 View Map</a>
+            <a href="#" class="calendar-btn">📅 Add to Calendar</a>
+        </div>
+    </div>
+</section>
 
-        {% if t.sold_out %}
-            <span class="btn disabled">Sold Out</span>
+<section class="ticket-section">
+    <div class="ticket-grid">
+        {% if is_quiet_storm %}
+        <div class="ticket-box">
+            <h3>General Admission</h3>
+            <p>Access to The Quiet Storm Live experience.</p>
+            <p>${{ "%.2f"|format(12) }}</p>
+            <a class="btn" href="https://square.link/u/p4eAdd8g" target="_blank" rel="noopener noreferrer">Get Tickets</a>
+        </div>
         {% else %}
-            {% if t.name == "Early Bird" %}
+        {% for t in ticket_data %}
+        <div class="ticket-box
+            {% if t.name == 'Early Bird' %}highlight{% endif %}
+            {% if t.name == 'VIP Section' %}vip{% endif %}
+            {% if t.name == 'DJ VIP Section' %}ultra{% endif %}
+        ">
+            <h3>{{ display_name_map.get(t.name, t.name) }}</h3>
+            <p>
+                {% if t.name == "Early Bird" %}
+                Enjoy access to the event with standing room on the lawn. This ticket is perfect for guests who want a casual, open-air experience.
+                {% elif t.name == "General Admission" %}
+                Enjoy access to the event with standing room on the lawn and full freedom to move around and enjoy the vibe.
+                {% elif t.name == "VIP Section" %}
+                Upgrade your experience with a reserved VIP booth in a shaded area for up to six guests.
+                {% elif t.name == "DJ VIP Section" %}
+                Reserved booth behind the DJ with an elevated view. Seating for six guests. Not shaded.
+                {% endif %}
+            </p>
+            <p>${{ "%.2f"|format(t.price) }}</p>
+            {% if t.sold_out %}
+            <span class="btn disabled">Sold Out</span>
+            {% else %}
+                {% if t.name == "Early Bird" %}
                 <a class="btn" href="{{ event.early_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
-            {% elif t.name == "General Admission" %}
+                {% elif t.name == "General Admission" %}
                 <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
-            {% elif t.name == "VIP Section" %}
+                {% elif t.name == "VIP Section" %}
                 <a class="btn vip-btn" href="{{ event.vip_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
-            {% elif t.name == "DJ VIP Section" %}
+                {% elif t.name == "DJ VIP Section" %}
                 <a class="btn ultra-btn" href="{{ event.booth_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
+                {% endif %}
             {% endif %}
+        </div>
+        {% endfor %}
         {% endif %}
-
     </div>
-
-    {% endfor %}
-    {% endif %}
-
-</div>
-
 </section>
 
 {% endblock %}

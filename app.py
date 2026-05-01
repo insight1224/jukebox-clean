@@ -787,18 +787,24 @@ events_data = [
     {
         "id": 1,
         "name": "Battle of the DJs",
-        "flyer": "images/battle1.jpg",
+        "flyer": "images/flyer-part1.jpg",
         "description": """Step into an elevated indoor/outdoor experience at Battle of the DJs — where top talent goes head-to-head, delivering high-energy sets and unforgettable vibes all night long. Expect great music, curated energy, and a crowd that knows how to move.
 
 In the event of unfavorable weather conditions, the experience will be rescheduled. All tickets will remain valid for the new date, with options available for transfer or refund.
 
 This is an exclusive 30+ event. Valid government-issued ID is required for entry. Guests who do not meet the age requirement will be denied entry at the door. No refunds will be issued.""",
-        "event_details": {
-            "time": "3:00 PM - 8:00 PM",
-            "doors_open": "3:00 PM",
-            "location": "923 East Main Street, Durham, NC (Kore)",
-        },
+        "ticket_link": "https://square.link/u/Y9p9XqJo?src=sheet",
+        "event_datetime": "Sunday, May 17, 2026",
+        "location": "923 East Main Street, Durham, NC (Kore)",
+        "time": "3:00 PM - 8:00 PM",
+        "doors": "3:00 PM",
+        "ticket_label": "Multiple Ticket Options",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=923+East+Main+Street+Durham+NC",
+        "description_long": """Step into an elevated indoor/outdoor experience at Battle of the DJs — where top talent goes head-to-head, delivering high-energy sets and unforgettable vibes all night long. Expect great music, curated energy, and a crowd that knows how to move.
 
+In the event of unfavorable weather conditions, the experience will be rescheduled. All tickets will remain valid for the new date, with options available for transfer or refund.
+
+This is an exclusive 30+ event. Valid government-issued ID is required for entry. Guests who do not meet the age requirement will be denied entry at the door. No refunds will be issued.""",
         "early_link": "https://square.link/u/EyY0RvTh?src=sheet",
         "ga_link": "https://square.link/u/Y9p9XqJo?src=sheet",
         "vip_link": "https://square.link/u/ikIAImYb?src=sheet",
@@ -813,15 +819,16 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
     },
     {
         "id": 2,
-        "name": "Part 2 - The Quiet Storm Live",
+        "name": "The Quiet Storm Live",
         "flyer": "/static/images/flyer-part2.jpg",
         "description": "The Intimate R&B Experience",
-        "event_details": {
-            "time": "7:00 PM - 9:00 PM",
-            "doors_open": "6:30 PM",
-            "location": "345 Blackwell St, Durham, NC (ALOFT Durham Downtown)",
-        },
         "ticket_link": "https://square.link/u/p4eAdd8g",
+        "event_datetime": "Thursday, June 11, 2026",
+        "location": "345 Blackwell St, Durham, NC (ALOFT Durham Downtown)",
+        "time": "7:00 PM - 9:00 PM",
+        "doors": "6:30 PM",
+        "ticket_label": "General Admission",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=345+Blackwell+St+Durham+NC",
         "early_link": "https://square.link/u/p4eAdd8g",
         "ga_link": "https://square.link/u/p4eAdd8g",
         "vip_link": "https://square.link/u/p4eAdd8g",
@@ -1455,7 +1462,7 @@ def event_detail(event_name):
 
     conn.close()
 
-    is_quiet_storm = event["name"] == "Part 2 - The Quiet Storm Live"
+    is_quiet_storm = event["name"] == "The Quiet Storm Live"
     hero_flyer_url = event.get("flyer", "")
     if isinstance(hero_flyer_url, str) and hero_flyer_url.startswith("/static/"):
         hero_flyer_url = hero_flyer_url
