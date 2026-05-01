@@ -183,6 +183,19 @@ font-size: 13px;
     line-height: 1.6;
     width: 100%;              /* 👈 stretch across */
 }
+
+.event-details {
+    margin-top: 30px;
+    text-align: center;
+}
+
+.event-details h3 {
+    margin-bottom: 10px;
+}
+
+.event-details p {
+    margin: 5px 0;
+}
 .price {
     font-size: 28px;
     font-weight: 600;
@@ -229,5 +242,9 @@ font-size: 13px;
     .ticket-box {
         width: 100%;
         max-width: 360px;
+    }
+
+    .event-details {
+        padding: 15px;
     }
 }

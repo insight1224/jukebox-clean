@@ -793,6 +793,11 @@ events_data = [
 In the event of unfavorable weather conditions, the experience will be rescheduled. All tickets will remain valid for the new date, with options available for transfer or refund.
 
 This is an exclusive 30+ event. Valid government-issued ID is required for entry. Guests who do not meet the age requirement will be denied entry at the door. No refunds will be issued.""",
+        "event_details": {
+            "time": "3:00 PM - 8:00 PM",
+            "doors_open": "3:00 PM",
+            "location": "923 East Main Street, Durham, NC (Kore)",
+        },
 
         "early_link": "https://square.link/u/EyY0RvTh?src=sheet",
         "ga_link": "https://square.link/u/Y9p9XqJo?src=sheet",
@@ -811,6 +816,11 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
         "name": "Part 2 - The Quiet Storm Live",
         "flyer": "/static/images/flyer-part2.jpg",
         "description": "The Intimate R&B Experience",
+        "event_details": {
+            "time": "7:00 PM - 9:00 PM",
+            "doors_open": "6:30 PM",
+            "location": "345 Blackwell St, Durham, NC (ALOFT Durham Downtown)",
+        },
         "ticket_link": "https://square.link/u/p4eAdd8g",
         "early_link": "https://square.link/u/p4eAdd8g",
         "ga_link": "https://square.link/u/p4eAdd8g",
