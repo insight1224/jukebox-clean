@@ -6,7 +6,7 @@
     <title>{% block title %}The Jukebox Lounge NC{% endblock %}</title>
     {% set default_og_title = "The Jukebox Lounge NC" %}
     {% set default_og_description = "Old school R&B. Premium crowd. Unmatched energy." %}
-    {% set default_og_image = request.url_root.rstrip('/') + url_for('static', filename='images/battle1.jpg') %}
+    {% set default_og_image = request.url_root.rstrip('/') + url_for('static', filename='images/hero.jpg') %}
     <meta name="description" content="{% block meta_description %}{{ default_og_description }}{% endblock %}" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="{% block og_title %}{{ default_og_title }}{% endblock %}" />
