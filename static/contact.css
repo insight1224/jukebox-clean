@@ -152,6 +152,46 @@
         width: 100%;
     }
 }
+
+@media (max-width: 768px) {
+    .contact-grid {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .contact-box {
+        width: 100%;
+        max-width: 100%;
+        flex: none;
+    }
+
+    .contact-form {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .contact-form input,
+    .contact-form textarea {
+        width: 100%;
+    }
+}
+
+/* Final mobile override lock */
+@media (max-width: 768px) {
+    form.contact-form {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 15px !important;
+    }
+
+    form.contact-form input,
+    form.contact-form textarea {
+        width: 100% !important;
+    }
+}
 .social-section {
     text-align: center;
     margin-top: 50px;

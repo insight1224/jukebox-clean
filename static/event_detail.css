@@ -188,3 +188,46 @@ font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.5px;
 }
+
+/* Responsive overrides */
+.event-hero {
+    background-position: top center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.hero-content h1 {
+    font-size: clamp(28px, 6vw, 48px);
+}
+
+.hero-description {
+    font-size: clamp(15px, 2.6vw, 18px);
+}
+
+.ticket-grid {
+    padding: 0 12px;
+}
+
+.ticket-box {
+    width: min(300px, 100%);
+}
+
+@media (max-width: 768px) {
+    .event-hero {
+        min-height: 320px;
+        height: 52vh;
+    }
+
+    .hero-content {
+        padding: 20px 16px;
+    }
+
+    .ticket-section {
+        padding: 36px 12px;
+    }
+
+    .ticket-box {
+        width: 100%;
+        max-width: 360px;
+    }
+}

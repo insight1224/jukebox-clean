@@ -3,7 +3,7 @@
 ========================= */
 
 .hero {
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -17,12 +17,13 @@
 
     background-repeat: no-repeat;
     background-position: center;
-    background-size: 1200px; /* adjust size */
+    background-size: min(1200px, 92vw); /* adjust size */
     opacity: 1;
+    padding: 24px 16px;
 }
 
 .hero h1 {
-    font-size: 60px;
+    font-size: clamp(34px, 7vw, 60px);
     color: #D4AF37;
     letter-spacing: 4px;
     text-shadow: 0 0 25px rgba(212,175,55,0.35);
@@ -31,7 +32,7 @@
 
 .hero p {
     color: #bdbdbd;
-    font-size: 18px;
+    font-size: clamp(15px, 2.6vw, 18px);
     padding-bottom: 5px;
     margin-bottom: 0;
 }
@@ -92,11 +93,13 @@
     justify-content: center;
     align-items: flex-start;
     flex-wrap: wrap;
+    width: 100%;
+    padding: 0 16px;
 }
 
 /* POSTER CARD */
 .poster-card {
-    width: 320px;
+    width: min(320px, 100%);
     background: #111;
     border-radius: 14px;
     padding: 20px;
@@ -180,11 +183,48 @@
     }
 
     .poster-card {
-        width: 90%;
+        width: 100%;
     }
 
     .social-icons {
         gap: 20px;
+    }
+
+
+    .experience-box {
+        text-align: center;
+        padding: 20px;
+    }
+
+    .experience-box ul {
+        list-style-position: inside;
+        padding: 0;
+    }
+
+    .experience-box li {
+        text-align: center;
+    }
+
+    .experience-features p {
+        text-align: center;
+    }
+}
+
+/* Final mobile override lock */
+@media (max-width: 768px) {
+    .experience-box {
+        text-align: center !important;
+        padding: 20px !important;
+    }
+
+    .experience-box ul {
+        list-style-position: inside !important;
+        padding: 0 !important;
+    }
+
+    .experience-box li,
+    .experience-features p {
+        text-align: center !important;
     }
 }
 /* EXPERIENCE SECTION */
@@ -1909,14 +1949,22 @@ body.flash {
 /* ---------- Mobile cleanup overrides ---------- */
 @media (max-width: 900px) {
     .jukebox-stage {
-        flex-direction: column;
-        gap: 14px;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
         padding: 18px 12px;
     }
 
+    .jukebox-center {
+        width: min(240px, 56vw);
+    }
+
     .speaker {
-        width: min(220px, 100%);
-        height: 88px;
+        width: 72px;
+        min-width: 72px;
+        height: 160px;
     }
 
     .music-player-box {

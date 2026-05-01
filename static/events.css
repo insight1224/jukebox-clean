@@ -7,7 +7,7 @@
     justify-content: center;
     flex-wrap: wrap;
     gap: 25px;
-    padding: 40px;
+    padding: 24px 16px;
 }
 
 /* =========================
@@ -15,8 +15,8 @@
 ========================= */
 
 .premium-card {
-    width: 280px;
-    height: 420px;
+    width: min(280px, 100%);
+    height: min(420px, 70vh);
     position: relative;
     border-radius: 14px;
     overflow: hidden;
@@ -114,9 +114,10 @@
     margin-top: 80px;
 }
 .interest-box {
-    margin: 100px auto;
+    margin: 56px auto;
     padding: 50px 40px;
     max-width: 700px;
+    width: min(700px, calc(100% - 24px));
     text-align: center;
 
     background: linear-gradient(145deg, #0c0c0c, #1a1a1a);
@@ -266,6 +267,24 @@
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
+    justify-content: center;
+}
+
+@media (max-width: 768px) {
+    .premium-row {
+        padding: 18px 12px;
+        gap: 14px;
+    }
+
+    .premium-card {
+        width: 100%;
+        max-width: 340px;
+        height: 360px;
+    }
+
+    .interest-box {
+        padding: 26px 16px;
+    }
 }
 
 .vinyl-card {
