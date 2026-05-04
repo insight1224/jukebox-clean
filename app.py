@@ -265,7 +265,7 @@ init_db()   # ✅ AFTER function exists
 # EMAIL CONFIG
 # -------------------------
 SQUARE_SIGNATURE_KEY = os.getenv("SQUARE_SIGNATURE_KEY", "")
-SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOOK_URL", "")
+SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOUK_URL", "")
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "")
 SQUARE_ENV = os.getenv("SQUARE_ENV", "sandbox").lower()
 SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "")
@@ -1878,6 +1878,46 @@ def rebuild_ticket_data():
     One-click cleanup + resync for ticket/membership metrics.
     Clears derived ticket rows and ticket/membership payment logs, then re-syncs from Square.
     """
+    # Temporary Square backfill pull (past payments)
+    square_access_token = os.getenv("SQUARE_ACCESS_TOKEN", "").strip()
+    if square_access_token:
+        try:
+            url = "https://connect.squareup.com/v2/payments"
+            headers = {
+                "Authorization": f"Bearer {square_access_token}",
+                "Content-Type": "application/json",
+            }
+            response = requests.get(url, headers=headers, timeout=20)
+            data = response.json()
+            payments = data.get("payments", []) or []
+
+            backfill_conn = sqlite3.connect("database.db")
+            backfill_cursor = backfill_conn.cursor()
+            for p in payments:
+                payment_id = (p.get("id") or "").strip()
+                amount = int((p.get("amount_money", {}) or {}).get("amount") or 0)
+                if not payment_id:
+                    continue
+
+                backfill_cursor.execute(
+                    "SELECT 1 FROM square_payment_log WHERE payment_id = ?",
+                    (payment_id,),
+                )
+                if backfill_cursor.fetchone():
+                    continue
+
+                backfill_cursor.execute(
+                    """
+                    INSERT INTO square_payment_log (payment_id, category, amount_cents, created_at)
+                    VALUES (?, 'ticket', ?, CURRENT_TIMESTAMP)
+                    """,
+                    (payment_id, amount),
+                )
+            backfill_conn.commit()
+            backfill_conn.close()
+        except Exception as e:
+            print("[rebuild/backfill] error:", e)
+
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
     cursor.execute("DELETE FROM event_tickets")
