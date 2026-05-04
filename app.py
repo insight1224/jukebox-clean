@@ -1871,7 +1871,7 @@ def run_backfill():
     return f"Backfill complete. Created: {created}, Skipped duplicates: {skipped}", 200
 
 
-@app.route("/admin/rebuild-ticket-data", methods=["POST"])
+@app.route("/admin/rebuild-ticket-data", methods=["GET", "POST"])
 @requires_auth
 def rebuild_ticket_data():
     """
