@@ -1860,23 +1860,29 @@ def tickets_purchase():
 @app.route("/checkin/<ticket_id>")
 def checkin(ticket_id):
     import sqlite3
+    from urllib.parse import unquote
     normalized_ticket_id = (ticket_id or "").strip()
+    normalized_ticket_id = unquote(normalized_ticket_id)
     if "/checkin/" in normalized_ticket_id:
         normalized_ticket_id = normalized_ticket_id.split("/checkin/")[-1].strip()
     normalized_ticket_id = normalized_ticket_id.split("?")[0].strip().strip("/")
-    print("CHECKING TICKET:", normalized_ticket_id)
+    print("SCANNING:", normalized_ticket_id)
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    cursor.execute("SELECT status FROM event_tickets WHERE ticket_id = ?", (normalized_ticket_id,))
+    cursor.execute(
+        "SELECT id, ticket_id, status, payment_id, created_at FROM event_tickets WHERE ticket_id = ?",
+        (normalized_ticket_id,),
+    )
     row = cursor.fetchone()
+    print("FOUND IN DB:", row)
 
     if not row:
         conn.close()
         return render_template("checkin_result.html", status="invalid")
 
-    current_status = row[0]
+    current_status = row[2]
 
     if current_status == "checked_in":
         conn.close()
@@ -2126,6 +2132,38 @@ def debug_square():
     conn.close()
 
     return {"square_payments": rows}
+
+
+@app.route("/debug-ticket/<ticket_id>")
+def debug_ticket(ticket_id):
+    import sqlite3
+    from urllib.parse import unquote
+    raw_ticket_id = ticket_id
+    normalized_ticket_id = unquote((ticket_id or "").strip())
+    if "/checkin/" in normalized_ticket_id:
+        normalized_ticket_id = normalized_ticket_id.split("/checkin/")[-1].strip()
+    normalized_ticket_id = normalized_ticket_id.split("?")[0].strip().strip("/")
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, name, email, ticket_type, ticket_id, status, payment_id, checkin_url, qr_url, created_at
+        FROM event_tickets
+        WHERE ticket_id = ?
+        LIMIT 1
+        """,
+        (normalized_ticket_id,),
+    )
+    row = cursor.fetchone()
+    conn.close()
+
+    return {
+        "ticket_id": raw_ticket_id,
+        "normalized_ticket_id": normalized_ticket_id,
+        "exists": bool(row),
+        "raw_db_record": row,
+    }
 
 
 @app.route('/scan')
