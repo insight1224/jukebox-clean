@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Scan Ticket</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body {
+            background: black;
+            color: white;
+            text-align: center;
+            font-family: Arial;
+        }
+        #reader {
+            width: 300px;
+            margin: auto;
+        }
+        h1 {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Scan Ticket</h1>
+
+<div id="reader"></div>
+
+<script>
+function onScanSuccess(decodedText, decodedResult) {
+    console.log(`Code matched = ${decodedText}`);
+
+    // Extract ticket ID (last part of URL or raw code)
+    let ticketId = decodedText;
+
+    if (decodedText.includes("/checkin/")) {
+        ticketId = decodedText.split("/checkin/")[1];
+    }
+
+    window.location.href = "/checkin/" + ticketId;
+}
+
+let html5QrcodeScanner = new Html5QrcodeScanner(
+    "reader",
+    { fps: 10, qrbox: 250 }
+);
+
+html5QrcodeScanner.render(onScanSuccess);
+</script>
+
+</body>
+</html>

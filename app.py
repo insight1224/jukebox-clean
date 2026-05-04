@@ -1984,6 +1984,11 @@ def debug_square():
 
     return {"square_payments": rows}
 
+
+@app.route('/scan')
+def scan():
+    return render_template('scan.html')
+
 # -------------------------
 # RUN
 # -------------------------
