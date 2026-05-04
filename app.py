@@ -1989,6 +1989,22 @@ def debug_square():
 def scan():
     return render_template('scan.html')
 
+
+@app.route('/admin/generate-qr/<ticket_id>')
+def generate_qr(ticket_id):
+    import qrcode
+    from io import BytesIO
+    from flask import send_file
+
+    url = f"https://www.jukeboxloungenc.com/checkin/{ticket_id}"
+
+    img = qrcode.make(url)
+    buf = BytesIO()
+    img.save(buf)
+    buf.seek(0)
+
+    return send_file(buf, mimetype='image/png')
+
 # -------------------------
 # RUN
 # -------------------------
