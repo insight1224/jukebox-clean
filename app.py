@@ -343,20 +343,30 @@ def event_name_from_payment(payment):
 
 
 def map_ticket_from_payment(payment):
-    """
-    Map ticket using Square payment text metadata, not amount.
-    """
-    square_name = extract_square_name(payment)
-    mapped = SQUARE_TO_DB_MAP.get(square_name)
+    amount_cents = int((payment.get("amount_money", {}) or {}).get("amount") or 0)
     print("TICKET MAP SOURCE NOTE:", payment.get("note"))
-    print("TICKET MAP SOURCE NAME:", square_name)
+    print("TICKET MAP SOURCE AMOUNT:", amount_cents)
+    mapped = map_ticket_from_amount(amount_cents)
     print("TICKET MAP RESULT:", mapped)
-    if mapped in CANONICAL_TICKET_TYPES:
-        return mapped
+    return mapped
+
+
+def map_ticket_from_amount(amount_cents):
+    amount = int(amount_cents or 0)
+    if amount == 1200:
+        return "Early Bird"
+    if amount == 1300:
+        return "General Admission"
+    if amount == 17500:
+        return "VIP Section"
+    if amount == 30000:
+        return "DJ VIP Section"
     return None
 
 
 def is_membership_payment_from_payment(payment, amount_cents, note_blob):
+    if int(amount_cents or 0) == 1000:
+        return True
     square_name = extract_square_name(payment)
     mapped = SQUARE_TO_DB_MAP.get(square_name)
     if mapped == "Jukebox Circle Membership":
@@ -513,13 +523,9 @@ def parse_square_payment(webhook_payload):
 
 def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     print("[ticket-create] called")
-    square_name = extract_square_name(payment)
-    ticket_name = SQUARE_TO_DB_MAP.get(square_name, square_name)
-    if ticket_name not in CANONICAL_TICKET_TYPES:
-        ticket_name = None
+    ticket_name = map_ticket_from_amount(amount_cents)
     payment_id = (payment.get("id") or "").strip()
     event_name = event_name_from_payment(payment)
-    print(f"[ticket-create] square_name={square_name}")
     print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name} event_name={event_name}")
     if not ticket_name or not payment_id:
         print("[ticket-create] skip insert: missing ticket mapping or payment_id")
@@ -639,9 +645,11 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
 
 
 def classify_square_payment(payment, amount_cents, note_blob):
+    if int(amount_cents or 0) == 100:
+        return "ignored_test", None
     if is_membership_payment_from_payment(payment, amount_cents, note_blob):
         return "membership", None
-    ticket_name = map_ticket_from_payment(payment)
+    ticket_name = map_ticket_from_amount(amount_cents)
     if ticket_name:
         return "ticket", ticket_name
     return "unmatched", None
@@ -727,11 +735,18 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
         kind, ticket_name = classify_square_payment(payment, amount_cents, note_blob)
         ticket_hit = False
         membership_hit = False
+        ticket_created = False
+
+        if kind == "ignored_test":
+            continue
 
         if kind == "ticket":
             if dry_run:
                 ticket_hit = True
+                ticket_created = True
             else:
+                created_ticket_id = create_ticket_from_square_payment(cursor, payment, amount_cents, email)
+                ticket_created = bool(created_ticket_id)
                 ticket_hit = apply_ticket_sale_from_square(cursor, payment)
         elif kind == "membership":
             if dry_run:
@@ -739,23 +754,23 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
             else:
                 membership_hit = apply_membership_from_square(cursor, payment, amount_cents, note_blob, email)
 
-        if ticket_hit or membership_hit:
+        if ticket_hit or membership_hit or ticket_created:
             if not dry_run:
                 log_square_payment(
                     cursor,
                     payment_id,
-                    "ticket" if ticket_hit else "membership",
+                    "ticket" if (ticket_hit or ticket_created) else "membership",
                     amount_cents,
                 )
             counts["processed"] += 1
-            counts["tickets"] += 1 if ticket_hit else 0
+            counts["tickets"] += 1 if (ticket_hit or ticket_created) else 0
             counts["memberships"] += 1 if membership_hit else 0
             if include_diagnostics and len(counts["details"]) < 40:
                 counts["details"].append(
                     {
                         "payment_id": payment_id,
                         "amount_cents": amount_cents,
-                        "category": "ticket" if ticket_hit else "membership",
+                        "category": "ticket" if (ticket_hit or ticket_created) else "membership",
                         "ticket_name": ticket_name,
                         "note": note_blob[:180],
                         "email": email,
