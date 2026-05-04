@@ -1915,6 +1915,20 @@ def debug_tickets():
     conn.close()
     return {"tickets": rows}
 
+
+@app.route("/debug/square")
+def debug_square():
+    import sqlite3
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT * FROM square_payment_log LIMIT 10")
+    rows = cursor.fetchall()
+
+    conn.close()
+
+    return {"square_payments": rows}
+
 # -------------------------
 # RUN
 # -------------------------
