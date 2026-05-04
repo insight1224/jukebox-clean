@@ -489,7 +489,10 @@ def public_square_script_url():
     return "https://sandbox.web.squarecdn.com/v1/square.js" if SQUARE_ENV == "sandbox" else "https://web.squarecdn.com/v1/square.js"
 
 
-def create_event_ticket_id():
+def create_event_ticket_id(payment_id=None):
+    pid = (payment_id or "").strip()
+    if pid:
+        return f"TICKET_{pid[:12]}"
     return f"TICKET_{secrets.token_hex(8).upper()}"
 
 
@@ -543,7 +546,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     full_name = f"{first_name} {last_name}".strip() or "Guest"
     buyer_email = (email or "").strip() or "no-email@example.com"
 
-    ticket_id = create_event_ticket_id()
+    ticket_id = create_event_ticket_id(payment_id)
     base_url = (os.getenv("CHECKIN_BASE_URL", "") or "").strip().rstrip("/")
     if not base_url:
         base_url = "http://localhost:5003"
@@ -1724,10 +1727,16 @@ def tickets_purchase():
 @app.route("/checkin/<ticket_id>")
 def checkin(ticket_id):
     import sqlite3
+    normalized_ticket_id = (ticket_id or "").strip()
+    if "/checkin/" in normalized_ticket_id:
+        normalized_ticket_id = normalized_ticket_id.split("/checkin/")[-1].strip()
+    normalized_ticket_id = normalized_ticket_id.split("?")[0].strip().strip("/")
+    print("CHECKING TICKET:", normalized_ticket_id)
+
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    cursor.execute("SELECT status FROM event_tickets WHERE ticket_id = ?", (ticket_id,))
+    cursor.execute("SELECT status FROM event_tickets WHERE ticket_id = ?", (normalized_ticket_id,))
     row = cursor.fetchone()
 
     if not row:
@@ -1747,7 +1756,7 @@ def checkin(ticket_id):
             checked_in_at = CURRENT_TIMESTAMP
         WHERE ticket_id = ?
         """,
-        (ticket_id,),
+        (normalized_ticket_id,),
     )
     conn.commit()
     conn.close()
@@ -1995,8 +2004,19 @@ def generate_qr(ticket_id):
     import qrcode
     from io import BytesIO
     from flask import send_file
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT ticket_id FROM event_tickets WHERE ticket_id = ?",
+        ((ticket_id or "").strip(),),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return "Ticket not found", 404
 
-    url = f"https://www.jukeboxloungenc.com/checkin/{ticket_id}"
+    stored_ticket_id = row[0]
+    url = f"https://www.jukeboxloungenc.com/checkin/{stored_ticket_id}"
 
     img = qrcode.make(url)
     buf = BytesIO()
@@ -2011,8 +2031,19 @@ def qr(ticket_id):
     import qrcode
     from io import BytesIO
     from flask import send_file
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT ticket_id FROM event_tickets WHERE ticket_id = ?",
+        ((ticket_id or "").strip(),),
+    )
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return "Ticket not found", 404
 
-    url = f"https://www.jukeboxloungenc.com/checkin/{ticket_id}"
+    stored_ticket_id = row[0]
+    url = f"https://www.jukeboxloungenc.com/checkin/{stored_ticket_id}"
     img = qrcode.make(url)
 
     buf = BytesIO()
