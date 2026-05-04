@@ -65,7 +65,7 @@
             <h3>General Admission</h3>
             <p>Access to The Quiet Storm Live experience.</p>
             <p>${{ "%.2f"|format(12) }}</p>
-            <a class="btn" href="https://square.link/u/p4eAdd8g" target="_blank" rel="noopener noreferrer">Get Tickets</a>
+            <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Get Tickets</a>
         </div>
         {% else %}
         {% for t in ticket_data %}

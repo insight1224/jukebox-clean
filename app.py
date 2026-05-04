@@ -266,8 +266,12 @@ init_db()   # ✅ AFTER function exists
 # -------------------------
 SQUARE_SIGNATURE_KEY = os.getenv("SQUARE_SIGNATURE_KEY", "")
 SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOUK_URL", "")
-SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "")
-SQUARE_ENV = os.getenv("SQUARE_ENV", "sandbox").lower()
+SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "").strip()
+SQUARE_ENV = os.getenv("SQUARE_ENV", "sandbox").strip()
+if SQUARE_ENV == "sandbox":
+    SQUARE_BASE_URL = "https://connect.squareupsandbox.com"
+else:
+    SQUARE_BASE_URL = "https://connect.squareup.com"
 SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "")
 SQUARE_LOCATION_ID = os.getenv("SQUARE_LOCATION_ID", "")
 STRICT_WEBHOOK_SIGNATURE = os.getenv("STRICT_WEBHOOK_SIGNATURE", "0") == "1"
@@ -482,17 +486,22 @@ def verify_square_signature(req):
 
 
 def square_base_url():
-    return "https://connect.squareupsandbox.com" if SQUARE_ENV == "sandbox" else "https://connect.squareup.com"
+    return SQUARE_BASE_URL
 
 
 def public_square_script_url():
     return "https://sandbox.web.squarecdn.com/v1/square.js" if SQUARE_ENV == "sandbox" else "https://web.squarecdn.com/v1/square.js"
 
 
+def generate_ticket(payment_id, index=0):
+    base = (payment_id or "").strip()[:12]
+    return f"TICKET_{base}_{index}"
+
+
 def create_event_ticket_id(payment_id=None):
     pid = (payment_id or "").strip()
     if pid:
-        return f"TICKET_{pid[:12]}"
+        return generate_ticket(pid, 0)
     return f"TICKET_{secrets.token_hex(8).upper()}"
 
 
@@ -526,19 +535,11 @@ def parse_square_payment(webhook_payload):
 
 def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     print("[ticket-create] called")
-    ticket_name = map_ticket_from_amount(amount_cents)
     payment_id = (payment.get("id") or "").strip()
     event_name = event_name_from_payment(payment)
-    print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name} event_name={event_name}")
-    if not ticket_name or not payment_id:
-        print("[ticket-create] skip insert: missing ticket mapping or payment_id")
-        return None
-
-    cursor.execute("SELECT ticket_id FROM event_tickets WHERE payment_id = ?", (payment_id,))
-    existing = cursor.fetchone()
-    if existing:
-        print(f"[ticket-create] duplicate payment_id; existing ticket_id={existing[0]}")
-        return existing[0]
+    if not payment_id:
+        print("[ticket-create] skip insert: missing payment_id")
+        return []
 
     billing = payment.get("billing_address", {}) or {}
     first_name = (billing.get("first_name") or "").strip()
@@ -546,44 +547,104 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     full_name = f"{first_name} {last_name}".strip() or "Guest"
     buyer_email = (email or "").strip() or "no-email@example.com"
 
-    ticket_id = create_event_ticket_id(payment_id)
     base_url = (os.getenv("CHECKIN_BASE_URL", "") or "").strip().rstrip("/")
     if not base_url:
         base_url = "http://localhost:5003"
-    checkin_url = f"{base_url}/checkin/{ticket_id}"
-    qr_url = qr_image_url(checkin_url)
+    created_ticket_ids = []
 
-    try:
-        print("[ticket-create] inserting into event_tickets")
-        cursor.execute(
-            """
-            INSERT INTO event_tickets (
-                name, email, ticket_type, amount_cents, ticket_id, status,
-                payment_id, checkin_url, qr_url, event_name
-            ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?)
-            """,
-            (
-                full_name,
-                buyer_email.lower(),
-                ticket_name,
-                int(amount_cents or 0),
-                ticket_id,
-                payment_id,
-                checkin_url,
-                qr_url,
-                event_name,
-            ),
-        )
-        cursor.connection.commit()
-        print(f"[ticket-create] insert success ticket_id={ticket_id}")
-        return ticket_id
-    except Exception as exc:
-        print(f"[ticket-create] insert failed: {exc}")
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+
+    if line_items:
+        next_index = 0
+        for item in line_items:
+            ticket_name = line_item_ticket_name(item)
+            if not ticket_name:
+                continue
+            quantity = parse_line_item_quantity(item)
+            print(f"Creating {quantity} tickets for payment {payment_id}")
+            for _ in range(quantity):
+                ticket_id = generate_ticket(payment_id, next_index)
+                payment_ref = f"{payment_id}:{next_index}"
+                next_index += 1
+
+                cursor.execute("SELECT 1 FROM event_tickets WHERE ticket_id = ?", (ticket_id,))
+                if cursor.fetchone():
+                    continue
+
+                checkin_url = f"{base_url}/checkin/{ticket_id}"
+                qr_url = qr_image_url(checkin_url)
+                try:
+                    cursor.execute(
+                        """
+                        INSERT INTO event_tickets (
+                            name, email, ticket_type, amount_cents, ticket_id, status,
+                            payment_id, checkin_url, qr_url, event_name
+                        ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?)
+                        """,
+                        (
+                            full_name,
+                            buyer_email.lower(),
+                            ticket_name,
+                            int(amount_cents or 0),
+                            ticket_id,
+                            payment_ref,
+                            checkin_url,
+                            qr_url,
+                            event_name,
+                        ),
+                    )
+                    created_ticket_ids.append(ticket_id)
+                except Exception as exc:
+                    print(f"[ticket-create] insert failed: {exc}")
+
+        if created_ticket_ids:
+            cursor.connection.commit()
+            print(f"[ticket-create] insert success ticket_ids={created_ticket_ids}")
+            return created_ticket_ids
+
+    ticket_name = parse_ticket_from_note(payment.get("note")) or map_ticket_from_amount(amount_cents)
+    print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name} event_name={event_name}")
+    if not ticket_name:
+        print("[ticket-create] skip insert: missing ticket mapping")
+        return []
+    quantity = parse_qty_from_note(payment.get("note"))
+    print(f"Creating {quantity} tickets for payment {payment_id}")
+    created = []
+    for i in range(quantity):
+        ticket_id = generate_ticket(payment_id, i)
+        cursor.execute("SELECT 1 FROM event_tickets WHERE ticket_id = ?", (ticket_id,))
+        if cursor.fetchone():
+            continue
+        checkin_url = f"{base_url}/checkin/{ticket_id}"
+        qr_url = qr_image_url(checkin_url)
         try:
-            cursor.connection.rollback()
-        except Exception:
-            pass
-        return None
+            cursor.execute(
+                """
+                INSERT INTO event_tickets (
+                    name, email, ticket_type, amount_cents, ticket_id, status,
+                    payment_id, checkin_url, qr_url, event_name
+                ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?)
+                """,
+                (
+                    full_name,
+                    buyer_email.lower(),
+                    ticket_name,
+                    int(amount_cents or 0),
+                    ticket_id,
+                    f"{payment_id}:{i}",
+                    checkin_url,
+                    qr_url,
+                    event_name,
+                ),
+            )
+            created.append(ticket_id)
+        except Exception as exc:
+            print(f"[ticket-create] insert failed: {exc}")
+    if created:
+        cursor.connection.commit()
+        print(f"[ticket-create] insert success ticket_ids={created}")
+    return created
 
 
 def already_logged_payment(cursor, payment_id):
@@ -684,6 +745,75 @@ def square_list_payments(limit=100):
     return []
 
 
+def square_retrieve_order(order_id):
+    if not SQUARE_ACCESS_TOKEN or not order_id:
+        return {}
+
+    endpoint = f"{square_base_url()}/v2/orders/{order_id}"
+    req = urlrequest.Request(
+        endpoint,
+        headers={
+            "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+            "Square-Version": "2024-11-20",
+            "Content-Type": "application/json",
+        },
+        method="GET",
+    )
+
+    try:
+        with urlrequest.urlopen(req, timeout=20) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+            return payload.get("order", {}) or {}
+    except urlerror.HTTPError as exc:
+        print("Square retrieve order HTTP error:", exc.code)
+    except Exception as exc:
+        print("Square retrieve order error:", exc)
+    return {}
+
+
+def parse_line_item_quantity(item):
+    raw = (item or {}).get("quantity", 1)
+    try:
+        qty = int(str(raw))
+    except Exception:
+        qty = 1
+    return max(1, qty)
+
+
+def line_item_ticket_name(item):
+    name = ((item or {}).get("name") or "").strip()
+    mapped = SQUARE_TO_DB_MAP.get(name, name)
+    if mapped in CANONICAL_TICKET_TYPES:
+        return mapped
+    return None
+
+
+def parse_qty_from_note(note):
+    raw = str(note or "")
+    if "qty:" not in raw:
+        return 1
+    try:
+        value = raw.split("qty:", 1)[1].split(";", 1)[0].strip()
+        qty = int(value)
+        return max(1, qty)
+    except Exception:
+        return 1
+
+
+def parse_ticket_from_note(note):
+    raw = str(note or "")
+    if "ticket:" not in raw:
+        return None
+    try:
+        value = raw.split("ticket:", 1)[1].split(";", 1)[0].strip()
+    except Exception:
+        value = ""
+    mapped = SQUARE_TO_DB_MAP.get(value, value)
+    if mapped in CANONICAL_TICKET_TYPES:
+        return mapped
+    return None
+
+
 def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False, dry_run=False):
     payments = square_list_payments(limit=limit)
     if not payments:
@@ -743,14 +873,15 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
         if kind == "ignored_test":
             continue
 
-        if kind == "ticket":
+        if kind in ("ticket", "unmatched"):
             if dry_run:
-                ticket_hit = True
-                ticket_created = True
+                ticket_created = (kind == "ticket")
+                ticket_hit = (kind == "ticket")
             else:
                 created_ticket_id = create_ticket_from_square_payment(cursor, payment, amount_cents, email)
                 ticket_created = bool(created_ticket_id)
-                ticket_hit = apply_ticket_sale_from_square(cursor, payment)
+                if kind == "ticket":
+                    ticket_hit = apply_ticket_sale_from_square(cursor, payment)
         elif kind == "membership":
             if dry_run:
                 membership_hit = True
@@ -823,10 +954,10 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
 In the event of unfavorable weather conditions, the experience will be rescheduled. All tickets will remain valid for the new date, with options available for transfer or refund.
 
 This is an exclusive 30+ event. Valid government-issued ID is required for entry. Guests who do not meet the age requirement will be denied entry at the door. No refunds will be issued.""",
-        "early_link": "https://square.link/u/EyY0RvTh?src=sheet",
-        "ga_link": "https://square.link/u/Y9p9XqJo?src=sheet",
-        "vip_link": "https://square.link/u/ikIAImYb?src=sheet",
-        "booth_link": "https://square.link/u/QfLXGM6i?src=sheet",
+        "early_link": "https://square.link/u/tad1OGER",
+        "ga_link": "https://square.link/u/Q20QaK53",
+        "vip_link": "https://square.link/u/2stAPuXv",
+        "booth_link": "https://square.link/u/TsOHYIEp",
 
         "tickets": {
             "early": {"price": 13, "sold": 0, "size": 1},
@@ -848,7 +979,7 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
         "ticket_label": "General Admission",
         "map_link": "https://www.google.com/maps/search/?api=1&query=345+Blackwell+St+Durham+NC",
         "early_link": "https://square.link/u/p4eAdd8g",
-        "ga_link": "https://square.link/u/p4eAdd8g",
+        "ga_link": "https://square.link/u/wd0IDb7U",
         "vip_link": "https://square.link/u/p4eAdd8g",
         "booth_link": "https://square.link/u/p4eAdd8g",
         "tickets": {
@@ -972,6 +1103,7 @@ def join_membership():
 
     return redirect("https://square.link/u/fgiSNspy")
 
+
 # -------------------------
 # WEBHOOK
 # -------------------------
@@ -1018,7 +1150,7 @@ def square_webhook():
         ("square", event_id, event_type, f"status={status} payment_id={payment_id}"),
     )
 
-    ticket_id = None
+    ticket_ids = []
     print("REACHED TICKET LOGIC")
     print("STATUS:", status)
     print("EVENT:", event_type)
@@ -1028,21 +1160,22 @@ def square_webhook():
     elif status == "COMPLETED" and event_type in ("payment.updated", "payment.created"):
         print("CREATING TICKET")
         try:
-            ticket_id = create_ticket_from_square_payment(cursor, payment, amount_cents, email)
+            ticket_ids = create_ticket_from_square_payment(cursor, payment, amount_cents, email) or []
         except Exception as exc:
             print("❌ TICKET INSERT FAILED:", exc)
-            ticket_id = None
-        print("TICKET ID:", ticket_id)
-        if ticket_id:
+            ticket_ids = []
+        print("TICKET IDS:", ticket_ids)
+        if ticket_ids:
             print("SENDING EMAIL")
-            send_ticket_email_once(cursor, ticket_id)
+            for ticket_id in ticket_ids:
+                send_ticket_email_once(cursor, ticket_id)
     else:
         print("Ticket condition not met.")
 
     ticket_hit = apply_ticket_sale_from_square(cursor, payment)
     membership_hit = apply_membership_from_square(cursor, payment, amount_cents, note_blob, email)
 
-    if payment_id and not is_duplicate_payment and (ticket_hit or membership_hit or ticket_id):
+    if payment_id and not is_duplicate_payment and (ticket_hit or membership_hit or ticket_ids):
         log_square_payment(cursor, payment_id, "ticket", amount_cents)
         conn.commit()
         conn.close()
@@ -1860,7 +1993,7 @@ def run_backfill():
             skipped += 1
             continue
 
-        ticket_id = create_ticket_from_square_payment(cursor, payment, amount_cents, email)
+        ticket_ids = create_ticket_from_square_payment(cursor, payment, amount_cents, email) or []
         ticket_hit = apply_ticket_sale_from_square(cursor, payment)
         membership_hit = apply_membership_from_square(
             cursor,
@@ -1878,14 +2011,15 @@ def run_backfill():
             email,
         )
 
-        if ticket_id:
-            send_ticket_email_once(cursor, ticket_id)
+        if ticket_ids:
+            for ticket_id in ticket_ids:
+                send_ticket_email_once(cursor, ticket_id)
 
-        if ticket_hit or membership_hit or ticket_id:
+        if ticket_hit or membership_hit or ticket_ids:
             log_square_payment(
                 cursor,
                 payment_id,
-                "ticket" if (ticket_hit or ticket_id) else "membership",
+                "ticket" if (ticket_hit or ticket_ids) else "membership",
                 amount_cents,
             )
             created += 1
