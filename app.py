@@ -1707,48 +1707,37 @@ def tickets_purchase():
 
 
 @app.route("/checkin/<ticket_id>")
-def checkin_ticket(ticket_id):
-    normalized = (ticket_id or "").strip()
+def checkin(ticket_id):
+    import sqlite3
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT id, name, email, ticket_type, ticket_id, status, checkin_url
-        FROM event_tickets
-        WHERE ticket_id = ?
-        """,
-        (normalized,),
-    )
+
+    cursor.execute("SELECT status FROM event_tickets WHERE ticket_id = ?", (ticket_id,))
     row = cursor.fetchone()
 
     if not row:
         conn.close()
-        return render_template("ticket_checkin.html", state="invalid", ticket=None)
+        return render_template("checkin_result.html", status="invalid")
 
-    if (row[5] or "").lower() == "checked_in":
+    current_status = row[0]
+
+    if current_status == "checked_in":
         conn.close()
-        return render_template("ticket_checkin.html", state="used", ticket=row)
+        return render_template("checkin_result.html", status="already_checked_in")
 
     cursor.execute(
         """
         UPDATE event_tickets
-        SET status = 'checked_in', checked_in_at = CURRENT_TIMESTAMP
+        SET status = 'checked_in',
+            checked_in_at = CURRENT_TIMESTAMP
         WHERE ticket_id = ?
         """,
-        (normalized,),
+        (ticket_id,),
     )
     conn.commit()
-    cursor.execute(
-        """
-        SELECT id, name, email, ticket_type, ticket_id, status, checkin_url
-        FROM event_tickets
-        WHERE ticket_id = ?
-        """,
-        (normalized,),
-    )
-    updated = cursor.fetchone()
     conn.close()
-    return render_template("ticket_checkin.html", state="ok", ticket=updated)
+
+    return render_template("checkin_result.html", status="success")
 
 
 @app.route("/tickets/admin")
@@ -1912,6 +1901,20 @@ def rebuild_ticket_data():
         "unmatched": summary["unmatched"],
         "details": summary["details"],
     }, 200
+
+
+@app.route("/debug/tickets")
+def debug_tickets():
+    import sqlite3
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT ticket_id FROM event_tickets LIMIT 10")
+    rows = cursor.fetchall()
+
+    conn.close()
+    return {"tickets": rows}
+
 # -------------------------
 # RUN
 # -------------------------

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Check-In Status</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: Arial;
+      margin-top: 100px;
+      color: white;
+      background: #111;
+    }
+
+    .box {
+      padding: 40px;
+      border-radius: 12px;
+      display: inline-block;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .green { background: #28a745; }
+    .orange { background: #ff9800; }
+    .red { background: #dc3545; }
+  </style>
+</head>
+<body>
+
+{% if status == "success" %}
+  <div class="box green">✅ Checked In</div>
+
+{% elif status == "already_checked_in" %}
+  <div class="box orange">⚠️ Already Checked In</div>
+
+{% else %}
+  <div class="box red">❌ Invalid Ticket</div>
+{% endif %}
+
+</body>
+</html>
