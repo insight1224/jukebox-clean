@@ -2005,6 +2005,22 @@ def generate_qr(ticket_id):
 
     return send_file(buf, mimetype='image/png')
 
+
+@app.route('/qr/<ticket_id>')
+def qr(ticket_id):
+    import qrcode
+    from io import BytesIO
+    from flask import send_file
+
+    url = f"https://www.jukeboxloungenc.com/checkin/{ticket_id}"
+    img = qrcode.make(url)
+
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+
+    return send_file(buf, mimetype='image/png')
+
 # -------------------------
 # RUN
 # -------------------------
