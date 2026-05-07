@@ -1910,9 +1910,11 @@ body.flash {
 }
 .hero-logo {
     position: absolute;
-    bottom: -100px; /* pulls it slightly into next section */
+    bottom: -145px; /* lowered to avoid overlap with hero text */
     left: 50%;
     transform: translateX(-50%);
+    z-index: 50;
+    pointer-events: none;
 }
 
 .hero-logo img {

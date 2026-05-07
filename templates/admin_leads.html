@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Lead Log | The Jukebox Lounge NC{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<section class="dash-shell">
+  <div class="dash-header">
+    <h1>Lead Log</h1>
+    <div class="sync-controls">
+      <a class="btn" href="/events">Back to Events</a>
+    </div>
+  </div>
+
+  <form method="GET" class="kpi-group" style="margin-top:12px;">
+    <div class="kpi-group-cards cols-3">
+      <div><label>Type</label><input class="lead-search" name="type" value="{{ type_filter }}" placeholder="dj application / vip signup"></div>
+      <div><label>Status</label><input class="lead-search" name="status" value="{{ status_filter }}" placeholder="New / Contacted / Closed"></div>
+      <div><label>Search</label><input class="lead-search" name="q" value="{{ q }}" placeholder="name or email"></div>
+    </div>
+    <div style="margin-top:10px;">
+      <label><input type="checkbox" name="show_archived" value="1" {% if show_archived %}checked{% endif %}> Show Archived</label>
+      <button class="btn" type="submit">Apply</button>
+    </div>
+  </form>
+
+  <div class="table-wrap">
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Details</th>
+          <th>Created</th>
+          <th>Update</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for lead in leads %}
+        <tr>
+          <td>{{ lead.category }}</td>
+          <td>{{ lead.name }}</td>
+          <td>{{ lead.email }}</td>
+          <td>{{ lead.status }}</td>
+          <td>{{ lead.details }}</td>
+          <td>{{ lead.created_at }}</td>
+          <td>
+            <form method="POST" action="/update-lead/{{ lead.id }}">
+              <select name="status">
+                {% for s in lead.allowed_statuses %}
+                <option value="{{ s }}" {% if s == lead.status %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+              </select>
+              <button class="btn" type="submit">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Customer Log | The Jukebox Lounge NC{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='dashboard.css') }}">
+<section class="dash-shell">
+  <div class="dash-header">
+    <h1>{{ event_name }} — Customer Log</h1>
+    <div class="sync-controls">
+      <a class="btn" href="/events">Back to Events</a>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Ticket ID</th>
+          <th>Ticket Type</th>
+          <th>Payment ID</th>
+          <th>Checked In</th>
+          <th>Update</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in customers %}
+        <tr>
+          <td>{{ c.customer }}</td>
+          <td>{{ c.ticket_id }}</td>
+          <td>{{ c.ticket_type }}</td>
+          <td>{{ c.payment_id }}</td>
+          <td>{{ "Yes" if c.checked_in else "No" }}</td>
+          <td>
+            <form method="POST" action="/admin/ticket/{{ c.id }}/checkin">
+              <select name="checked">
+                <option value="1" {% if c.checked_in %}selected{% endif %}>Checked In</option>
+                <option value="0" {% if not c.checked_in %}selected{% endif %}>Not Checked In</option>
+              </select>
+              <button class="btn" type="submit">Save</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

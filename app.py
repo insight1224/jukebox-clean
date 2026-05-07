@@ -98,6 +98,16 @@ def init_db():
         status TEXT DEFAULT 'New'
     )
     """)
+    ensure_column("leads", "created_at", "TEXT")
+    ensure_column("leads", "archived", "INTEGER DEFAULT 0")
+    ensure_column("leads", "archived_at", "TEXT")
+    cursor.execute(
+        """
+        UPDATE leads
+        SET created_at = COALESCE(created_at, CURRENT_TIMESTAMP)
+        WHERE created_at IS NULL OR TRIM(created_at) = ''
+        """
+    )
 
     # MEMBERSHIPS
     cursor.execute("""
@@ -313,6 +323,14 @@ CANONICAL_TICKET_TYPES = {
     "DJ VIP Section",
 }
 
+TICKET_CAPACITY = {
+    "Early Bird": 30,
+    "General Admission": 366,
+    "VIP Section": 6,
+    "DJ VIP Section": 6,
+    "Custom VIP": 6,
+}
+
 
 def extract_square_name(payment):
     note = (payment.get("note") or "").strip()
@@ -334,8 +352,17 @@ def canonical_ticket_type_from_payment(payment):
     return None
 
 
+def normalize_event_name(value):
+    raw = (value or "").strip().lower()
+    if "quiet storm" in raw:
+        return "Quiet Storm"
+    if raw in ("the quiet storm live", "part 2 - the quiet storm live"):
+        return "Quiet Storm"
+    return "Battle of the DJs"
+
+
 def event_name_from_payment(payment):
-    blob = " ".join(
+    base_blob = " ".join(
         str(part).strip().lower()
         for part in (
             payment.get("note", ""),
@@ -344,9 +371,17 @@ def event_name_from_payment(payment):
         )
         if part
     )
-    if "quiet storm" in blob:
-        return "Part 2 - The Quiet Storm Live"
-    return "Battle of the DJs"
+    order_blob = ""
+    order_id = (payment.get("order_id") or "").strip()
+    if order_id:
+        order = square_retrieve_order(order_id)
+        line_items = order.get("line_items", []) if isinstance(order, dict) else []
+        order_blob = " ".join(str((item or {}).get("name", "")).strip().lower() for item in line_items if item)
+    blob = f"{base_blob} {order_blob}".strip()
+    mapped = normalize_event_name(blob)
+    print("[event-map] source:", blob)
+    print("[event-map] mapped:", mapped)
+    return mapped
 
 
 def map_ticket_from_payment(payment):
@@ -612,6 +647,81 @@ def send_tickets_email_for_customer(email, tickets, subject="Your Jukebox Lounge
         return False
 
 
+LEAD_STATUS_MAP = {
+    "DJ Application": ("New", "Contacted", "Booked", "Declined"),
+    "Vendor Application": ("New", "Contacted", "Booked", "Declined"),
+    "Contact Message": ("New", "Responded", "Closed"),
+    "VIP Signup": ("Active", "Inactive"),
+    "Membership Signup": ("Active", "Inactive"),
+}
+
+
+def lead_category(lead_type):
+    t = (lead_type or "").strip().lower()
+    if "dj" in t or "band" in t:
+        return "DJ Application"
+    if "vendor" in t:
+        return "Vendor Application"
+    if "vip" in t:
+        return "VIP Signup"
+    if "membership" in t:
+        return "Membership Signup"
+    return "Contact Message"
+
+
+def normalize_lead_status(lead_type, status=None):
+    category = lead_category(lead_type)
+    allowed = LEAD_STATUS_MAP.get(category, ("New",))
+    if status in allowed:
+        return status
+    return allowed[0]
+
+
+def lead_is_archived_status(status):
+    s = (status or "").strip().lower()
+    return s in ("closed", "declined")
+
+
+def notify_admin_new_lead(lead_type, name, email, status):
+    try:
+        admin_email = "thejukeboxloungenc@gmail.com"
+        subject = "New Lead Received"
+        body = (
+            f"Lead Type: {lead_type}\n"
+            f"Name: {name}\n"
+            f"Email: {email}\n"
+            f"Status: {status}\n"
+        )
+        send_email(subject, body, admin_email)
+    except Exception as exc:
+        print("[lead-notify] failed:", exc)
+
+
+def create_lead_record(lead_type, name, email, details, status=None):
+    status_value = normalize_lead_status(lead_type, status)
+    archived = 1 if lead_is_archived_status(status_value) else 0
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO leads (type, name, email, details, status, archived, archived_at)
+        VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+        """,
+        (
+            lead_type,
+            (name or "").strip(),
+            (email or "").strip().lower(),
+            (details or "").strip(),
+            status_value,
+            archived,
+            archived,
+        ),
+    )
+    conn.commit()
+    conn.close()
+    notify_admin_new_lead(lead_type, name, email, status_value)
+
+
 def verify_square_signature(req):
     # Dev mode: always allow webhook delivery so ticket flow can be tested end-to-end.
     if SQUARE_SKIP_WEBHOOK_SIGNATURE or not STRICT_WEBHOOK_SIGNATURE:
@@ -687,7 +797,9 @@ def parse_square_payment(webhook_payload):
 def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     print("[ticket-create] called")
     payment_id = (payment.get("id") or "").strip()
-    event_name = event_name_from_payment(payment)
+    event_name = normalize_event_name(event_name_from_payment(payment))
+    if not event_name:
+        event_name = "Battle of the DJs"
     if not payment_id:
         print("[ticket-create] skip insert: missing payment_id")
         return []
@@ -896,18 +1008,8 @@ def log_square_payment(cursor, payment_id, category, amount_cents):
 
 
 def apply_ticket_sale_from_square(cursor, payment):
-    ticket_name = map_ticket_from_payment(payment)
-    if not ticket_name:
-        return False
-    cursor.execute(
-        """
-        UPDATE ticket_types
-        SET sold = sold + 1
-        WHERE event_name = ? AND ticket_name = ?
-        """,
-        ("Battle of the DJs", ticket_name),
-    )
-    return cursor.rowcount > 0
+    # Source-of-truth lock: sold counters are derived from event_tickets rows only.
+    return False
 
 
 def is_membership_payment(amount_cents, note_blob):
@@ -1238,9 +1340,9 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
         "booth_link": "https://square.link/u/TsOHYIEp",
 
         "tickets": {
-            "early": {"price": 13, "sold": 0, "size": 1},
-            "ga": {"price": 18, "sold": 0, "size": 1},
-            "vip": {"price": 175, "sold": 0, "size": 1},
+            "early": {"price": 13, "sold": 0, "size": 30},
+            "ga": {"price": 18, "sold": 0, "size": 366},
+            "vip": {"price": 175, "sold": 0, "size": 6},
             "booth": {"price": 200, "sold": 0, "size": 6}
         }
     },
@@ -1328,22 +1430,7 @@ def contact():
         email = request.form.get("email")
         message = request.form.get("message")
 
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO leads (type, name, email, details, status)
-            VALUES (?, ?, ?, ?, ?)
-        """, ("Contact Message", name, email, message, "New"))
-
-        conn.commit()
-        conn.close()
-
-        send_email(
-            "New Inquiry",
-            f"Name: {name}\nEmail: {email}\nMessage:\n{message}",
-            EMAIL_ADDRESS
-        )
+        create_lead_record("Contact Message", name, email, message, "New")
 
         return render_template(
             "thank_you.html",
@@ -1368,16 +1455,7 @@ def join_membership():
     name = request.form.get("name")
     email = request.form.get("email")
 
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO leads (type, name, email, details, status)
-        VALUES (?, ?, ?, ?, ?)
-    """, ("Membership Signup", name, email, "Waiting for payment", "Pending"))
-
-    conn.commit()
-    conn.close()
+    create_lead_record("Membership Signup", name, email, "Waiting for payment", "Active")
 
     return redirect("https://square.link/u/fgiSNspy")
 
@@ -1474,186 +1552,6 @@ def square_webhook():
     conn.close()
     print("=== WEBHOOK END ===")
     return "ignored", 200
-# -------------------------
-# DASHBOARD
-# -------------------------
-@app.route("/dashboard")
-@requires_auth
-def dashboard():
-    # Optional manual backfill from Square account on dashboard load.
-    if os.getenv("SQUARE_AUTO_SYNC_ON_DASHBOARD", "0") == "1":
-        sync_square_payments(limit=SQUARE_SYNC_LIMIT)
-
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    def attendance_units(ticket_name, sold_count):
-        name = (ticket_name or "").strip().lower()
-        sold = int(sold_count or 0)
-        if name in ("vip section", "dj vip section", "vip booth", "dj vip booth"):
-            return sold * 6
-        return sold
-
-    # Ticket metrics: always sourced directly from event_tickets
-    test_filter = """
-        (payment_id IS NULL OR (
-            UPPER(payment_id) NOT LIKE '%TEST%'
-            AND UPPER(payment_id) NOT LIKE '%FINAL_TEST%'
-            AND UPPER(payment_id) NOT LIKE '%FREE_TEST%'
-        ))
-    """
-
-    cursor.execute(
-        """
-        SELECT COALESCE(event_name, 'Battle of the DJs') as event_name,
-               ticket_type,
-               COUNT(*) as count,
-               COALESCE(SUM(amount_cents), 0) as revenue_cents
-        FROM event_tickets
-        WHERE """ + test_filter + """
-        GROUP BY COALESCE(event_name, 'Battle of the DJs'), ticket_type
-        ORDER BY COALESCE(event_name, 'Battle of the DJs'), ticket_type
-        """
-    )
-    ticket_rows = cursor.fetchall()
-    ticket_data = [
-        (row[0], row[1], int(row[2] or 0), round((float(row[3] or 0) / 100.0), 2))
-        for row in ticket_rows
-    ]
-    event_totals = {}
-    for event_name, _ticket_type, count, revenue in ticket_data:
-        if event_name not in event_totals:
-            event_totals[event_name] = {"count": 0, "revenue": 0.0}
-        event_totals[event_name]["count"] += count
-        event_totals[event_name]["revenue"] += revenue
-
-    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE " + test_filter)
-    total_tickets = int(cursor.fetchone()[0] or 0)
-
-    cursor.execute("SELECT COALESCE(SUM(amount_cents), 0) FROM event_tickets WHERE " + test_filter)
-    total_ticket_revenue = round((float(cursor.fetchone()[0] or 0) / 100.0), 2)
-
-    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE status = 'checked_in' AND " + test_filter)
-    checked_in_count = int(cursor.fetchone()[0] or 0)
-
-    # Membership metrics
-    cursor.execute(
-        """
-        SELECT COUNT(*), SUM(amount_cents)
-        FROM square_payment_log
-        WHERE LOWER(category) = 'membership'
-        """
-    )
-    membership_count, membership_revenue_cents = cursor.fetchone()
-    membership_count = int(membership_count or 0)
-    membership_revenue = round((float(membership_revenue_cents or 0) / 100.0), 2)
-    print("DASHBOARD memberships source: square_payment_log (category=membership)")
-    print("DASHBOARD memberships count:", membership_count)
-    print("DASHBOARD memberships revenue:", membership_revenue)
-
-    # Lead activity
-    cursor.execute(
-        """
-        SELECT id, type, name, email, details, status
-        FROM leads
-        ORDER BY id DESC
-        """
-    )
-    leads = cursor.fetchall()
-
-    def lead_bucket(lead_type):
-        t = (lead_type or "").strip().lower()
-        if "dj" in t or "band" in t:
-            return "dj"
-        if "vip" in t:
-            return "vip"
-        if "membership" in t:
-            return "membership"
-        if "contact" in t or "inquiry" in t:
-            return "inquiry"
-        return "other"
-
-    dj_leads = [l for l in leads if lead_bucket(l[1]) == "dj"]
-    vip_leads = [l for l in leads if lead_bucket(l[1]) == "vip"]
-    inquiry_leads = [l for l in leads if lead_bucket(l[1]) == "inquiry"]
-    membership_leads = [l for l in leads if lead_bucket(l[1]) == "membership"]
-
-    # Votes from events page
-    cursor.execute(
-        """
-        SELECT event_name, votes
-        FROM event_votes
-        ORDER BY votes DESC, event_name ASC
-        """
-    )
-    event_votes = cursor.fetchall()
-
-    # Event request log (archived items kept, not deleted)
-    cursor.execute(
-        """
-        SELECT id, event_name, status, archived
-        FROM event_requests
-        ORDER BY id DESC
-        """
-    )
-    event_request_log = cursor.fetchall()
-
-    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE " + test_filter)
-    print("DASHBOARD event_tickets COUNT:", cursor.fetchone()[0])
-    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE " + test_filter)
-    total = cursor.fetchone()[0]
-    print("TOTAL TICKETS (BACKEND):", total)
-
-    cursor.execute("SELECT COUNT(*) FROM square_payment_log")
-    print("DASHBOARD payment_log COUNT:", cursor.fetchone()[0])
-
-    cursor.execute(
-        """
-        SELECT ticket_type, COUNT(*)
-        FROM event_tickets
-        WHERE """ + test_filter + """
-        GROUP BY ticket_type
-        """
-    )
-    print("DASHBOARD ticket breakdown:", cursor.fetchall())
-
-    conn.close()
-
-    ticket_count = total_tickets
-    total_attendance = checked_in_count
-    ticket_revenue = total_ticket_revenue
-    total_revenue = round(total_ticket_revenue + membership_revenue, 2)
-    membership_revenue = round(membership_revenue, 2)
-
-    return render_template(
-        "dashboard.html",
-        # Top KPIs
-        ticket_count=ticket_count,
-        total_attendance=total_attendance,
-        ticket_revenue=ticket_revenue,
-        total_tickets=total_tickets,
-        total_checked_in=checked_in_count,
-        membership_count=membership_count,
-        membership_revenue=membership_revenue,
-        total_revenue=total_revenue,
-        # Ticket details from event_tickets
-        ticket_data=ticket_data,
-        event_totals=event_totals,
-        # Lead activity + lead log
-        dj_count=len(dj_leads),
-        vip_count=len(vip_leads),
-        requests_count=len(inquiry_leads),
-        membership_lead_count=len(membership_leads),
-        total_leads=len(leads),
-        dj_leads=dj_leads,
-        vip_leads=vip_leads,
-        inquiry_leads=inquiry_leads,
-        membership_leads=membership_leads,
-        leads=leads,
-        # Votes + event requests
-        event_votes=event_votes,
-        event_request_log=event_request_log,
-    )
 @app.route("/dj-signup", methods=["GET", "POST"])
 def dj_signup():
 
@@ -1679,16 +1577,7 @@ def dj_signup():
         Comments: {comments}
         """
 
-        conn = sqlite3.connect("database.db")
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            INSERT INTO leads (type, name, email, details, status)
-            VALUES (?, ?, ?, ?, ?)
-        """, ("DJ Application", name, email, details, "New"))
-
-        conn.commit()
-        conn.close()
+        create_lead_record("DJ Application", name, email, details, "New")
 
         return render_template(
             "thank_you.html",
@@ -1697,6 +1586,39 @@ def dj_signup():
         )
 
     return render_template("dj_signup.html")
+
+
+@app.route("/vendor-signup", methods=["GET", "POST"])
+def vendor_signup():
+    if request.method == "POST":
+        name = request.form.get("name")
+        business = request.form.get("business")
+        email = request.form.get("email")
+        phone = request.form.get("phone")
+        vendor_type = request.form.get("vendor_type")
+        products = request.form.get("products")
+        links = request.form.get("links")
+        setup = request.form.get("setup")
+        comments = request.form.get("comments")
+
+        details = f"""
+        Business: {business}
+        Phone: {phone}
+        Vendor Type: {vendor_type}
+        Products/Services: {products}
+        Links: {links}
+        Setup Needs: {setup}
+        Comments: {comments}
+        """
+        create_lead_record("Vendor Application", name, email, details, "New")
+
+        return render_template(
+            "thank_you.html",
+            title="APPLICATION RECEIVED",
+            message="Your vendor application has been submitted successfully. Our team will review and reach out with next steps.",
+        )
+
+    return render_template("vendor_signup.html")
 
 @app.route("/vip", methods=["POST"])
 def vip_signup():
@@ -1709,16 +1631,7 @@ def vip_signup():
     Phone: {phone}
     """
 
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        INSERT INTO leads (type, name, email, details, status)
-        VALUES (?, ?, ?, ?, ?)
-    """, ("VIP Signup", name, email, details, "New"))
-
-    conn.commit()
-    conn.close()
+    create_lead_record("VIP Signup", name, email, details, "Active")
 
     return render_template(
         "thank_you.html",
@@ -1789,7 +1702,7 @@ def complete_request(id):
     conn.commit()
     conn.close()
 
-    return redirect("/dashboard")
+    return redirect("/events")
 
 
 @app.route("/update-event-request/<int:id>", methods=["POST"])
@@ -1816,7 +1729,7 @@ def update_event_request(id):
     )
     conn.commit()
     conn.close()
-    return redirect("/dashboard")
+    return redirect("/events")
 
 @app.route("/buy-ticket", methods=["POST"])
 def buy_ticket():
@@ -1851,47 +1764,39 @@ def event_detail(event_name):
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
 
-    try:
-        cursor.execute("""
-            SELECT ticket_name, price, max_quantity, sold
-            FROM ticket_types
-            WHERE LOWER(event_name) = ?
-        """, (event_name,))
-        tickets = cursor.fetchall()
-        sold_lookup = {}
-        for ticket_name, _price, _quantity, _sold in tickets:
-            cursor.execute(
-                """
-                SELECT COUNT(*)
-                FROM event_tickets
-                WHERE ticket_type = ?
-                  AND COALESCE(event_name, 'Battle of the DJs') = ?
-                  AND (payment_id IS NULL OR (
-                        UPPER(payment_id) NOT LIKE 'FREE_TEST_%'
-                    AND UPPER(payment_id) NOT LIKE 'TEST_%'
-                  ))
-                """,
-                (ticket_name, event["name"]),
-            )
-            sold_lookup[ticket_name] = int(cursor.fetchone()[0] or 0)
-
-    except Exception as e:
-        conn.close()
-        return f"TICKET DB ERROR: {e}", 500
-
+    canonical = [
+        ("Early Bird", "early"),
+        ("General Admission", "ga"),
+        ("VIP Section", "vip"),
+        ("DJ VIP Section", "booth"),
+    ]
     ticket_data = []
-
-    for name, price, quantity, sold in tickets:
-        sold = sold_lookup.get(name, 0)
-        remaining = quantity - sold
-
+    for ticket_name, key in canonical:
+        cfg = (event.get("tickets", {}) or {}).get(key, {}) or {}
+        price = float(cfg.get("price", 0) or 0)
+        quantity = int(cfg.get("size", 0) or 0)
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM event_tickets
+            WHERE ticket_type = ?
+              AND COALESCE(event_name, 'Battle of the DJs') = ?
+              AND (payment_id IS NULL OR (
+                    UPPER(payment_id) NOT LIKE 'FREE_TEST_%'
+                AND UPPER(payment_id) NOT LIKE 'TEST_%'
+              ))
+            """,
+            (ticket_name, event["name"]),
+        )
+        sold = int(cursor.fetchone()[0] or 0)
+        remaining = max(0, quantity - sold)
         ticket_data.append({
-            "name": name,
+            "name": ticket_name,
             "price": round(price, 2),
             "sold": sold,
             "quantity": quantity,
             "remaining": remaining,
-            "sold_out": remaining <= 0,
+            "sold_out": remaining <= 0 and quantity > 0,
             "almost_gone": 0 < remaining <= 5
         })
 
@@ -1916,37 +1821,12 @@ def event_detail(event_name):
 @app.route("/check-tickets")
 @requires_auth
 def check_tickets():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM ticket_types")
-    data = cursor.fetchall()
-
-    conn.close()
-    return str(data)
+    return "SOURCE OF TRUTH VIOLATION: USE event_tickets ONLY", 500
 
 @app.route("/test-sell")
 @requires_auth
 def test_sell():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        UPDATE ticket_types
-        SET sold = 5
-        WHERE ticket_name = 'Early Bird'
-    """)
-
-    cursor.execute("""
-        UPDATE ticket_types
-        SET sold = 1
-        WHERE ticket_name = 'VIP Section'
-    """)
-
-    conn.commit()
-    conn.close()
-
-    return "Updated!"
+    return "SOURCE OF TRUTH VIOLATION: USE event_tickets ONLY", 500
 
 @app.route("/check-leads")
 @requires_auth
@@ -1976,40 +1856,6 @@ def test_lead():
     conn.close()
 
     return "Test lead added!"
-
-@app.route("/dashboard-data")
-@requires_auth
-def dashboard_data():
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT ticket_name, sold, price
-        FROM ticket_types
-    """)
-    rows = cursor.fetchall()
-
-    conn.close()
-
-    ticket_count = 0
-    attendance = 0
-    revenue = 0.0
-    for ticket_name, sold, price in rows:
-        sold = int(sold or 0)
-        price = float(price or 0)
-        ticket_count += sold
-        revenue += price * sold
-        name = (ticket_name or "").strip().lower()
-        if name in ("vip section", "dj vip section", "vip booth", "dj vip booth"):
-            attendance += sold * 6
-        else:
-            attendance += sold
-
-    return {
-        "ticket_count": ticket_count,
-        "attendance": attendance,
-        "revenue": round(revenue, 2),
-    }
 
 @app.route("/square-sync", methods=["POST"])
 @requires_auth
@@ -2081,21 +1927,238 @@ def test_membership_webhook():
 @app.route("/update-lead/<int:id>", methods=["POST"])
 @requires_auth
 def update_lead(id):
-    new_status = request.form.get("status")
+    new_status = (request.form.get("status") or "").strip()
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
+    cursor.execute("SELECT type FROM leads WHERE id = ?", (id,))
+    row = cursor.fetchone()
+    lead_type = row[0] if row else "Contact Message"
+    status_value = normalize_lead_status(lead_type, new_status)
+    archived = 1 if lead_is_archived_status(status_value) else 0
+    archived_at_expr = "CURRENT_TIMESTAMP" if archived == 1 else "NULL"
 
-    cursor.execute("""
+    cursor.execute(f"""
         UPDATE leads
-        SET status = ?
+        SET status = ?,
+            archived = ?,
+            archived_at = {archived_at_expr}
         WHERE id = ?
-    """, (new_status, id))
+    """, (status_value, archived, id))
 
     conn.commit()
     conn.close()
+    return redirect(request.referrer or "/admin/leads")
 
-    return redirect("/dashboard")
+
+@app.route("/admin/leads")
+@requires_auth
+def admin_leads():
+    type_filter = (request.args.get("type") or "").strip().lower()
+    status_filter = (request.args.get("status") or "").strip()
+    q = (request.args.get("q") or "").strip().lower()
+    show_archived = (request.args.get("show_archived") or "0").strip() in ("1", "true", "yes")
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, type, name, email, details, status, COALESCE(archived, 0), COALESCE(created_at, '')
+        FROM leads
+        ORDER BY id DESC
+        """
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    filtered = []
+    for r in rows:
+        category = lead_category(r[1])
+        archived = int(r[6] or 0)
+        if not show_archived and archived == 1:
+            continue
+        if type_filter and type_filter != category.lower():
+            continue
+        if status_filter and r[5] != status_filter:
+            continue
+        search_blob = f"{r[2]} {r[3]} {r[4]}".lower()
+        if q and q not in search_blob:
+            continue
+        filtered.append(
+            {
+                "id": r[0],
+                "category": category,
+                "type": r[1],
+                "name": r[2],
+                "email": r[3],
+                "details": r[4],
+                "status": r[5],
+                "archived": archived,
+                "created_at": r[7],
+                "allowed_statuses": LEAD_STATUS_MAP.get(category, ("New",)),
+            }
+        )
+
+    return render_template(
+        "admin_leads.html",
+        leads=filtered,
+        type_filter=type_filter,
+        status_filter=status_filter,
+        q=q,
+        show_archived=show_archived,
+    )
+
+
+@app.route("/admin/event/<path:event_name>/customers")
+@requires_auth
+def admin_event_customers(event_name):
+    decoded = urllib.parse.unquote(event_name).strip()
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT id, COALESCE(name, ''), COALESCE(email, ''), COALESCE(ticket_id, ''),
+               COALESCE(ticket_type, ''), COALESCE(payment_id, ''), COALESCE(status, 'not_checked_in'),
+               COALESCE(checked_in, 0)
+        FROM event_tickets
+        WHERE COALESCE(event_name, 'Battle of the DJs') = ?
+        ORDER BY id DESC
+        """,
+        (decoded,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    customers = [
+        {
+            "id": r[0],
+            "customer": r[1] or r[2],
+            "email": r[2],
+            "ticket_id": r[3],
+            "ticket_type": r[4],
+            "payment_id": r[5],
+            "checked_in": int(r[7] or 0) == 1 or (r[6] == "checked_in"),
+        }
+        for r in rows
+    ]
+    return render_template("admin_event_customers.html", event_name=decoded, customers=customers)
+
+
+@app.route("/admin/ticket/<int:ticket_row_id>/checkin", methods=["POST"])
+@requires_auth
+def admin_toggle_checkin(ticket_row_id):
+    checked = (request.form.get("checked") or "0").strip() in ("1", "true", "yes")
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    if checked:
+        cursor.execute(
+            """
+            UPDATE event_tickets
+            SET checked_in = 1, status = 'checked_in', checked_in_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (ticket_row_id,),
+        )
+    else:
+        cursor.execute(
+            """
+            UPDATE event_tickets
+            SET checked_in = 0, status = 'not_checked_in', checked_in_at = NULL
+            WHERE id = ?
+            """,
+            (ticket_row_id,),
+        )
+    conn.commit()
+    conn.close()
+    return redirect(request.referrer or "/events")
+
+
+@app.route("/admin/system-health")
+@requires_auth
+def admin_system_health():
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    # Discover potential legacy ticket tables/sources
+    cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+    all_tables = [r[0] for r in cursor.fetchall()]
+    ticket_like_tables = [t for t in all_tables if "ticket" in t.lower()]
+    legacy_ticket_tables = [t for t in ticket_like_tables if t != "event_tickets"]
+
+    # Unified source metrics (event_tickets only)
+    cursor.execute("SELECT COUNT(*) FROM event_tickets")
+    tickets_total = int(cursor.fetchone()[0] or 0)
+
+    cursor.execute(
+        """
+        SELECT COALESCE(event_name, ''), COUNT(*)
+        FROM event_tickets
+        GROUP BY COALESCE(event_name, '')
+        ORDER BY COALESCE(event_name, '')
+        """
+    )
+    tickets_by_event = [
+        {"event_name": (r[0] or ""), "count": int(r[1] or 0)}
+        for r in cursor.fetchall()
+    ]
+
+    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE COALESCE(TRIM(email), '') = ''")
+    tickets_missing_email = int(cursor.fetchone()[0] or 0)
+
+    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE COALESCE(TRIM(event_name), '') = ''")
+    tickets_missing_event = int(cursor.fetchone()[0] or 0)
+
+    cursor.execute("SELECT COUNT(*) FROM event_tickets WHERE COALESCE(checked_in, 0) = 1 OR status = 'checked_in'")
+    checkin_true_count = int(cursor.fetchone()[0] or 0)
+
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM event_tickets
+        WHERE COALESCE(checked_in, 0) = 0 AND COALESCE(status, 'not_checked_in') != 'checked_in'
+        """
+    )
+    checkin_false_count = int(cursor.fetchone()[0] or 0)
+
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM event_tickets
+        WHERE COALESCE(TRIM(ticket_id), '') = ''
+           OR COALESCE(TRIM(payment_id), '') = ''
+           OR COALESCE(TRIM(ticket_type), '') = ''
+        """
+    )
+    orphan_records_count = int(cursor.fetchone()[0] or 0)
+
+    conn.close()
+
+    # Lock is about live query behavior, not table existence.
+    legacy_live_query_routes = []  # keep empty once all live paths are event_tickets-only
+    source_of_truth_locked = len(legacy_live_query_routes) == 0
+    inconsistency_detected = (
+        (not source_of_truth_locked)
+        or tickets_missing_email > 0
+        or tickets_missing_event > 0
+        or orphan_records_count > 0
+    )
+    if inconsistency_detected:
+        print("SYSTEM DATA INCONSISTENCY DETECTED")
+
+    return {
+        "tickets_total": tickets_total,
+        "tickets_by_event": tickets_by_event,
+        "tickets_missing_email": tickets_missing_email,
+        "tickets_missing_event": tickets_missing_event,
+        "checkin_true_count": checkin_true_count,
+        "checkin_false_count": checkin_false_count,
+        "orphan_records_count": orphan_records_count,
+        "source_of_truth_table": "event_tickets",
+        "source_of_truth_locked": source_of_truth_locked,
+        "ticket_like_tables_found": ticket_like_tables,
+        "legacy_ticket_tables_found": legacy_ticket_tables,
+        "legacy_live_query_routes": legacy_live_query_routes,
+        "warning": "SYSTEM DATA INCONSISTENCY DETECTED" if inconsistency_detected else "",
+    }
 
 
 @app.route("/tickets/checkout")
