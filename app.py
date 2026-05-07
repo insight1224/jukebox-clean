@@ -762,7 +762,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     if not ticket_name:
         print("[ticket-create] skip insert: missing ticket mapping")
         return []
-    quantity = parse_qty_from_note(payment.get("note"))
+    quantity = extract_quantity_from_payment(payment)
     print(f"Creating {quantity} tickets for payment {payment_id}")
     created = []
     for i in range(quantity):
@@ -1066,6 +1066,30 @@ def parse_ticket_from_note(note):
     if mapped in CANONICAL_TICKET_TYPES:
         return mapped
     return None
+
+
+def extract_quantity_from_payment(payment):
+    # 1) Direct quantity field (if upstream provided)
+    raw = (payment or {}).get("quantity", None)
+    if raw not in (None, ""):
+        try:
+            return max(1, int(str(raw)))
+        except Exception:
+            pass
+
+    # 2) Sum Square order line item quantities when available
+    order = square_retrieve_order((payment or {}).get("order_id", ""))
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+    if line_items:
+        total = 0
+        for item in line_items:
+            total += parse_line_item_quantity(item)
+        if total > 0:
+            return total
+
+    # 3) qty:<n> encoded in note fallback
+    return parse_qty_from_note((payment or {}).get("note"))
+
 
 
 def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False, dry_run=False):
@@ -1387,6 +1411,8 @@ def square_webhook():
     is_duplicate_payment = already_logged_payment(cursor, payment_id) if payment_id else False
     square_name = extract_square_name(payment)
     mapped_ticket_type = SQUARE_TO_DB_MAP.get(square_name, square_name)
+    debug_quantity = extract_quantity_from_payment(payment)
+    debug_ticket_type = parse_ticket_from_note(payment.get("note")) or map_ticket_from_amount(amount_cents)
 
     print("DEBUG STATUS:", status)
     print("DEBUG PAYMENT ID:", payment_id)
@@ -1395,6 +1421,10 @@ def square_webhook():
     print("DEBUG DUPLICATE PAYMENT:", is_duplicate_payment)
     print("DEBUG SQUARE ITEM NAME:", square_name)
     print("DEBUG MAPPED TICKET TYPE:", mapped_ticket_type)
+    print("PAYMENT RECEIVED:", payment_id)
+    print("EMAIL:", email)
+    print("TICKET TYPE:", debug_ticket_type)
+    print("QUANTITY:", debug_quantity)
 
     cursor.execute(
         """
@@ -1419,6 +1449,7 @@ def square_webhook():
             print("❌ TICKET INSERT FAILED:", exc)
             ticket_ids = []
         print("TICKET IDS:", ticket_ids)
+        print("TICKETS CREATED:", len(ticket_ids))
         if ticket_ids:
             print("SENDING EMAIL")
             send_tickets_email_bundle(cursor, payment_id, email, event_name_from_payment(payment))
