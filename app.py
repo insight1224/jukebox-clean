@@ -276,6 +276,7 @@ else:
     SQUARE_BASE_URL = "https://connect.squareup.com"
 SQUARE_APPLICATION_ID = os.getenv("SQUARE_APPLICATION_ID", "")
 SQUARE_LOCATION_ID = os.getenv("SQUARE_LOCATION_ID", "")
+BASE_URL = "https://www.jukeboxloungenc.com"
 STRICT_WEBHOOK_SIGNATURE = os.getenv("STRICT_WEBHOOK_SIGNATURE", "0") == "1"
 SQUARE_SKIP_WEBHOOK_SIGNATURE = os.getenv("SQUARE_SKIP_WEBHOOK_SIGNATURE", "0") == "1"
 IS_PRODUCTION = os.getenv("FLASK_ENV", "").lower() == "production"
@@ -697,9 +698,8 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     full_name = f"{first_name} {last_name}".strip() or "Guest"
     buyer_email = (email or "").strip() or "no-email@example.com"
 
-    base_url = (os.getenv("CHECKIN_BASE_URL", "") or "").strip().rstrip("/")
-    if not base_url:
-        base_url = "http://localhost:5003"
+    base_url = BASE_URL
+    print("QR BASE URL:", BASE_URL)
     created_ticket_ids = []
 
     order = square_retrieve_order((payment.get("order_id") or "").strip())
@@ -724,6 +724,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
 
                 checkin_url = f"{base_url}/checkin/{ticket_id}"
                 qr_url = f"{base_url}/qr/{ticket_id}"
+                print("QR GENERATED:", qr_url)
                 try:
                     print("CREATING TICKET:", ticket_id)
                     print("EMAIL:", buyer_email.lower())
@@ -771,6 +772,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
             continue
         checkin_url = f"{base_url}/checkin/{ticket_id}"
         qr_url = f"{base_url}/qr/{ticket_id}"
+        print("QR GENERATED:", qr_url)
         try:
             print("CREATING TICKET:", ticket_id)
             print("EMAIL:", buyer_email.lower())
