@@ -9,6 +9,7 @@ import smtplib
 import urllib.parse
 import requests
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from functools import wraps
 from urllib import error as urlerror
 from urllib import request as urlrequest
@@ -193,6 +194,7 @@ def init_db():
     """)
     ensure_column("event_tickets", "ticket_email_sent_at", "TEXT")
     ensure_column("event_tickets", "event_name", "TEXT")
+    ensure_column("event_tickets", "checked_in", "INTEGER DEFAULT 0")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS webhook_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -461,6 +463,154 @@ def send_ticket_email_once(cursor, ticket_id):
     return delivered
 
 
+def send_tickets_email_bundle(cursor, payment_id, customer_email, event_title="The Jukebox Lounge NC"):
+    pid = (payment_id or "").strip()
+    recipient = (customer_email or "").strip().lower()
+    if not pid or not recipient:
+        return False
+
+    cursor.execute(
+        """
+        SELECT ticket_id, ticket_type
+        FROM event_tickets
+        WHERE (payment_id = ? OR payment_id LIKE ?)
+          AND (ticket_email_sent_at IS NULL OR ticket_email_sent_at = '')
+        ORDER BY ticket_id ASC
+        """,
+        (pid, f"{pid}:%"),
+    )
+    rows = cursor.fetchall()
+    if not rows:
+        return True
+
+    print("SENDING TICKETS TO:", recipient)
+    print("QR COUNT:", len(rows))
+
+    email_address = (
+        os.getenv("EMAIL_ADDRESS", "").strip()
+        or os.getenv("SMTP_EMAIL_ADDRESS", "").strip()
+    )
+    email_password = (
+        os.getenv("EMAIL_PASSWORD", "").strip()
+        or os.getenv("SMTP_EMAIL_PASSWORD", "").strip()
+    )
+    if not email_address or not email_password:
+        print("[ticket-email-bundle] missing SMTP credentials")
+        return False
+
+    sections = []
+    ticket_ids = []
+    for ticket_id, ticket_type in rows:
+        ticket_ids.append(ticket_id)
+        qr_url = f"https://www.jukeboxloungenc.com/qr/{ticket_id}"
+        sections.append(
+            f"""
+            <div style="margin-bottom:24px;padding:14px;border:1px solid #ddd;border-radius:8px;">
+              <p><strong>Ticket ID:</strong> {ticket_id}</p>
+              <p><strong>Ticket Type:</strong> {ticket_type}</p>
+              <img src="{qr_url}" width="250" alt="QR for {ticket_id}" />
+            </div>
+            """
+        )
+
+    html_body = f"""
+    <html>
+      <body style="font-family:Arial,sans-serif;color:#111;">
+        <h2>{event_title}</h2>
+        <p>Thank you for your purchase. Your tickets are below.</p>
+        {''.join(sections)}
+      </body>
+    </html>
+    """
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Your Jukebox Lounge Tickets"
+        msg["From"] = email_address
+        msg["To"] = recipient
+        msg.attach(MIMEText("Your tickets are attached in HTML format.", "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(email_address, email_password)
+            smtp.sendmail(email_address, [recipient], msg.as_string())
+
+        for ticket_id in ticket_ids:
+            cursor.execute(
+                """
+                UPDATE event_tickets
+                SET ticket_email_sent_at = CURRENT_TIMESTAMP
+                WHERE ticket_id = ?
+                """,
+                (ticket_id,),
+            )
+        return True
+    except Exception as e:
+        print("[ticket-email-bundle] failed:", e)
+        return False
+
+
+def send_tickets_email_for_customer(email, tickets, subject="Your Jukebox Lounge QR Tickets"):
+    recipient = (email or "").strip().lower()
+    if not recipient or not tickets:
+        return False
+
+    print("SENDING TO:", recipient)
+    print("TICKETS:", [t.get("ticket_id") for t in tickets])
+
+    email_address = (
+        os.getenv("EMAIL_ADDRESS", "").strip()
+        or os.getenv("SMTP_EMAIL_ADDRESS", "").strip()
+    )
+    email_password = (
+        os.getenv("EMAIL_PASSWORD", "").strip()
+        or os.getenv("SMTP_EMAIL_PASSWORD", "").strip()
+    )
+    if not email_address or not email_password:
+        print("[resend-email] missing SMTP credentials")
+        return False
+
+    sections = []
+    for t in tickets:
+        ticket_id = t.get("ticket_id")
+        ticket_type = t.get("ticket_type", "")
+        qr_url = t.get("qr_url") or f"https://www.jukeboxloungenc.com/qr/{ticket_id}"
+        sections.append(
+            f"""
+            <div style="margin-bottom:24px;padding:14px;border:1px solid #ddd;border-radius:8px;">
+              <p><strong>Ticket ID:</strong> {ticket_id}</p>
+              <p><strong>Ticket Type:</strong> {ticket_type}</p>
+              <img src="{qr_url}" width="250" alt="QR for {ticket_id}" />
+            </div>
+            """
+        )
+
+    html_body = f"""
+    <html>
+      <body style="font-family:Arial,sans-serif;color:#111;">
+        <h2>The Jukebox Lounge NC</h2>
+        <p>Thank you for your support. Your ticket QR codes are below.</p>
+        {''.join(sections)}
+      </body>
+    </html>
+    """
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = email_address
+        msg["To"] = recipient
+        msg.attach(MIMEText("Your tickets are attached in HTML format.", "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(email_address, email_password)
+            smtp.sendmail(email_address, [recipient], msg.as_string())
+        return True
+    except Exception as e:
+        print("[resend-email] failed:", e)
+        return False
+
+
 def verify_square_signature(req):
     # Dev mode: always allow webhook delivery so ticket flow can be tested end-to-end.
     if SQUARE_SKIP_WEBHOOK_SIGNATURE or not STRICT_WEBHOOK_SIGNATURE:
@@ -495,7 +645,7 @@ def public_square_script_url():
 
 def generate_ticket(payment_id, index=0):
     base = (payment_id or "").strip()[:12]
-    return f"TICKET_{base}_{index}"
+    return f"TICKET_{base}_{int(index) + 1}"
 
 
 def create_event_ticket_id(payment_id=None):
@@ -573,14 +723,17 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                     continue
 
                 checkin_url = f"{base_url}/checkin/{ticket_id}"
-                qr_url = qr_image_url(checkin_url)
+                qr_url = f"{base_url}/qr/{ticket_id}"
                 try:
+                    print("CREATING TICKET:", ticket_id)
+                    print("EMAIL:", buyer_email.lower())
+                    print("PAYMENT:", payment_id)
                     cursor.execute(
                         """
                         INSERT INTO event_tickets (
                             name, email, ticket_type, amount_cents, ticket_id, status,
-                            payment_id, checkin_url, qr_url, event_name
-                        ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?)
+                            payment_id, checkin_url, qr_url, event_name, checked_in
+                        ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?, 0)
                         """,
                         (
                             full_name,
@@ -617,14 +770,17 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
         if cursor.fetchone():
             continue
         checkin_url = f"{base_url}/checkin/{ticket_id}"
-        qr_url = qr_image_url(checkin_url)
+        qr_url = f"{base_url}/qr/{ticket_id}"
         try:
+            print("CREATING TICKET:", ticket_id)
+            print("EMAIL:", buyer_email.lower())
+            print("PAYMENT:", payment_id)
             cursor.execute(
                 """
                 INSERT INTO event_tickets (
                     name, email, ticket_type, amount_cents, ticket_id, status,
-                    payment_id, checkin_url, qr_url, event_name
-                ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?)
+                    payment_id, checkin_url, qr_url, event_name, checked_in
+                ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?, 0)
                 """,
                 (
                     full_name,
@@ -645,6 +801,79 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
         cursor.connection.commit()
         print(f"[ticket-create] insert success ticket_ids={created}")
     return created
+
+
+def recover_missing_tickets(cursor):
+    created_total = 0
+    cursor.execute(
+        """
+        SELECT payment_id
+        FROM square_payment_log
+        WHERE LOWER(category) = 'ticket'
+        ORDER BY created_at DESC
+        """
+    )
+    payment_rows = cursor.fetchall()
+    for (logged_payment_id,) in payment_rows:
+        if not logged_payment_id:
+            continue
+        payment_id = str(logged_payment_id).split(":", 1)[0].strip()
+        if not payment_id:
+            continue
+        cursor.execute(
+            "SELECT COUNT(*) FROM event_tickets WHERE payment_id = ? OR payment_id LIKE ?",
+            (payment_id, f"{payment_id}:%"),
+        )
+        existing_count = int(cursor.fetchone()[0] or 0)
+        if existing_count > 0:
+            continue
+
+        payment = square_retrieve_payment(payment_id)
+        if not payment:
+            continue
+        status = (payment.get("status") or "").strip().upper()
+        if status != "COMPLETED":
+            continue
+        amount_cents = int(payment.get("amount_money", {}).get("amount") or 0)
+        email = (payment.get("buyer_email_address") or "").strip()
+        created = create_ticket_from_square_payment(cursor, payment, amount_cents, email) or []
+        created_total += len(created)
+    return created_total
+
+
+def load_customer_tickets(cursor, include_checked_in=False, target_email=None):
+    where = []
+    params = []
+    if not include_checked_in:
+        where.append("COALESCE(checked_in, 0) = 0 AND COALESCE(status, 'not_checked_in') != 'checked_in'")
+    if target_email:
+        where.append("LOWER(email) = ?")
+        params.append(target_email.lower())
+    where_clause = ("WHERE " + " AND ".join(where)) if where else ""
+    cursor.execute(
+        f"""
+        SELECT email, ticket_id, ticket_type, qr_url, payment_id
+        FROM event_tickets
+        {where_clause}
+        ORDER BY email ASC, id ASC
+        """,
+        tuple(params),
+    )
+    rows = cursor.fetchall()
+    grouped = {}
+    for email, ticket_id, ticket_type, qr_url, payment_id in rows:
+        email_key = (email or "").strip().lower()
+        if not email_key or not ticket_id:
+            continue
+        grouped.setdefault(email_key, []).append(
+            {
+                "ticket_id": ticket_id,
+                "ticket_type": ticket_type,
+                "qr_url": qr_url or f"https://www.jukeboxloungenc.com/qr/{ticket_id}",
+                "payment_id": payment_id,
+            }
+        )
+    return grouped
 
 
 def already_logged_payment(cursor, payment_id):
@@ -768,6 +997,29 @@ def square_retrieve_order(order_id):
         print("Square retrieve order HTTP error:", exc.code)
     except Exception as exc:
         print("Square retrieve order error:", exc)
+    return {}
+
+
+def square_retrieve_payment(payment_id):
+    if not SQUARE_ACCESS_TOKEN or not payment_id:
+        return {}
+
+    endpoint = f"{square_base_url()}/v2/payments/{payment_id}"
+    req = urlrequest.Request(
+        endpoint,
+        headers={
+            "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+            "Square-Version": "2024-11-20",
+            "Content-Type": "application/json",
+        },
+        method="GET",
+    )
+    try:
+        with urlrequest.urlopen(req, timeout=20) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+            return payload.get("payment", {}) or {}
+    except Exception as exc:
+        print("Square retrieve payment error:", exc)
     return {}
 
 
@@ -1167,8 +1419,7 @@ def square_webhook():
         print("TICKET IDS:", ticket_ids)
         if ticket_ids:
             print("SENDING EMAIL")
-            for ticket_id in ticket_ids:
-                send_ticket_email_once(cursor, ticket_id)
+            send_tickets_email_bundle(cursor, payment_id, email, event_name_from_payment(payment))
     else:
         print("Ticket condition not met.")
 
@@ -1872,7 +2123,7 @@ def checkin(ticket_id):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT id, ticket_id, status, payment_id, created_at FROM event_tickets WHERE ticket_id = ?",
+        "SELECT id, ticket_id, status, checked_in, payment_id, created_at FROM event_tickets WHERE ticket_id = ?",
         (normalized_ticket_id,),
     )
     row = cursor.fetchone()
@@ -1882,9 +2133,10 @@ def checkin(ticket_id):
         conn.close()
         return render_template("checkin_result.html", status="invalid")
 
-    current_status = row[2]
+    current_status = (row[2] or "").lower()
+    checked_in_flag = int(row[3] or 0)
 
-    if current_status == "checked_in":
+    if current_status == "checked_in" or checked_in_flag == 1:
         conn.close()
         return render_template("checkin_result.html", status="already_checked_in")
 
@@ -1892,6 +2144,7 @@ def checkin(ticket_id):
         """
         UPDATE event_tickets
         SET status = 'checked_in',
+            checked_in = 1,
             checked_in_at = CURRENT_TIMESTAMP
         WHERE ticket_id = ?
         """,
@@ -2018,8 +2271,7 @@ def run_backfill():
         )
 
         if ticket_ids:
-            for ticket_id in ticket_ids:
-                send_ticket_email_once(cursor, ticket_id)
+            send_tickets_email_bundle(cursor, payment_id, email, event_name_from_payment(payment))
 
         if ticket_hit or membership_hit or ticket_ids:
             log_square_payment(
@@ -2163,6 +2415,100 @@ def debug_ticket(ticket_id):
         "normalized_ticket_id": normalized_ticket_id,
         "exists": bool(row),
         "raw_db_record": row,
+    }
+
+
+@app.route("/tickets/<email>")
+def tickets_by_email(email):
+    normalized_email = (email or "").strip().lower()
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT ticket_id, ticket_type, qr_url
+        FROM event_tickets
+        WHERE LOWER(email) = ?
+        ORDER BY id DESC
+        """,
+        (normalized_email,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return {
+        "email": normalized_email,
+        "tickets": [
+            {
+                "ticket_id": row[0],
+                "ticket_type": row[1],
+                "qr_url": row[2],
+            }
+            for row in rows
+        ],
+    }
+
+
+@app.route("/admin/resend-all-tickets")
+@requires_auth
+def resend_all_tickets():
+    force = (request.args.get("force") or "0").strip() in ("1", "true", "yes")
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    recovered = recover_missing_tickets(cursor)
+    conn.commit()
+
+    grouped = load_customer_tickets(cursor, include_checked_in=force)
+    emails_sent = 0
+    tickets_processed = 0
+    failures = []
+
+    for email, tickets in grouped.items():
+        ok = send_tickets_email_for_customer(email, tickets, "Your Jukebox Lounge QR Tickets")
+        if ok:
+            emails_sent += 1
+            tickets_processed += len(tickets)
+        else:
+            failures.append(email)
+
+    conn.close()
+    return {
+        "emails_sent": emails_sent,
+        "tickets_processed": tickets_processed,
+        "failures": failures,
+        "recovered_tickets": recovered,
+        "forced": force,
+    }
+
+
+@app.route("/admin/resend/<path:email>")
+@requires_auth
+def resend_customer_tickets(email):
+    force = (request.args.get("force") or "0").strip() in ("1", "true", "yes")
+    target_email = (email or "").strip().lower()
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    grouped = load_customer_tickets(cursor, include_checked_in=force, target_email=target_email)
+    tickets = grouped.get(target_email, [])
+    if not tickets:
+        conn.close()
+        return {
+            "email": target_email,
+            "emails_sent": 0,
+            "tickets_processed": 0,
+            "failures": [],
+            "message": "No tickets found for customer",
+            "forced": force,
+        }
+
+    ok = send_tickets_email_for_customer(target_email, tickets, "Your Jukebox Lounge QR Tickets")
+    conn.close()
+    return {
+        "email": target_email,
+        "emails_sent": 1 if ok else 0,
+        "tickets_processed": len(tickets) if ok else 0,
+        "failures": [] if ok else [target_email],
+        "forced": force,
     }
 
 
