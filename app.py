@@ -1790,6 +1790,8 @@ def event_detail(event_name):
         )
         sold = int(cursor.fetchone()[0] or 0)
         remaining = max(0, quantity - sold)
+        if event["name"] == "Battle of the DJs" and ticket_name == "Early Bird":
+            remaining = 0
         ticket_data.append({
             "name": ticket_name,
             "price": round(price, 2),
