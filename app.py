@@ -682,17 +682,26 @@ def lead_is_archived_status(status):
     return s in ("closed", "declined")
 
 
-def notify_admin_new_lead(lead_type, name, email, status):
+def notify_admin_new_lead(lead_type, name, email, status, details=""):
     try:
-        admin_email = "thejukeboxloungenc@gmail.com"
-        subject = "New Lead Received"
+        admin_email = (
+            os.getenv("ADMIN_NOTIFICATION_EMAIL", "").strip()
+            or os.getenv("ADMIN_EMAIL", "").strip()
+            or "thejukeboxloungenc@gmail.com"
+        )
+        subject = f"New {lead_category(lead_type)} Received"
         body = (
             f"Lead Type: {lead_type}\n"
             f"Name: {name}\n"
             f"Email: {email}\n"
             f"Status: {status}\n"
+            f"Details:\n{details}\n"
         )
-        send_email(subject, body, admin_email)
+        sent = send_email(subject, body, admin_email)
+        if sent:
+            print(f"[lead-notify] sent to {admin_email}")
+        else:
+            print(f"[lead-notify] failed to send to {admin_email}")
     except Exception as exc:
         print("[lead-notify] failed:", exc)
 
@@ -719,7 +728,7 @@ def create_lead_record(lead_type, name, email, details, status=None):
     )
     conn.commit()
     conn.close()
-    notify_admin_new_lead(lead_type, name, email, status_value)
+    notify_admin_new_lead(lead_type, name, email, status_value, details)
 
 
 def verify_square_signature(req):
@@ -1379,6 +1388,85 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
 def home():
     return render_template("index.html")
 
+@app.route("/dashboard")
+@requires_auth
+def dashboard():
+    single_tickets = 25
+    vip_tickets = 6
+    total_tickets_sold = single_tickets + vip_tickets
+    estimated_attendance = total_tickets_sold
+    active_memberships = 1
+
+    ticket_revenue = 1307.45
+    membership_revenue = 10.00
+    total_revenue = 1317.45
+
+    metrics = {
+        "single_tickets": single_tickets,
+        "total_tickets_sold": total_tickets_sold,
+        "vip_tickets": vip_tickets,
+        "estimated_attendance": estimated_attendance,
+        "ticket_revenue": ticket_revenue,
+        "active_memberships": active_memberships,
+        "membership_revenue": membership_revenue,
+        "total_revenue": total_revenue,
+    }
+
+    events = [
+        {
+            "name": "Battle of the DJs",
+            "tickets": [
+                {"name": "Early Bird", "quantity": 22, "price": 13.975},
+                {"name": "General Admissions", "quantity": 2, "price": 19},
+                {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
+                {"name": "DJ VIP", "quantity": 0, "price": 0},
+            ],
+        },
+        {
+            "name": "Quiet Storm Live",
+            "tickets": [
+                {"name": "General Admission", "quantity": 1, "price": 12},
+            ],
+        },
+    ]
+
+    for event in events:
+        event_total_tickets = 0
+        event_total_revenue = 0
+        for ticket in event["tickets"]:
+            ticket_revenue_generated = ticket["quantity"] * ticket["price"]
+            ticket["revenue"] = ticket_revenue_generated
+            event_total_tickets += ticket["quantity"]
+            event_total_revenue += ticket_revenue_generated
+        event["total_tickets_sold"] = event_total_tickets
+        event["total_revenue"] = event_total_revenue
+
+    active_members = []
+    vip_members = []
+    membership_log_members = []
+
+    event_demand_votes = []
+    total_demand_votes = 0
+
+    active_suggestions = []
+    archived_suggestions = []
+
+    return render_template(
+        "dashboard.html",
+        metrics=metrics,
+        events=events,
+        vip_members=vip_members,
+        membership_log_members=membership_log_members,
+        vip_count=len(vip_members),
+        membership_count=len(active_members),
+        event_demand_votes=event_demand_votes,
+        total_demand_votes=total_demand_votes,
+        active_suggestions=active_suggestions,
+        archived_suggestions=archived_suggestions,
+        square_connected=False,
+    )
+
+
 # -------------------------
 # EVENTS
 # -------------------------
@@ -1420,6 +1508,8 @@ def events():
             "Open Mic"
         ]
     )
+
+
 # -------------------------
 # CONTACT (FULLY WORKING)
 # -------------------------

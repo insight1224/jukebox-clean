@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Jukebox Lounge NC Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  </head>
+  <body>
+    <main class="container">
+      <header class="header">
+        <img class="logo" src="{{ url_for('static', filename='images/hero.jpg') }}" alt="The Jukebox Lounge NC logo" />
+        <h1>The Jukebox Lounge NC</h1>
+      </header>
+
+      <section class="kpi-grid">
+        <article class="card kpi-card">
+          <h2>Ticket Sales</h2>
+          <div class="metric-row"><span>Single Tickets</span><strong>{{ metrics.single_tickets }}</strong></div>
+          <div class="metric-row"><span>VIP Tickets</span><strong>{{ metrics.vip_tickets }}</strong></div>
+          <div class="metric-row"><span>Total Tickets Sold</span><strong>{{ metrics.total_tickets_sold }}</strong></div>
+          <p class="big">{{ metrics.total_tickets_sold }}</p>
+          <p class="sub">Total tickets across Single + VIP</p>
+        </article>
+
+        <article class="card kpi-card">
+          <h2>Memberships</h2>
+          <div class="metric-row"><span>Active Memberships</span><strong>{{ metrics.active_memberships }}</strong></div>
+          <div class="metric-row"><span>Membership Revenue</span><strong>${{ "{:,.2f}".format(metrics.membership_revenue) }}</strong></div>
+          <p class="big">${{ "{:,.2f}".format(metrics.membership_revenue) }}</p>
+          <p class="sub">Based on active members</p>
+        </article>
+
+        <article class="card kpi-card">
+          <h2>Total Revenue</h2>
+          <div class="metric-row"><span>Ticket Revenue</span><strong>${{ "{:,.2f}".format(metrics.ticket_revenue) }}</strong></div>
+          <div class="metric-row"><span>Membership Revenue</span><strong>${{ "{:,.2f}".format(metrics.membership_revenue) }}</strong></div>
+          <p class="big">${{ "{:,.2f}".format(metrics.total_revenue) }}</p>
+          <p class="sub">Combined Revenue</p>
+        </article>
+      </section>
+
+      <section class="section card-block">
+        <h3 class="section-title">Event Sales Breakdown</h3>
+        <div class="accordion-list">
+          {% for event in events %}
+          <details class="accordion-item">
+            <summary>
+              <span>{{ event.name }}</span>
+              <span>{{ event.total_tickets_sold }} Tickets</span>
+              <span>${{ "{:,.0f}".format(event.total_revenue) }}</span>
+              <span class="expand"></span>
+            </summary>
+            <div class="accordion-body">
+              <div class="table-head"><span>Ticket Name</span><span>Qty Sold</span><span>Revenue</span></div>
+              {% for ticket in event.tickets %}
+              <div class="table-row"><span>{{ ticket.name }}</span><span>{{ ticket.quantity }}</span><span>${{ "{:,.0f}".format(ticket.revenue) }}</span></div>
+              {% endfor %}
+            </div>
+          </details>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="section card-block">
+        <h3 class="section-title">Logs &amp; Applications</h3>
+        <div class="app-log-buttons">
+          <a class="app-log-btn" href="/admin/leads?type=dj%20application">DJ / Band Applications</a>
+          <a class="app-log-btn" href="/admin/leads?type=vendor%20application">Vendor Applications</a>
+          <a class="app-log-btn" href="/admin/leads?type=contact%20message">General Inquiries</a>
+          <a class="app-log-btn" href="/admin/leads?type=vip%20signup">VIP Email Log</a>
+          <a class="app-log-btn" href="/admin/leads?type=membership%20signup">Membership Log</a>
+        </div>
+      </section>
+
+      <section class="section card-block">
+        <h3 class="section-title">Event Voting</h3>
+        {% if event_demand_votes %}
+        {% for idea in event_demand_votes %}
+        <article class="vote-item">
+          <div class="vote-head"><span>{{ idea.name }}</span><strong>{{ idea.votes }}</strong></div>
+          <div class="bar"><div style="width: {{ ((idea.votes / total_demand_votes) * 100) | round(1) }}%;"></div></div>
+        </article>
+        {% endfor %}
+        {% else %}
+        <p class="sub">No voting data yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="section card-block">
+        <h3 class="section-title">Event Suggestions</h3>
+        <div class="row-list">
+          {% for suggestion in active_suggestions %}
+          <article class="suggest-row suggestion-entry" data-status="New">
+            <span>{{ suggestion.text }}</span>
+            <span class="suggest-actions">
+              <select class="status-select suggestion-status-select">
+                <option value="New" selected>New</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </span>
+          </article>
+          {% endfor %}
+          {% for suggestion in archived_suggestions %}
+          <article class="suggest-row suggestion-entry" data-status="Closed">
+            <span>{{ suggestion.text }}</span>
+            <span class="suggest-actions">
+              <select class="status-select suggestion-status-select">
+                <option value="New">New</option>
+                <option value="Closed" selected>Closed</option>
+              </select>
+              <button class="delete-suggestion-btn" type="button">Delete</button>
+            </span>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </main>
+    <script>
+      setTimeout(function () {
+        window.location.reload();
+      }, 3600000);
+    </script>
+    <script src="{{ url_for('static', filename='dashboard_suggestions.js') }}"></script>
+  </body>
+</html>
