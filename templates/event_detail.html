@@ -96,6 +96,9 @@
                 <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
                 {% elif t.name == "VIP Section" %}
                 <a class="btn vip-btn" href="{{ event.vip_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
+                {% if t.remaining == 1 %}
+                <p class="vip-left-note">Only 1 VIP ticket left.</p>
+                {% endif %}
                 {% elif t.name == "DJ VIP Section" %}
                 <a class="btn ultra-btn" href="{{ event.booth_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
                 {% endif %}

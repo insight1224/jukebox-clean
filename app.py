@@ -1340,9 +1340,9 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
         "booth_link": "https://square.link/u/TsOHYIEp",
 
         "tickets": {
-            "early": {"price": 13, "sold": 0, "size": 30},
+            "early": {"price": 13, "sold": 0, "size": 1},
             "ga": {"price": 18, "sold": 0, "size": 366},
-            "vip": {"price": 175, "sold": 0, "size": 6},
+            "vip": {"price": 175, "sold": 0, "size": 1},
             "booth": {"price": 200, "sold": 0, "size": 6}
         }
     },
