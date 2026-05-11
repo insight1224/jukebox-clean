@@ -1888,20 +1888,39 @@ def event_detail(event_name):
         cfg = (event.get("tickets", {}) or {}).get(key, {}) or {}
         price = float(cfg.get("price", 0) or 0)
         quantity = int(cfg.get("size", 0) or 0)
+        sold = 0
+
+        # Prefer canonical inventory counters from ticket_types.
         cursor.execute(
             """
-            SELECT COUNT(*)
-            FROM event_tickets
-            WHERE ticket_type = ?
-              AND COALESCE(event_name, 'Battle of the DJs') = ?
-              AND (payment_id IS NULL OR (
-                    UPPER(payment_id) NOT LIKE 'FREE_TEST_%'
-                AND UPPER(payment_id) NOT LIKE 'TEST_%'
-              ))
+            SELECT COALESCE(sold, 0), COALESCE(max_quantity, 0)
+            FROM ticket_types
+            WHERE event_name = ? AND ticket_name = ?
+            LIMIT 1
             """,
-            (ticket_name, event["name"]),
+            (event["name"], ticket_name),
         )
-        sold = int(cursor.fetchone()[0] or 0)
+        inventory_row = cursor.fetchone()
+        if inventory_row:
+            sold = int(inventory_row[0] or 0)
+            quantity = int(inventory_row[1] or quantity or 0)
+        else:
+            # Fallback for legacy rows if inventory table is missing a match.
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM event_tickets
+                WHERE ticket_type = ?
+                  AND COALESCE(event_name, 'Battle of the DJs') = ?
+                  AND (payment_id IS NULL OR (
+                        UPPER(payment_id) NOT LIKE 'FREE_TEST_%'
+                    AND UPPER(payment_id) NOT LIKE 'TEST_%'
+                  ))
+                """,
+                (ticket_name, event["name"]),
+            )
+            sold = int(cursor.fetchone()[0] or 0)
+
         remaining = max(0, quantity - sold)
         if event["name"] == "Battle of the DJs" and ticket_name == "Early Bird":
             remaining = 0
