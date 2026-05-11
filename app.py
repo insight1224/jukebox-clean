@@ -437,7 +437,8 @@ def send_email(subject, body, to_email):
     masked_pw = ("*" * 8) if email_password else "(missing)"
     print(f"SMTP CHECK: {email_address or '(missing)'} {masked_pw}")
     if not email_address or not email_password:
-        raise Exception("SMTP credentials missing at runtime")
+        print("Email failed: SMTP credentials missing at runtime")
+        return False
 
     try:
         msg = MIMEText(body)
@@ -709,26 +710,48 @@ def notify_admin_new_lead(lead_type, name, email, status, details=""):
 def create_lead_record(lead_type, name, email, details, status=None):
     status_value = normalize_lead_status(lead_type, status)
     archived = 1 if lead_is_archived_status(status_value) else 0
+    clean_name = (name or "").strip()
+    clean_email = (email or "").strip().lower()
+    clean_details = (details or "").strip()
+
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
-    cursor.execute(
-        """
-        INSERT INTO leads (type, name, email, details, status, archived, archived_at)
-        VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
-        """,
-        (
-            lead_type,
-            (name or "").strip(),
-            (email or "").strip().lower(),
-            (details or "").strip(),
-            status_value,
-            archived,
-            archived,
-        ),
-    )
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO leads (type, name, email, details, status, archived, archived_at)
+            VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+            """,
+            (
+                lead_type,
+                clean_name,
+                clean_email,
+                clean_details,
+                status_value,
+                archived,
+                archived,
+            ),
+        )
+    except sqlite3.OperationalError as exc:
+        # Backward-compatible fallback for local DBs that do not have archive columns yet.
+        print("[lead-save] schema fallback:", exc)
+        cursor.execute(
+            """
+            INSERT INTO leads (type, name, email, details, status)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (lead_type, clean_name, clean_email, clean_details, status_value),
+        )
+
     conn.commit()
     conn.close()
-    notify_admin_new_lead(lead_type, name, email, status_value, details)
+
+    # Notification is best-effort and must never break submit flow.
+    try:
+        notify_admin_new_lead(lead_type, clean_name, clean_email, status_value, clean_details)
+    except Exception as exc:
+        print("[lead-notify] non-fatal error:", exc)
 
 
 def verify_square_signature(req):

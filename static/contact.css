@@ -83,10 +83,13 @@
 }
 
 /* =========================
-   BUTTON
+   CTA BUTTONS (LINKS + FORM BUTTONS)
 ========================= */
 
-.contact-box button {
+.contact-box button,
+.contact-box a.btn,
+.contact-box a.primary-cta {
+    display: block;
     width: 100%;
     padding: 14px;
 
@@ -98,12 +101,17 @@
 
     font-weight: bold;
     letter-spacing: 2px;
+    text-decoration: none;
+    text-align: center;
 
     cursor: pointer;
     transition: 0.3s ease;
+    box-sizing: border-box;
 }
 
-.contact-box button:hover {
+.contact-box button:hover,
+.contact-box a.btn:hover,
+.contact-box a.primary-cta:hover {
     background: transparent;
     color: #D4AF37;
     border: 1px solid #D4AF37;
