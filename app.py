@@ -1,6 +1,8 @@
 import base64
+import csv
 import hashlib
 import hmac
+import io
 import json
 import os
 import secrets
@@ -10,6 +12,7 @@ import urllib.parse
 import requests
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 from functools import wraps
 from urllib import error as urlerror
 from urllib import request as urlrequest
@@ -101,6 +104,7 @@ def init_db():
     ensure_column("leads", "created_at", "TEXT")
     ensure_column("leads", "archived", "INTEGER DEFAULT 0")
     ensure_column("leads", "archived_at", "TEXT")
+    ensure_column("leads", "notes", "TEXT")
     cursor.execute(
         """
         UPDATE leads
@@ -215,6 +219,68 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS attendees (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT,
+        name TEXT,
+        customer_name TEXT,
+        ticket_type TEXT,
+        quantity INTEGER DEFAULT 1,
+        checked_in_count INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'Not Checked In',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    ensure_column("attendees", "customer_name", "TEXT")
+    ensure_column("attendees", "quantity", "INTEGER DEFAULT 1")
+    ensure_column("attendees", "checked_in_count", "INTEGER DEFAULT 0")
+    ensure_column("attendees", "created_at", "TEXT")
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET customer_name = COALESCE(NULLIF(TRIM(customer_name), ''), name)
+        WHERE COALESCE(TRIM(customer_name), '') = ''
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET quantity = CASE
+            WHEN quantity IS NULL OR quantity < 1 THEN 1
+            ELSE quantity
+        END
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET checked_in_count = CASE
+            WHEN checked_in_count IS NULL OR checked_in_count < 0 THEN
+                CASE WHEN LOWER(COALESCE(status, '')) = 'checked in' THEN 1 ELSE 0 END
+            WHEN checked_in_count > quantity THEN quantity
+            ELSE checked_in_count
+        END
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET status = CASE
+            WHEN checked_in_count <= 0 THEN 'Not Checked In'
+            WHEN checked_in_count >= quantity THEN 'Checked In'
+            ELSE 'Partially Checked In'
+        END
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET created_at = COALESCE(NULLIF(TRIM(created_at), ''), CURRENT_TIMESTAMP)
+        WHERE created_at IS NULL OR TRIM(created_at) = ''
+        """
+    )
 
     # SEED TICKETS
     tickets = [
@@ -456,6 +522,117 @@ def send_email(subject, body, to_email):
         return False
 
 
+def send_email_with_attachments(subject, body, to_email, attachments=None):
+    email_address = (
+        os.getenv("EMAIL_ADDRESS", "").strip()
+        or os.getenv("SMTP_EMAIL_ADDRESS", "").strip()
+    )
+    email_password = (
+        os.getenv("EMAIL_PASSWORD", "").strip()
+        or os.getenv("SMTP_EMAIL_PASSWORD", "").strip()
+    )
+    if not email_address or not email_password:
+        print("Email failed: SMTP credentials missing at runtime")
+        return False
+
+    try:
+        msg = MIMEMultipart()
+        msg["Subject"] = subject
+        msg["From"] = email_address
+        msg["To"] = to_email
+        msg.attach(MIMEText(body, "plain"))
+
+        for item in (attachments or []):
+            filename = (item.get("filename") or "attachment").strip()
+            content = item.get("content") or b""
+            if not content:
+                continue
+            part = MIMEApplication(content, Name=filename)
+            part["Content-Disposition"] = f'attachment; filename="{filename}"'
+            msg.attach(part)
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(email_address, email_password)
+            smtp.send_message(msg)
+        return True
+    except Exception as e:
+        print("Email failed:", e)
+        return False
+
+
+def send_html_email(subject, to_email, plain_body, html_body):
+    email_address = (
+        os.getenv("EMAIL_ADDRESS", "").strip()
+        or os.getenv("SMTP_EMAIL_ADDRESS", "").strip()
+    )
+    email_password = (
+        os.getenv("EMAIL_PASSWORD", "").strip()
+        or os.getenv("SMTP_EMAIL_PASSWORD", "").strip()
+    )
+    if not email_address or not email_password:
+        print("Email failed: SMTP credentials missing at runtime")
+        return False
+
+    try:
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = email_address
+        msg["To"] = to_email
+        msg.attach(MIMEText(plain_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(email_address, email_password)
+            smtp.send_message(msg)
+        return True
+    except Exception as e:
+        print("Email failed:", e)
+        return False
+
+
+def send_membership_welcome_email(name, email):
+    recipient = (email or "").strip()
+    if not recipient:
+        return False
+
+    plain = (
+        f"Hi {name or 'Member'},\n\n"
+        "Welcome to The Jukebox Lounge Circle Membership.\n"
+        "You’re now in line for curated invites, members-only updates, and premium experiences.\n\n"
+        "Complete your membership checkout to activate full benefits.\n\n"
+        "The Jukebox Lounge NC"
+    )
+
+    html = f"""
+    <html>
+      <body style="margin:0;padding:0;background:#070707;font-family:Arial,sans-serif;color:#fff;">
+        <div style="max-width:620px;margin:24px auto;background:#101010;border:1px solid rgba(212,175,55,0.4);border-radius:14px;overflow:hidden;">
+          <div style="padding:22px 24px;background:linear-gradient(135deg,#1d1d1d,#090909);border-bottom:1px solid rgba(212,175,55,0.25);text-align:center;">
+            <img src="https://www.jukeboxloungenc.com/static/images/hero.jpg" alt="The Jukebox Lounge NC" style="max-width:100%;height:auto;border-radius:8px;" />
+          </div>
+          <div style="padding:26px 24px;">
+            <h2 style="margin:0 0 10px;color:#D4AF37;letter-spacing:0.6px;">Welcome to Jukebox Circle Membership</h2>
+            <p style="margin:0 0 12px;color:#f1f1f1;font-size:15px;">Hi {name or 'Member'},</p>
+            <p style="margin:0 0 12px;color:#d9d9d9;line-height:1.6;">
+              Thank you for joining. Your membership puts you at the front of the line for
+              elevated events, insider updates, and premium member-only experiences.
+            </p>
+            <div style="margin:18px 0;padding:14px;border:1px solid rgba(212,175,55,0.3);border-radius:10px;background:#0c0c0c;">
+              <p style="margin:0 0 8px;color:#D4AF37;font-weight:bold;">Member Perks</p>
+              <p style="margin:0;color:#d9d9d9;line-height:1.6;">• Priority event updates<br>• Curated member announcements<br>• Exclusive membership experiences</p>
+            </div>
+            <p style="margin:14px 0 0;color:#d9d9d9;line-height:1.6;">
+              Complete your checkout to activate your full membership benefits.
+            </p>
+            <p style="margin:18px 0 0;color:#D4AF37;font-weight:bold;">The Jukebox Lounge NC</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+    return send_html_email("Welcome to Jukebox Circle Membership", recipient, plain, html)
+
+
 def send_ticket_email_once(cursor, ticket_id):
     cursor.execute(
         """
@@ -651,7 +828,7 @@ def send_tickets_email_for_customer(email, tickets, subject="Your Jukebox Lounge
 LEAD_STATUS_MAP = {
     "DJ Application": ("New", "Contacted", "Booked", "Declined"),
     "Vendor Application": ("New", "Contacted", "Booked", "Declined"),
-    "Contact Message": ("New", "Responded", "Closed"),
+    "Contact Message": ("New", "Replied", "Closed"),
     "VIP Signup": ("Active", "Inactive"),
     "Membership Signup": ("Active", "Inactive"),
 }
@@ -673,6 +850,8 @@ def lead_category(lead_type):
 def normalize_lead_status(lead_type, status=None):
     category = lead_category(lead_type)
     allowed = LEAD_STATUS_MAP.get(category, ("New",))
+    if category == "Contact Message" and (status or "").strip().lower() == "responded":
+        status = "Replied"
     if status in allowed:
         return status
     return allowed[0]
@@ -1414,15 +1593,15 @@ def home():
 @app.route("/dashboard")
 @requires_auth
 def dashboard():
-    single_tickets = 25
+    single_tickets = 32
     vip_tickets = 6
     total_tickets_sold = single_tickets + vip_tickets
     estimated_attendance = total_tickets_sold
     active_memberships = 1
 
-    ticket_revenue = 1307.45
+    ticket_revenue = 1441.55
     membership_revenue = 10.00
-    total_revenue = 1317.45
+    total_revenue = 1451.55
 
     metrics = {
         "single_tickets": single_tickets,
@@ -1440,7 +1619,7 @@ def dashboard():
             "name": "Battle of the DJs",
             "tickets": [
                 {"name": "Early Bird", "quantity": 22, "price": 13.975},
-                {"name": "General Admissions", "quantity": 2, "price": 19},
+                {"name": "General Admissions", "quantity": 9, "price": 19.1222222222},
                 {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
                 {"name": "DJ VIP", "quantity": 0, "price": 0},
             ],
@@ -1553,6 +1732,294 @@ def contact():
 
     return render_template("contact.html")
 
+
+@app.route("/checkin")
+def checkin_page():
+    message = request.args.get("msg", "").strip()
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    enforce_vip_group_capacity(cursor)
+    conn.commit()
+    cursor.execute(
+        """
+        SELECT
+            id,
+            event_name,
+            COALESCE(NULLIF(TRIM(customer_name), ''), name) AS name,
+            ticket_type,
+            quantity,
+            checked_in_count,
+            status
+        FROM attendees
+        ORDER BY COALESCE(NULLIF(TRIM(customer_name), ''), name) COLLATE NOCASE ASC
+        """
+    )
+    attendees = cursor.fetchall()
+    conn.close()
+    normalized_attendees = []
+    for row in attendees:
+        item = dict(row)
+        ticket_type = (item.get("ticket_type") or "").strip()
+        quantity = max(1, int(item.get("quantity") or 1))
+        checked_in_count = max(0, int(item.get("checked_in_count") or 0))
+
+        # VIP rows are group tickets by default.
+        if "vip" in ticket_type.lower() and quantity < 6:
+            quantity = 6
+
+        checked_in_count = min(checked_in_count, quantity)
+        if checked_in_count <= 0:
+            status = "Not Checked In"
+        elif checked_in_count >= quantity:
+            status = "Checked In"
+        else:
+            status = "Partially Checked In"
+
+        item["quantity"] = quantity
+        item["checked_in_count"] = checked_in_count
+        item["status"] = status
+        normalized_attendees.append(item)
+
+    return render_template("checkin.html", attendees=normalized_attendees, message=message)
+
+
+@app.route("/checkin/<int:id>")
+def checkin_attendee(id):
+    update_attendee_checkin_count(id, 1)
+    return redirect("/checkin")
+
+
+@app.route("/reset-checkin/<int:id>")
+def reset_checkin(id):
+    update_attendee_checkin_count(id, -1)
+    return redirect("/checkin")
+
+
+def update_attendee_checkin_count(attendee_id, delta):
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT quantity, checked_in_count, ticket_type
+        FROM attendees
+        WHERE id = ?
+        """,
+        (attendee_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    quantity = max(1, int(row[0] or 1))
+    checked_in_count = max(0, int(row[1] or 0))
+    ticket_type = str(row[2] or "").strip()
+    if "vip" in ticket_type.lower() and quantity < 6:
+        quantity = 6
+
+    next_count = checked_in_count + int(delta)
+    if next_count < 0:
+        next_count = 0
+    if next_count > quantity:
+        next_count = quantity
+
+    if next_count <= 0:
+        status = "Not Checked In"
+    elif next_count >= quantity:
+        status = "Checked In"
+    else:
+        status = "Partially Checked In"
+
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET quantity = ?,
+            checked_in_count = ?,
+            status = ?
+        WHERE id = ?
+        """,
+        (quantity, next_count, status, attendee_id),
+    )
+    conn.commit()
+    conn.close()
+    return {"id": attendee_id, "quantity": quantity, "checked_in_count": next_count, "status": status}
+
+
+@app.route("/checkin-action/<int:id>", methods=["POST"])
+def checkin_action(id):
+    action = (request.form.get("action") or "").strip().lower()
+    delta = 1 if action == "checkin" else -1 if action == "undo" else 0
+    if delta == 0:
+        return {"ok": False, "error": "invalid_action"}, 400
+    updated = update_attendee_checkin_count(id, delta)
+    if not updated:
+        return {"ok": False, "error": "not_found"}, 404
+    return {"ok": True, **updated}
+
+
+def enforce_vip_group_capacity(cursor):
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET quantity = 6
+        WHERE UPPER(COALESCE(ticket_type, '')) LIKE '%VIP%'
+          AND COALESCE(quantity, 1) < 6
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET status = CASE
+            WHEN COALESCE(checked_in_count, 0) <= 0 THEN 'Not Checked In'
+            WHEN COALESCE(checked_in_count, 0) >= COALESCE(quantity, 1) THEN 'Checked In'
+            ELSE 'Partially Checked In'
+        END
+        WHERE UPPER(COALESCE(ticket_type, '')) LIKE '%VIP%'
+        """
+    )
+
+
+@app.route("/debug-attendees", methods=["GET"], strict_slashes=False)
+@app.route("/debug_attendees", methods=["GET"], strict_slashes=False)
+def debug_attendees():
+    conn = sqlite3.connect("database.db")
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    enforce_vip_group_capacity(cursor)
+    conn.commit()
+    cursor.execute("SELECT * FROM attendees")
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "ok", "count": len(rows), "rows": rows}
+
+
+@app.route("/upload-attendees", methods=["POST"])
+def upload_attendees():
+    event_name = "Battle of DJs"
+    file = request.files.get("attendee_csv")
+
+    if not file or not file.filename.lower().endswith(".csv"):
+        return redirect("/checkin?msg=Please upload a valid CSV file.")
+
+    raw = file.read()
+    if not raw:
+        return redirect("/checkin?msg=CSV file is empty.")
+
+    text = raw.decode("utf-8-sig", errors="ignore")
+    reader = csv.DictReader(io.StringIO(text))
+
+    inserted = 0
+    skipped = 0
+    skipped_missing_name = 0
+    skipped_missing_ticket_type = 0
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+
+    for row in reader:
+        if not row:
+            skipped += 1
+            print("[upload-attendees] skip: empty row")
+            continue
+
+        name = ((row.get("Order Name") or row.get("Recipient Name") or "")).strip()
+        email = ((row.get("Recipient Email") or "")).strip()
+        ticket_type = ((row.get("Item Name") or "")).strip()
+        raw_quantity = str(row.get("Item Quantity") or "1").strip()
+
+        if not name:
+            skipped += 1
+            skipped_missing_name += 1
+            print("[upload-attendees] skip: missing name")
+            continue
+
+        if not ticket_type:
+            skipped += 1
+            skipped_missing_ticket_type += 1
+            print(f"[upload-attendees] skip: missing ticket_type for name={name} email={email}")
+            continue
+
+        try:
+            quantity = int(float(raw_quantity))
+        except Exception:
+            quantity = 1
+        if quantity < 1:
+            quantity = 1
+        if "vip" in ticket_type.lower() and quantity < 6:
+            quantity = 6
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM attendees
+            WHERE LOWER(COALESCE(event_name, '')) = LOWER(?)
+              AND LOWER(COALESCE(customer_name, name, '')) = LOWER(?)
+              AND LOWER(COALESCE(ticket_type, '')) = LOWER(?)
+              AND COALESCE(quantity, 1) = ?
+            LIMIT 1
+            """,
+            (event_name, name, ticket_type, quantity),
+        )
+        if cursor.fetchone():
+            skipped += 1
+            print(f"[upload-attendees] skip: duplicate row for {name} | {ticket_type} | qty={quantity}")
+            continue
+
+        cursor.execute(
+            """
+            INSERT INTO attendees (
+                event_name,
+                name,
+                customer_name,
+                ticket_type,
+                quantity,
+                checked_in_count,
+                status
+            )
+            VALUES (?, ?, ?, ?, ?, 0, 'Not Checked In')
+            """,
+            (event_name, name, name, ticket_type, quantity),
+        )
+        inserted += 1
+        print(f"[upload-attendees] insert: {name} | {email} | {ticket_type} | qty={quantity}")
+
+    conn.commit()
+    conn.close()
+
+    print(f"[upload-attendees] inserted={inserted}")
+    print(f"[upload-attendees] skipped={skipped}")
+    print(f"[upload-attendees] skipped_missing_name={skipped_missing_name}")
+    print(f"[upload-attendees] skipped_missing_ticket_type={skipped_missing_ticket_type}")
+
+    return redirect(f"/checkin?msg=Attendees Imported Successfully ({inserted} added, {skipped} skipped).")
+
+
+@app.route('/debug-csv', methods=['GET', 'POST'])
+def debug_csv():
+
+    if request.method == 'GET':
+        return '''
+        <form method="POST" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <button type="submit">Upload CSV for Debug</button>
+        </form>
+        '''
+
+    import csv
+    import sqlite3
+
+    file = request.files['file']
+    decoded = file.read().decode('utf-8').splitlines()
+    reader = csv.DictReader(decoded)
+
+    first_row = next(reader)
+
+    return {
+        "columns": list(first_row.keys()),
+        "sample_row": first_row
+    }
+
 # -------------------------
 # MEMBERSHIP PAGE
 # -------------------------
@@ -1569,6 +2036,7 @@ def join_membership():
     email = request.form.get("email")
 
     create_lead_record("Membership Signup", name, email, "Waiting for payment", "Active")
+    send_membership_welcome_email(name, email)
 
     return redirect("https://square.link/u/fgiSNspy")
 
@@ -1745,6 +2213,58 @@ def vip_signup():
     """
 
     create_lead_record("VIP Signup", name, email, details, "Active")
+
+    welcome_plain = (
+        f"Hi {name or 'VIP Member'},\n\n"
+        "Welcome to The Jukebox Lounge VIP Email List.\n"
+        "You now have access to exclusive drops, early announcements, and curated experiences.\n\n"
+        "Stay tuned — we have something special lined up.\n\n"
+        "See you soon,\n"
+        "The Jukebox Lounge NC"
+    )
+
+    welcome_html = f"""
+    <html>
+      <body style="margin:0;padding:0;background:#070707;font-family:Arial,sans-serif;color:#fff;">
+        <div style="max-width:620px;margin:24px auto;background:#111;border:1px solid rgba(212,175,55,0.4);border-radius:14px;overflow:hidden;">
+          <div style="padding:22px 24px;background:linear-gradient(135deg,#1a1a1a,#0a0a0a);border-bottom:1px solid rgba(212,175,55,0.25);text-align:center;">
+            <img src="https://www.jukeboxloungenc.com/static/images/hero.jpg" alt="The Jukebox Lounge NC" style="max-width:100%;height:auto;border-radius:8px;" />
+          </div>
+          <div style="padding:26px 24px;">
+            <h2 style="margin:0 0 10px;color:#D4AF37;letter-spacing:0.6px;">Welcome to the VIP Email List</h2>
+            <p style="margin:0 0 12px;color:#f1f1f1;font-size:15px;">Hi {name or 'VIP Member'},</p>
+            <p style="margin:0 0 12px;color:#d9d9d9;line-height:1.6;">
+              You are officially in. As a VIP member, you’ll get first access to exclusive drops, event updates,
+              and elevated experiences from The Jukebox Lounge NC.
+            </p>
+            <div style="margin:18px 0;padding:14px;border:1px solid rgba(212,175,55,0.3);border-radius:10px;background:#0c0c0c;">
+              <p style="margin:0 0 8px;color:#D4AF37;font-weight:bold;">What to expect:</p>
+              <p style="margin:0;color:#d9d9d9;line-height:1.6;">• Early access to tickets<br>• VIP-only announcements<br>• Curated nights and premium vibes</p>
+            </div>
+            <p style="margin:14px 0 0;color:#d9d9d9;line-height:1.6;">
+              Stay ready — your next invite is coming soon.
+            </p>
+            <p style="margin:18px 0 0;color:#d9d9d9;line-height:1.6;">
+              See you soon,<br>
+              The Jukebox Lounge NC
+            </p>
+            <p style="margin:18px 0 0;color:#D4AF37;font-weight:bold;">The Jukebox Lounge NC</p>
+          </div>
+        </div>
+      </body>
+    </html>
+    """
+
+    send_ok = False
+    recipient = (email or "").strip()
+    if recipient:
+        send_ok = send_html_email(
+            "Welcome to The Jukebox Lounge VIP List",
+            recipient,
+            welcome_plain,
+            welcome_html,
+        )
+    print(f"[vip-welcome] recipient={recipient or '(missing)'} sent={send_ok}")
 
     return render_template(
         "thank_you.html",
@@ -2087,6 +2607,92 @@ def update_lead(id):
     return redirect(request.referrer or "/admin/leads")
 
 
+@app.route("/update-lead-note/<int:id>", methods=["POST"])
+@requires_auth
+def update_lead_note(id):
+    note = (request.form.get("note") or "").strip()
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE leads
+        SET notes = ?
+        WHERE id = ?
+        """,
+        (note, id),
+    )
+    conn.commit()
+    conn.close()
+    return redirect(request.referrer or "/admin/leads")
+
+
+@app.route("/delete-lead/<int:id>", methods=["POST"])
+@requires_auth
+def delete_lead(id):
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM leads WHERE id = ?", (id,))
+    conn.commit()
+    conn.close()
+    return redirect(request.referrer or "/admin/leads")
+
+
+@app.route("/admin/leads/mass-email", methods=["POST"])
+@requires_auth
+def mass_email_leads():
+    category = (request.form.get("category") or "").strip()
+    subject = (request.form.get("subject") or "").strip()
+    body = (request.form.get("body") or "").strip()
+
+    if category not in ("VIP Signup", "Membership Signup"):
+        return redirect("/admin/leads?msg=Invalid+email+category")
+    if not subject or not body:
+        t = urllib.parse.quote_plus(category.lower())
+        return redirect(f"/admin/leads?type={t}&msg=Subject+and+message+are+required")
+
+    attachments = []
+    for file in request.files.getlist("attachments"):
+        if not file or not file.filename:
+            continue
+        filename = os.path.basename(file.filename.strip())
+        content = file.read()
+        if not content:
+            continue
+        attachments.append({"filename": filename, "content": content})
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT DISTINCT LOWER(TRIM(email))
+        FROM leads
+        WHERE email IS NOT NULL
+          AND TRIM(email) <> ''
+          AND type = ?
+          AND status = 'Active'
+        """
+        ,
+        (category,),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+
+    recipients = [r[0] for r in rows if r and r[0]]
+    sent = 0
+    failed = 0
+
+    for recipient in recipients:
+        ok = send_email_with_attachments(subject, body, recipient, attachments=attachments)
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    t = urllib.parse.quote_plus(category.lower())
+    msg = urllib.parse.quote_plus(f"Mass email complete: sent {sent}, failed {failed}.")
+    return redirect(f"/admin/leads?type={t}&msg={msg}")
+
+
 @app.route("/admin/leads")
 @requires_auth
 def admin_leads():
@@ -2094,12 +2700,13 @@ def admin_leads():
     status_filter = (request.args.get("status") or "").strip()
     q = (request.args.get("q") or "").strip().lower()
     show_archived = (request.args.get("show_archived") or "0").strip() in ("1", "true", "yes")
+    msg = (request.args.get("msg") or "").strip()
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
     cursor.execute(
         """
-        SELECT id, type, name, email, details, status, COALESCE(archived, 0), COALESCE(created_at, '')
+        SELECT id, type, name, email, details, status, COALESCE(archived, 0), COALESCE(created_at, ''), COALESCE(notes, '')
         FROM leads
         ORDER BY id DESC
         """
@@ -2114,6 +2721,8 @@ def admin_leads():
         if not show_archived and archived == 1:
             continue
         if type_filter and type_filter != category.lower():
+            continue
+        if category in ("VIP Signup", "Membership Signup") and r[5] != "Active":
             continue
         if status_filter and r[5] != status_filter:
             continue
@@ -2131,9 +2740,13 @@ def admin_leads():
                 "status": r[5],
                 "archived": archived,
                 "created_at": r[7],
+                "notes": r[8],
                 "allowed_statuses": LEAD_STATUS_MAP.get(category, ("New",)),
             }
         )
+
+    application_mode = type_filter in ("dj application", "vendor application")
+    mass_email_mode = type_filter in ("vip signup", "membership signup")
 
     return render_template(
         "admin_leads.html",
@@ -2142,6 +2755,9 @@ def admin_leads():
         status_filter=status_filter,
         q=q,
         show_archived=show_archived,
+        application_mode=application_mode,
+        mass_email_mode=mass_email_mode,
+        msg=msg,
     )
 
 

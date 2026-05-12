@@ -10,10 +10,23 @@
     </div>
   </div>
 
+  {% if msg %}
+  <p style="margin-top:10px;color:#D4AF37;">{{ msg }}</p>
+  {% endif %}
+
   <form method="GET" class="kpi-group" style="margin-top:12px;">
     <div class="kpi-group-cards cols-3">
       <div><label>Type</label><input class="lead-search" name="type" value="{{ type_filter }}" placeholder="dj application / vip signup"></div>
-      <div><label>Status</label><input class="lead-search" name="status" value="{{ status_filter }}" placeholder="New / Contacted / Closed"></div>
+      <div>
+        <label>{% if application_mode %}Notes Mode{% else %}Status{% endif %}</label>
+        {% if application_mode %}
+        <input class="lead-search" value="Status hidden for DJ/Vendor logs" readonly>
+        {% elif mass_email_mode %}
+        <input class="lead-search" value="Active members only" readonly>
+        {% else %}
+        <input class="lead-search" name="status" value="{{ status_filter }}" placeholder="New / Replied / Closed">
+        {% endif %}
+      </div>
       <div><label>Search</label><input class="lead-search" name="q" value="{{ q }}" placeholder="name or email"></div>
     </div>
     <div style="margin-top:10px;">
@@ -22,6 +35,23 @@
     </div>
   </form>
 
+  {% if mass_email_mode %}
+  <form method="POST" action="/admin/leads/mass-email" class="kpi-group" style="margin-top:14px;" enctype="multipart/form-data">
+    <input type="hidden" name="category" value="{% if type_filter == 'membership signup' %}Membership Signup{% else %}VIP Signup{% endif %}">
+    <div style="display:grid;gap:8px;">
+      <label>Subject</label>
+      <input class="lead-search" type="text" name="subject" placeholder="Email subject" required>
+      <label>Message</label>
+      <textarea class="lead-search" name="body" rows="4" placeholder="Write your message to all active members..." required></textarea>
+      <label>Attachments / Pictures (optional)</label>
+      <input class="lead-search" type="file" name="attachments" multiple accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt">
+      <div>
+        <button class="btn" type="submit">Send Mass Email</button>
+      </div>
+    </div>
+  </form>
+  {% endif %}
+
   <div class="table-wrap">
     <table class="styled-table">
       <thead>
@@ -29,10 +59,19 @@
           <th>Type</th>
           <th>Name</th>
           <th>Email</th>
+          {% if not application_mode %}
           <th>Status</th>
+          {% endif %}
           <th>Details</th>
+          {% if application_mode %}
+          <th>Notes</th>
+          {% endif %}
           <th>Created</th>
+          {% if application_mode %}
+          <th>Delete</th>
+          {% else %}
           <th>Update</th>
+          {% endif %}
         </tr>
       </thead>
       <tbody>
@@ -41,10 +80,25 @@
           <td>{{ lead.category }}</td>
           <td>{{ lead.name }}</td>
           <td>{{ lead.email }}</td>
+          {% if not application_mode %}
           <td>{{ lead.status }}</td>
+          {% endif %}
           <td>{{ lead.details }}</td>
+          {% if application_mode %}
+          <td>
+            <form method="POST" action="/update-lead-note/{{ lead.id }}">
+              <input type="text" name="note" value="{{ lead.notes }}" placeholder="Add note..." style="width: 220px;">
+              <button class="btn" type="submit">Save Note</button>
+            </form>
+          </td>
+          {% endif %}
           <td>{{ lead.created_at }}</td>
           <td>
+            {% if application_mode %}
+            <form method="POST" action="/delete-lead/{{ lead.id }}" onsubmit="return confirm('Delete this lead?');">
+              <button class="btn" type="submit">Delete</button>
+            </form>
+            {% else %}
             <form method="POST" action="/update-lead/{{ lead.id }}">
               <select name="status">
                 {% for s in lead.allowed_statuses %}
@@ -53,6 +107,7 @@
               </select>
               <button class="btn" type="submit">Save</button>
             </form>
+            {% endif %}
           </td>
         </tr>
         {% endfor %}

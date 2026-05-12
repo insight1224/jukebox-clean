@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+
+{% block title %}Event Check-In | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='checkin.css') }}">
+
+<section class="checkin-shell">
+    <div class="checkin-card">
+        <h1>Event Check-In</h1>
+        <p class="sub">Search attendees and update check-in status.</p>
+
+        {% if message %}
+        <p class="upload-message">{{ message }}</p>
+        {% endif %}
+
+        <form class="upload-form" action="{{ url_for('upload_attendees') }}" method="POST" enctype="multipart/form-data">
+            <input type="text" name="event_name" placeholder="Event Name (default: Battle of the DJs)">
+            <input type="file" name="attendee_csv" accept=".csv" required>
+            <button type="submit" class="btn btn-checkin">Upload CSV</button>
+        </form>
+
+        <input
+            type="text"
+            id="attendeeSearch"
+            class="search-input"
+            placeholder="Search by attendee name..."
+            autocomplete="off"
+        >
+
+        <div class="table-wrap">
+            <table id="attendeeTable">
+                <thead>
+                    <tr>
+                        <th>Event Name</th>
+                        <th>Customer Name</th>
+                        <th>Ticket Type</th>
+                        <th>Quantity</th>
+                        <th>Checked In</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for attendee in attendees %}
+                    <tr data-attendee-id="{{ attendee['id'] }}">
+                        <td>{{ attendee["event_name"] }}</td>
+                        <td class="attendee-name">{{ attendee["name"] }}</td>
+                        <td>{{ attendee["ticket_type"] }}</td>
+                        <td class="qty-cell">{{ attendee["quantity"] }}</td>
+                        <td class="count-cell">{{ attendee["checked_in_count"] }} / {{ attendee["quantity"] }}</td>
+                        <td class="status-cell">
+                            {% if attendee["status"] == "Checked In" %}
+                            <span class="status status-checked">Checked In</span>
+                            {% elif attendee["status"] == "Partially Checked In" %}
+                            <span class="status status-partial">Partially Checked In</span>
+                            {% else %}
+                            <span class="status status-not-checked">Not Checked In</span>
+                            {% endif %}
+                            <div class="status-progress">{{ attendee["checked_in_count"] }} / {{ attendee["quantity"] }} Checked In</div>
+                        </td>
+                        <td class="action-cell">
+                            {% if attendee["checked_in_count"] < attendee["quantity"] %}
+                            <button type="button" class="btn btn-checkin js-checkin" data-action="checkin">Check In</button>
+                            {% endif %}
+                            {% if attendee["checked_in_count"] > 0 %}
+                            <button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<script>
+const searchInput = document.getElementById("attendeeSearch");
+const rows = document.querySelectorAll("#attendeeTable tbody tr");
+
+searchInput.addEventListener("input", function () {
+  const q = this.value.trim().toLowerCase();
+  rows.forEach((row) => {
+    const nameCell = row.querySelector(".attendee-name");
+    const match = (nameCell?.textContent || "").toLowerCase().includes(q);
+    row.style.display = match ? "" : "none";
+  });
+});
+
+function statusMarkup(status, checked, qty) {
+  let cls = "status-not-checked";
+  if (status === "Checked In") cls = "status-checked";
+  else if (status === "Partially Checked In") cls = "status-partial";
+  return `
+    <span class="status ${cls}">${status}</span>
+    <div class="status-progress">${checked} / ${qty} Checked In</div>
+  `;
+}
+
+function actionMarkup(checked, qty) {
+  let html = "";
+  if (checked < qty) html += '<button type="button" class="btn btn-checkin js-checkin" data-action="checkin">Check In</button> ';
+  if (checked > 0) html += '<button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>';
+  return html.trim();
+}
+
+document.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".js-checkin");
+  if (!btn) return;
+  e.preventDefault();
+  const row = btn.closest("tr[data-attendee-id]");
+  if (!row) return;
+  const id = row.dataset.attendeeId;
+  const action = btn.dataset.action;
+  btn.disabled = true;
+  try {
+    const res = await fetch(`/checkin-action/${id}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ action })
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error("update_failed");
+    row.querySelector(".qty-cell").textContent = data.quantity;
+    row.querySelector(".count-cell").textContent = `${data.checked_in_count} / ${data.quantity}`;
+    row.querySelector(".status-cell").innerHTML = statusMarkup(data.status, data.checked_in_count, data.quantity);
+    row.querySelector(".action-cell").innerHTML = actionMarkup(data.checked_in_count, data.quantity);
+  } catch (err) {
+    btn.disabled = false;
+  }
+});
+</script>
+{% endblock %}

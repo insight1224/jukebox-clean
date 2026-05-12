@@ -1,0 +1,141 @@
+.checkin-shell {
+    min-height: calc(100vh - 80px);
+    background: #050505;
+    padding: 36px 18px 50px;
+}
+
+.checkin-card {
+    max-width: 1100px;
+    margin: 0 auto;
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    border-radius: 14px;
+    background: #101010;
+    padding: 22px;
+}
+
+.checkin-card h1 {
+    margin: 0;
+    color: #d4af37;
+}
+
+.sub {
+    margin-top: 8px;
+    color: #bfbfbf;
+}
+
+.upload-message {
+    margin: 14px 0;
+    color: #d4af37;
+    font-weight: 600;
+}
+
+.upload-form {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1.2fr 1fr auto;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.upload-form input[type="text"],
+.upload-form input[type="file"] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    border-radius: 10px;
+    background: #0a0a0a;
+    color: #fff;
+}
+
+.search-input {
+    width: 100%;
+    margin: 18px 0;
+    padding: 12px 14px;
+    border: 1px solid rgba(212, 175, 55, 0.28);
+    border-radius: 10px;
+    background: #0a0a0a;
+    color: #fff;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: #d4af37;
+    box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+}
+
+.table-wrap {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 760px;
+}
+
+thead th {
+    background: #151515;
+    color: #d4af37;
+    font-weight: 700;
+    text-align: left;
+    padding: 12px 10px;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+}
+
+tbody td {
+    color: #ececec;
+    padding: 12px 10px;
+    border-bottom: 1px solid #272727;
+}
+
+.status {
+    font-weight: 700;
+}
+
+.status-checked {
+    color: #2ecc71;
+}
+
+.status-not-checked {
+    color: #ff4d4d;
+}
+
+.status-partial {
+    color: #d4af37;
+}
+
+.status-progress {
+    margin-top: 4px;
+    color: #bdbdbd;
+    font-size: 12px;
+}
+
+.btn {
+    display: inline-block;
+    text-decoration: none;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.btn-checkin {
+    background: #d4af37;
+    color: #111;
+}
+
+.btn-undo {
+    background: #222;
+    color: #d7d7d7;
+    border: 1px solid #444;
+}
+
+@media (max-width: 768px) {
+    .checkin-card {
+        padding: 16px;
+    }
+
+    .upload-form {
+        grid-template-columns: 1fr;
+    }
+}
