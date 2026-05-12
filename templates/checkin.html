@@ -20,6 +20,14 @@
             <button type="submit" class="btn btn-checkin">Upload CSV</button>
         </form>
 
+        <form class="upload-form" action="{{ url_for('add_attendee_manual') }}" method="POST">
+            <input type="text" name="event_name" placeholder="Event Name (ex: Battle of the DJs)" required>
+            <input type="text" name="customer_name" placeholder="Customer Name" required>
+            <input type="text" name="ticket_type" placeholder="Ticket Type (ex: General Admission)" required>
+            <input type="number" name="quantity" min="1" value="1" required>
+            <button type="submit" class="btn btn-checkin">Add Ticket Manually</button>
+        </form>
+
         <input
             type="text"
             id="attendeeSearch"

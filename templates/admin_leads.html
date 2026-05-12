@@ -50,6 +50,35 @@
       </div>
     </div>
   </form>
+
+  <div class="table-wrap" style="margin-top:14px;">
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>Category</th>
+          <th>Subject</th>
+          <th>Recipients</th>
+          <th>Attachments</th>
+          <th>Sent</th>
+          <th>Failed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in mass_email_logs %}
+        <tr>
+          <td>{{ log[6] }}</td>
+          <td>{{ log[0] }}</td>
+          <td>{{ log[1] }}</td>
+          <td>{{ log[2] }}</td>
+          <td>{{ log[3] }}</td>
+          <td>{{ log[4] }}</td>
+          <td>{{ log[5] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
   {% endif %}
 
   <div class="table-wrap">

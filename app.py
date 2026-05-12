@@ -281,6 +281,20 @@ def init_db():
         WHERE created_at IS NULL OR TRIM(created_at) = ''
         """
     )
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS mass_email_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            subject TEXT,
+            recipients_count INTEGER DEFAULT 0,
+            attachments_count INTEGER DEFAULT 0,
+            sent_count INTEGER DEFAULT 0,
+            failed_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
 
     # SEED TICKETS
     tickets = [
@@ -541,6 +555,39 @@ def send_email_with_attachments(subject, body, to_email, attachments=None):
         msg["From"] = email_address
         msg["To"] = to_email
         msg.attach(MIMEText(body, "plain"))
+        attachment_count = len(attachments or [])
+        attachments_html = ""
+        if attachment_count > 0:
+            attachments_html = f"""
+            <div style="margin-top:16px;padding:12px;border:1px solid rgba(212,175,55,0.25);border-radius:10px;background:#0c0c0c;color:#d9d9d9;">
+              📎 {attachment_count} attachment(s) included with this email.
+            </div>
+            """
+
+        signature_html = """
+        <br><br>
+        <p style="color:#d9d9d9;line-height:1.6;">
+          See you soon,<br>
+          <strong style="color:#D4AF37;">The Jukebox Lounge NC</strong>
+        </p>
+        """
+        html_body = f"""
+        <html>
+          <body style="margin:0;padding:18px;background:#070707;font-family:Arial,sans-serif;color:#fff;">
+            <div style="max-width:620px;margin:0 auto;background:#111;border:1px solid rgba(212,175,55,0.4);border-radius:14px;overflow:hidden;">
+              <div style="padding:18px;background:linear-gradient(135deg,#1a1a1a,#0a0a0a);border-bottom:1px solid rgba(212,175,55,0.25);text-align:center;">
+                <img src="https://www.jukeboxloungenc.com/static/images/hero.jpg" alt="The Jukebox Lounge NC" style="max-width:100%;height:auto;border-radius:8px;" />
+              </div>
+              <div style="padding:20px 22px;color:#e8e8e8;line-height:1.6;">
+                <p>{body.replace(chr(10), '<br>')}</p>
+                {attachments_html}
+                {signature_html}
+              </div>
+            </div>
+          </body>
+        </html>
+        """
+        msg.attach(MIMEText(html_body, "html"))
 
         for item in (attachments or []):
             filename = (item.get("filename") or "attachment").strip()
@@ -554,6 +601,7 @@ def send_email_with_attachments(subject, body, to_email, attachments=None):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
             smtp.login(email_address, email_password)
             smtp.send_message(msg)
+        print(f"[mass-email] sent to {to_email} with {len(attachments or [])} attachments")
         return True
     except Exception as e:
         print("Email failed:", e)
@@ -1784,6 +1832,39 @@ def checkin_page():
     return render_template("checkin.html", attendees=normalized_attendees, message=message)
 
 
+@app.route("/checkin/add", methods=["POST"])
+def add_attendee_manual():
+    event_name = (request.form.get("event_name") or "").strip() or "Battle of the DJs"
+    customer_name = (request.form.get("customer_name") or "").strip()
+    ticket_type = (request.form.get("ticket_type") or "").strip()
+    raw_quantity = (request.form.get("quantity") or "1").strip()
+
+    if not customer_name or not ticket_type:
+        return redirect("/checkin?msg=Name and ticket type are required.")
+
+    try:
+        quantity = int(float(raw_quantity))
+    except Exception:
+        quantity = 1
+    if quantity < 1:
+        quantity = 1
+    if "vip" in ticket_type.lower() and quantity < 6:
+        quantity = 6
+
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO attendees (event_name, name, customer_name, ticket_type, quantity, checked_in_count, status)
+        VALUES (?, ?, ?, ?, ?, 0, 'Not Checked In')
+        """,
+        (event_name, customer_name, customer_name, ticket_type, quantity),
+    )
+    conn.commit()
+    conn.close()
+    return redirect("/checkin?msg=Ticket added successfully.")
+
+
 @app.route("/checkin/<int:id>")
 def checkin_attendee(id):
     update_attendee_checkin_count(id, 1)
@@ -1896,7 +1977,7 @@ def debug_attendees():
 
 @app.route("/upload-attendees", methods=["POST"])
 def upload_attendees():
-    event_name = "Battle of DJs"
+    event_name = "Battle of the DJs"
     file = request.files.get("attendee_csv")
 
     if not file or not file.filename.lower().endswith(".csv"):
@@ -2651,7 +2732,10 @@ def mass_email_leads():
         return redirect(f"/admin/leads?type={t}&msg=Subject+and+message+are+required")
 
     attachments = []
-    for file in request.files.getlist("attachments"):
+    files = request.files.getlist("attachments")
+    if not files and request.files.get("attachments"):
+        files = [request.files.get("attachments")]
+    for file in files:
         if not file or not file.filename:
             continue
         filename = os.path.basename(file.filename.strip())
@@ -2659,6 +2743,7 @@ def mass_email_leads():
         if not content:
             continue
         attachments.append({"filename": filename, "content": content})
+    print(f"[mass-email] attachments uploaded={len(attachments)}")
 
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
@@ -2688,6 +2773,18 @@ def mass_email_leads():
         else:
             failed += 1
 
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        INSERT INTO mass_email_log (category, subject, recipients_count, attachments_count, sent_count, failed_count)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (category, subject, len(recipients), len(attachments), sent, failed),
+    )
+    conn.commit()
+    conn.close()
+
     t = urllib.parse.quote_plus(category.lower())
     msg = urllib.parse.quote_plus(f"Mass email complete: sent {sent}, failed {failed}.")
     return redirect(f"/admin/leads?type={t}&msg={msg}")
@@ -2712,6 +2809,15 @@ def admin_leads():
         """
     )
     rows = cursor.fetchall()
+    cursor.execute(
+        """
+        SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
+        FROM mass_email_log
+        ORDER BY id DESC
+        LIMIT 10
+        """
+    )
+    mass_email_logs = cursor.fetchall()
     conn.close()
 
     filtered = []
@@ -2758,6 +2864,7 @@ def admin_leads():
         application_mode=application_mode,
         mass_email_mode=mass_email_mode,
         msg=msg,
+        mass_email_logs=mass_email_logs,
     )
 
 
