@@ -14,6 +14,9 @@
       <header class="header">
         <img class="logo" src="{{ url_for('static', filename='images/hero.jpg') }}" alt="The Jukebox Lounge NC logo" />
         <h1>The Jukebox Lounge NC</h1>
+        <div style="margin-top:12px;">
+          <a class="app-log-btn" href="/checkin">Check-In Logs</a>
+        </div>
       </header>
 
       <section class="kpi-grid">
@@ -68,6 +71,7 @@
       <section class="section card-block">
         <h3 class="section-title">Logs &amp; Applications</h3>
         <div class="app-log-buttons">
+          <a class="app-log-btn" href="/checkin">Check-In Logs</a>
           <a class="app-log-btn" href="/admin/leads?type=dj%20application">DJ / Band Applications</a>
           <a class="app-log-btn" href="/admin/leads?type=vendor%20application">Vendor Applications</a>
           <a class="app-log-btn" href="/admin/leads?type=contact%20message">General Inquiries</a>
