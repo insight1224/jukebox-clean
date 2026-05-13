@@ -1641,15 +1641,15 @@ def home():
 @app.route("/dashboard")
 @requires_auth
 def dashboard():
-    single_tickets = 32
+    single_tickets = 34
     vip_tickets = 6
     total_tickets_sold = single_tickets + vip_tickets
     estimated_attendance = total_tickets_sold
     active_memberships = 1
 
-    ticket_revenue = 1441.55
+    ticket_revenue = 1477.55
     membership_revenue = 10.00
-    total_revenue = 1451.55
+    total_revenue = 1487.55
 
     metrics = {
         "single_tickets": single_tickets,
@@ -1667,7 +1667,7 @@ def dashboard():
             "name": "Battle of the DJs",
             "tickets": [
                 {"name": "Early Bird", "quantity": 22, "price": 13.975},
-                {"name": "General Admissions", "quantity": 9, "price": 19.1222222222},
+                {"name": "General Admissions", "quantity": 11, "price": 18.9181818182},
                 {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
                 {"name": "DJ VIP", "quantity": 0, "price": 0},
             ],
