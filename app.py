@@ -1641,15 +1641,15 @@ def home():
 @app.route("/dashboard")
 @requires_auth
 def dashboard():
-    single_tickets = 42
+    single_tickets = 45
     vip_tickets = 6
     total_tickets_sold = single_tickets + vip_tickets
     estimated_attendance = total_tickets_sold
     active_memberships = 1
 
-    ticket_revenue = 1651.65
+    ticket_revenue = 1713.75
     membership_revenue = 10.00
-    total_revenue = 1661.65
+    total_revenue = 1723.75
 
     metrics = {
         "single_tickets": single_tickets,
@@ -1667,7 +1667,7 @@ def dashboard():
             "name": "Battle of the DJs",
             "tickets": [
                 {"name": "Early Bird", "quantity": 22, "price": 13.975},
-                {"name": "General Admissions", "quantity": 19, "price": 20.1157894737},
+                {"name": "General Admissions", "quantity": 22, "price": 20.1954545455},
                 {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
                 {"name": "DJ VIP", "quantity": 0, "price": 0},
             ],
@@ -1691,6 +1691,19 @@ def dashboard():
         event["total_tickets_sold"] = event_total_tickets
         event["total_revenue"] = event_total_revenue
 
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Membership Signup'
+          AND status = 'Active'
+        """
+    )
+    membership_log_count = int(cursor.fetchone()[0] or 0)
+    conn.close()
+
     active_members = []
     vip_members = []
     membership_log_members = []
@@ -1708,7 +1721,8 @@ def dashboard():
         vip_members=vip_members,
         membership_log_members=membership_log_members,
         vip_count=len(vip_members),
-        membership_count=len(active_members),
+        membership_count=membership_log_count,
+        membership_log_count=membership_log_count,
         event_demand_votes=event_demand_votes,
         total_demand_votes=total_demand_votes,
         active_suggestions=active_suggestions,
@@ -2101,93 +2115,6 @@ def debug_csv():
         "sample_row": first_row
     }
 
-
-@app.route("/admin/import-vip", methods=["GET", "POST"])
-@requires_auth
-def import_vip():
-    if request.method == "GET":
-        return """
-        <html>
-          <body style="font-family:Arial;background:#0b0b0b;color:#f2f2f2;padding:24px;">
-            <h2 style="color:#D4AF37;">Temporary VIP Import</h2>
-            <p>Upload your exported VIP CSV or ZIP file (contains subscribed_email_audience_*.csv).</p>
-            <form method="POST" enctype="multipart/form-data">
-              <input type="file" name="file" accept=".csv,.zip" required>
-              <button type="submit">Import VIP List</button>
-            </form>
-          </body>
-        </html>
-        """
-
-    file = request.files.get("file")
-    if not file or not file.filename:
-        return {"ok": False, "error": "No file uploaded"}, 400
-
-    filename = file.filename.lower()
-    raw = file.read()
-    if not raw:
-        return {"ok": False, "error": "Empty file"}, 400
-
-    csv_text = ""
-    if filename.endswith(".zip"):
-        import zipfile
-        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
-            csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
-            if not csv_names:
-                return {"ok": False, "error": "No CSV found in zip"}, 400
-            csv_text = zf.read(csv_names[0]).decode("utf-8-sig", errors="ignore")
-    else:
-        csv_text = raw.decode("utf-8-sig", errors="ignore")
-
-    rows = list(csv.DictReader(io.StringIO(csv_text)))
-    conn = sqlite3.connect("database.db")
-    cursor = conn.cursor()
-    inserted = 0
-    skipped = 0
-
-    for row in rows:
-        email = (row.get("Email Address") or "").strip().lower()
-        name = (row.get("First Name") or "").strip() or "VIP Member"
-        phone = (row.get("Phone Number") or "").strip()
-        if not email:
-            skipped += 1
-            continue
-
-        cursor.execute(
-            """
-            SELECT 1 FROM leads
-            WHERE LOWER(COALESCE(email, '')) = ?
-              AND type = 'VIP Signup'
-            LIMIT 1
-            """,
-            (email,),
-        )
-        if cursor.fetchone():
-            skipped += 1
-            continue
-
-        details = f"Phone: {phone}" if phone else "Phone: "
-        cursor.execute(
-            """
-            INSERT INTO leads (type, name, email, details, status, archived, archived_at, created_at)
-            VALUES ('VIP Signup', ?, ?, ?, 'Active', 0, NULL, CURRENT_TIMESTAMP)
-            """,
-            (name, email, details),
-        )
-        inserted += 1
-
-    conn.commit()
-    cursor.execute("SELECT COUNT(*) FROM leads WHERE type='VIP Signup' AND status='Active'")
-    active_total = cursor.fetchone()[0]
-    conn.close()
-
-    return {
-        "ok": True,
-        "inserted": inserted,
-        "skipped": skipped,
-        "active_vip_total": active_total,
-        "note": "Temporary endpoint: remove /admin/import-vip after successful upload."
-    }
 
 # -------------------------
 # MEMBERSHIP PAGE
@@ -2941,6 +2868,13 @@ def admin_leads():
 
     application_mode = type_filter in ("dj application", "vendor application")
     mass_email_mode = type_filter in ("vip signup", "membership signup")
+    vip_active_count = 0
+    membership_active_count = 0
+    for lead in filtered:
+        if lead["category"] == "VIP Signup" and lead["status"] == "Active":
+            vip_active_count += 1
+        if lead["category"] == "Membership Signup" and lead["status"] == "Active":
+            membership_active_count += 1
 
     return render_template(
         "admin_leads.html",
@@ -2953,6 +2887,8 @@ def admin_leads():
         mass_email_mode=mass_email_mode,
         msg=msg,
         mass_email_logs=mass_email_logs,
+        vip_active_count=vip_active_count,
+        membership_active_count=membership_active_count,
     )
 
 
