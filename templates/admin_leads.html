@@ -13,6 +13,11 @@
   {% if msg %}
   <p style="margin-top:10px;color:#D4AF37;">{{ msg }}</p>
   {% endif %}
+  {% if type_filter == 'membership signup' %}
+  <p style="margin-top:10px;color:#D4AF37;font-weight:700;">Active Membership Log Count: {{ membership_active_count }}</p>
+  {% elif type_filter == 'vip signup' %}
+  <p style="margin-top:10px;color:#D4AF37;font-weight:700;">Active VIP Log Count: {{ vip_active_count }}</p>
+  {% endif %}
 
   <form method="GET" class="kpi-group" style="margin-top:12px;">
     <div class="kpi-group-cards cols-3">

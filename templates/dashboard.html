@@ -32,6 +32,7 @@
         <article class="card kpi-card">
           <h2>Memberships</h2>
           <div class="metric-row"><span>Active Memberships</span><strong>{{ metrics.active_memberships }}</strong></div>
+          <div class="metric-row"><span>Membership Log Count</span><strong>{{ membership_log_count }}</strong></div>
           <div class="metric-row"><span>Membership Revenue</span><strong>${{ "{:,.2f}".format(metrics.membership_revenue) }}</strong></div>
           <p class="big">${{ "{:,.2f}".format(metrics.membership_revenue) }}</p>
           <p class="sub">Based on active members</p>
