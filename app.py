@@ -2843,8 +2843,6 @@ def admin_leads():
             continue
         if type_filter and type_filter != category.lower():
             continue
-        if category in ("VIP Signup", "Membership Signup") and r[5] != "Active":
-            continue
         if status_filter and r[5] != status_filter:
             continue
         search_blob = f"{r[2]} {r[3]} {r[4]}".lower()
