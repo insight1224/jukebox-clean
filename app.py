@@ -2814,6 +2814,18 @@ def admin_leads():
     show_archived = (request.args.get("show_archived") or "0").strip() in ("1", "true", "yes")
     msg = (request.args.get("msg") or "").strip()
 
+    # Normalize common filter aliases so VIP/Membership logs always resolve.
+    if "vip" in type_filter:
+        type_filter = "vip signup"
+    elif "membership" in type_filter:
+        type_filter = "membership signup"
+    elif "vendor" in type_filter:
+        type_filter = "vendor application"
+    elif "dj" in type_filter or "band" in type_filter:
+        type_filter = "dj application"
+    elif "inquir" in type_filter or "contact" in type_filter:
+        type_filter = "contact message"
+
     conn = sqlite3.connect("database.db")
     cursor = conn.cursor()
     cursor.execute(
