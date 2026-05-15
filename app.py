@@ -37,6 +37,8 @@ except Exception:
                 if key and key not in os.environ:
                     os.environ[key] = value
 
+DB_PATH = os.getenv("DATABASE_PATH", "database.db").strip() or "database.db"
+
 def clean_event_name(name):
     name = name.lower().strip()
 
@@ -81,7 +83,7 @@ def requires_auth(f):
 # ✅ DATABASE SETUP (RUN ON APP START)
 
 def init_db():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     def ensure_column(table_name, column_name, column_def):
@@ -366,7 +368,7 @@ def init_db():
     conn.close()
 
 def purchase_ticket(event_name, ticket_name):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -985,7 +987,7 @@ def create_lead_record(lead_type, name, email, details, status=None):
     clean_email = (email or "").strip().lower()
     clean_details = (details or "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     try:
@@ -1510,7 +1512,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
             "details": [],
         }
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     counts = {
         "processed": 0,
@@ -1735,7 +1737,7 @@ def dashboard():
         event["total_tickets_sold"] = event_total_tickets
         event["total_revenue"] = event_total_revenue
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -1780,7 +1782,7 @@ def dashboard():
 # -------------------------
 @app.route("/events")
 def events():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # -------------------------
@@ -1842,7 +1844,7 @@ def contact():
 @app.route("/checkin")
 def checkin_page():
     message = request.args.get("msg", "").strip()
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     enforce_vip_group_capacity(cursor)
@@ -1909,7 +1911,7 @@ def add_attendee_manual():
     if "vip" in ticket_type.lower() and quantity < 6:
         quantity = 6
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -1936,7 +1938,7 @@ def reset_checkin(id):
 
 
 def update_attendee_checkin_count(attendee_id, delta):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -2022,7 +2024,7 @@ def enforce_vip_group_capacity(cursor):
 @app.route("/debug-attendees", methods=["GET"], strict_slashes=False)
 @app.route("/debug_attendees", methods=["GET"], strict_slashes=False)
 def debug_attendees():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     enforce_vip_group_capacity(cursor)
@@ -2053,7 +2055,7 @@ def upload_attendees():
     skipped_missing_name = 0
     skipped_missing_ticket_type = 0
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     for row in reader:
@@ -2198,7 +2200,7 @@ def import_vip():
         csv_text = raw.decode("utf-8-sig", errors="ignore")
 
     rows = list(csv.DictReader(io.StringIO(csv_text)))
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     inserted = 0
     skipped = 0
@@ -2291,7 +2293,7 @@ def square_webhook():
     if not verify_square_signature(request):
         print("⚠️ signature invalid — bypassed (dev mode)")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     payment, payment_id, amount_cents, note_blob, email, status = parse_square_payment(data)
@@ -2506,7 +2508,7 @@ def event_interest():
     raw_name = request.form.get("event_name")
     event_name = clean_event_name(raw_name)
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # ✅ ONLY STORE REQUEST (NO AUTO VOTING)
@@ -2530,7 +2532,7 @@ def vote_event():
     # 🔥 normalize EVERYTHING
     event_name = event_name.strip().lower()
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -2546,7 +2548,7 @@ def vote_event():
 @app.route("/complete-request/<int:id>", methods=["POST"])
 @requires_auth
 def complete_request(id):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute(
@@ -2576,7 +2578,7 @@ def update_event_request(id):
     archived = 1 if new_status == "Completed" else 0
     archived_at_expr = "CURRENT_TIMESTAMP" if archived == 1 else "NULL"
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         f"""
@@ -2622,7 +2624,7 @@ def event_detail(event_name):
     if not event:
         return f"Event not found: {event_name}", 404
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     canonical = [
@@ -2715,7 +2717,7 @@ def test_sell():
 @app.route("/check-leads")
 @requires_auth
 def check_leads():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM leads")
@@ -2728,7 +2730,7 @@ def check_leads():
 @app.route("/test-lead")
 @requires_auth
 def test_lead():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -2795,7 +2797,7 @@ def test_membership_webhook():
     amount = float(data.get("amount", 0) or 0)
     payment_id = data.get("payment_id")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -2813,7 +2815,7 @@ def test_membership_webhook():
 def update_lead(id):
     new_status = (request.form.get("status") or "").strip()
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT type FROM leads WHERE id = ?", (id,))
     row = cursor.fetchone()
@@ -2839,7 +2841,7 @@ def update_lead(id):
 @requires_auth
 def update_lead_note(id):
     note = (request.form.get("note") or "").strip()
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -2857,7 +2859,7 @@ def update_lead_note(id):
 @app.route("/delete-lead/<int:id>", methods=["POST"])
 @requires_auth
 def delete_lead(id):
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM leads WHERE id = ?", (id,))
     conn.commit()
@@ -2892,7 +2894,7 @@ def mass_email_leads():
         attachments.append({"filename": filename, "content": content})
     print(f"[mass-email] attachments uploaded={len(attachments)}")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -2920,7 +2922,7 @@ def mass_email_leads():
         else:
             failed += 1
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -2958,7 +2960,7 @@ def admin_leads():
     elif "inquir" in type_filter or "contact" in type_filter:
         type_filter = "contact message"
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -3038,7 +3040,7 @@ def admin_leads():
 @requires_auth
 def admin_event_customers(event_name):
     decoded = urllib.parse.unquote(event_name).strip()
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -3072,7 +3074,7 @@ def admin_event_customers(event_name):
 @requires_auth
 def admin_toggle_checkin(ticket_row_id):
     checked = (request.form.get("checked") or "0").strip() in ("1", "true", "yes")
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     if checked:
         cursor.execute(
@@ -3100,7 +3102,7 @@ def admin_toggle_checkin(ticket_row_id):
 @app.route("/admin/system-health")
 @requires_auth
 def admin_system_health():
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     # Discover potential legacy ticket tables/sources
@@ -3240,7 +3242,7 @@ def checkin(ticket_id):
     normalized_ticket_id = normalized_ticket_id.split("?")[0].strip().strip("/")
     print("SCANNING:", normalized_ticket_id)
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute(
@@ -3428,7 +3430,7 @@ def rebuild_ticket_data():
             data = response.json()
             payments = data.get("payments", []) or []
 
-            backfill_conn = sqlite3.connect("database.db")
+            backfill_conn = sqlite3.connect(DB_PATH)
             backfill_cursor = backfill_conn.cursor()
             for p in payments:
                 payment_id = (p.get("id") or "").strip()
@@ -3455,7 +3457,7 @@ def rebuild_ticket_data():
         except Exception as e:
             print("[rebuild/backfill] error:", e)
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM event_tickets")
     cursor.execute("DELETE FROM square_payment_log WHERE category IN ('ticket','membership')")
@@ -3483,7 +3485,7 @@ def rebuild_ticket_data():
 @app.route("/debug/tickets")
 def debug_tickets():
     import sqlite3
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("SELECT ticket_id FROM event_tickets LIMIT 10")
@@ -3496,7 +3498,7 @@ def debug_tickets():
 @app.route("/debug/square")
 def debug_square():
     import sqlite3
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute("SELECT * FROM square_payment_log LIMIT 10")
@@ -3517,7 +3519,7 @@ def debug_ticket(ticket_id):
         normalized_ticket_id = normalized_ticket_id.split("/checkin/")[-1].strip()
     normalized_ticket_id = normalized_ticket_id.split("?")[0].strip().strip("/")
 
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -3542,7 +3544,7 @@ def debug_ticket(ticket_id):
 @app.route("/tickets/<email>")
 def tickets_by_email(email):
     normalized_email = (email or "").strip().lower()
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         """
@@ -3572,7 +3574,7 @@ def tickets_by_email(email):
 @requires_auth
 def resend_all_tickets():
     force = (request.args.get("force") or "0").strip() in ("1", "true", "yes")
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     recovered = recover_missing_tickets(cursor)
@@ -3606,7 +3608,7 @@ def resend_all_tickets():
 def resend_customer_tickets(email):
     force = (request.args.get("force") or "0").strip() in ("1", "true", "yes")
     target_email = (email or "").strip().lower()
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     grouped = load_customer_tickets(cursor, include_checked_in=force, target_email=target_email)
@@ -3643,7 +3645,7 @@ def generate_qr(ticket_id):
     import qrcode
     from io import BytesIO
     from flask import send_file
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         "SELECT ticket_id FROM event_tickets WHERE ticket_id = ?",
@@ -3670,7 +3672,7 @@ def qr(ticket_id):
     import qrcode
     from io import BytesIO
     from flask import send_file
-    conn = sqlite3.connect("database.db")
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute(
         "SELECT ticket_id FROM event_tickets WHERE ticket_id = ?",
