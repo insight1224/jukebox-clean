@@ -2101,6 +2101,94 @@ def debug_csv():
         "sample_row": first_row
     }
 
+
+@app.route("/admin/import-vip", methods=["GET", "POST"])
+@requires_auth
+def import_vip():
+    if request.method == "GET":
+        return """
+        <html>
+          <body style="font-family:Arial;background:#0b0b0b;color:#f2f2f2;padding:24px;">
+            <h2 style="color:#D4AF37;">Temporary VIP Import</h2>
+            <p>Upload your exported VIP CSV or ZIP file (contains subscribed_email_audience_*.csv).</p>
+            <form method="POST" enctype="multipart/form-data">
+              <input type="file" name="file" accept=".csv,.zip" required>
+              <button type="submit">Import VIP List</button>
+            </form>
+          </body>
+        </html>
+        """
+
+    file = request.files.get("file")
+    if not file or not file.filename:
+        return {"ok": False, "error": "No file uploaded"}, 400
+
+    filename = file.filename.lower()
+    raw = file.read()
+    if not raw:
+        return {"ok": False, "error": "Empty file"}, 400
+
+    csv_text = ""
+    if filename.endswith(".zip"):
+        import zipfile
+        with zipfile.ZipFile(io.BytesIO(raw)) as zf:
+            csv_names = [n for n in zf.namelist() if n.lower().endswith(".csv")]
+            if not csv_names:
+                return {"ok": False, "error": "No CSV found in zip"}, 400
+            csv_text = zf.read(csv_names[0]).decode("utf-8-sig", errors="ignore")
+    else:
+        csv_text = raw.decode("utf-8-sig", errors="ignore")
+
+    rows = list(csv.DictReader(io.StringIO(csv_text)))
+    conn = sqlite3.connect("database.db")
+    cursor = conn.cursor()
+    inserted = 0
+    skipped = 0
+
+    for row in rows:
+        email = (row.get("Email Address") or "").strip().lower()
+        name = (row.get("First Name") or "").strip() or "VIP Member"
+        phone = (row.get("Phone Number") or "").strip()
+        if not email:
+            skipped += 1
+            continue
+
+        cursor.execute(
+            """
+            SELECT 1 FROM leads
+            WHERE LOWER(COALESCE(email, '')) = ?
+              AND type = 'VIP Signup'
+            LIMIT 1
+            """,
+            (email,),
+        )
+        if cursor.fetchone():
+            skipped += 1
+            continue
+
+        details = f"Phone: {phone}" if phone else "Phone: "
+        cursor.execute(
+            """
+            INSERT INTO leads (type, name, email, details, status, archived, archived_at, created_at)
+            VALUES ('VIP Signup', ?, ?, ?, 'Active', 0, NULL, CURRENT_TIMESTAMP)
+            """,
+            (name, email, details),
+        )
+        inserted += 1
+
+    conn.commit()
+    cursor.execute("SELECT COUNT(*) FROM leads WHERE type='VIP Signup' AND status='Active'")
+    active_total = cursor.fetchone()[0]
+    conn.close()
+
+    return {
+        "ok": True,
+        "inserted": inserted,
+        "skipped": skipped,
+        "active_vip_total": active_total,
+        "note": "Temporary endpoint: remove /admin/import-vip after successful upload."
+    }
+
 # -------------------------
 # MEMBERSHIP PAGE
 # -------------------------
