@@ -318,6 +318,50 @@ def init_db():
         )
         """, (event, name, price, max_q, event, name))
 
+    # Ensure historical membership record exists on deploy.
+    cursor.execute(
+        """
+        INSERT INTO leads (type, name, email, details, status, archived, archived_at, created_at)
+        SELECT 'Membership Signup', 'Keeva Nichols', 'keevanichols@gmail.com',
+               'Imported historical membership purchase', 'Active', 0, NULL, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (
+            SELECT 1 FROM leads
+            WHERE type = 'Membership Signup'
+              AND LOWER(COALESCE(email, '')) = 'keevanichols@gmail.com'
+        )
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE leads
+        SET name = 'Keeva Nichols',
+            status = 'Active',
+            archived = 0,
+            archived_at = NULL
+        WHERE type = 'Membership Signup'
+          AND LOWER(COALESCE(email, '')) = 'keevanichols@gmail.com'
+        """
+    )
+
+    cursor.execute(
+        """
+        INSERT INTO memberships (name, email, amount, status, source)
+        SELECT 'Keeva Nichols', 'keevanichols@gmail.com', 10.0, 'Active', 'manual-import'
+        WHERE NOT EXISTS (
+            SELECT 1 FROM memberships
+            WHERE LOWER(COALESCE(email, '')) = 'keevanichols@gmail.com'
+        )
+        """
+    )
+    cursor.execute(
+        """
+        UPDATE memberships
+        SET name = 'Keeva Nichols',
+            status = 'Active'
+        WHERE LOWER(COALESCE(email, '')) = 'keevanichols@gmail.com'
+        """
+    )
+
     conn.commit()
     conn.close()
 
