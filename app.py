@@ -39,6 +39,57 @@ except Exception:
 
 DB_PATH = os.getenv("DATABASE_PATH", "database.db").strip() or "database.db"
 
+
+def seed_vip_signups_from_csv(cursor):
+    seed_path = os.path.join(os.path.dirname(__file__), "data", "vip_seed.csv")
+    if not os.path.exists(seed_path):
+        return
+
+    with open(seed_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            email = (row.get("email") or "").strip().lower()
+            if not email:
+                continue
+            name = (row.get("name") or "").strip() or "VIP Member"
+            details = (row.get("details") or "Phone: ").strip()
+            status = (row.get("status") or "Active").strip() or "Active"
+            if status not in ("Active", "Inactive"):
+                status = "Active"
+
+            cursor.execute(
+                """
+                SELECT id FROM leads
+                WHERE type = 'VIP Signup'
+                  AND LOWER(COALESCE(email, '')) = ?
+                LIMIT 1
+                """,
+                (email,),
+            )
+            existing = cursor.fetchone()
+            if existing:
+                cursor.execute(
+                    """
+                    UPDATE leads
+                    SET name = ?,
+                        details = ?,
+                        status = ?,
+                        archived = CASE WHEN ? = 'Inactive' THEN 1 ELSE 0 END,
+                        archived_at = CASE WHEN ? = 'Inactive' THEN CURRENT_TIMESTAMP ELSE NULL END
+                    WHERE id = ?
+                    """,
+                    (name, details, status, status, status, existing[0]),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO leads (type, name, email, details, status, archived, archived_at, created_at)
+                    VALUES ('VIP Signup', ?, ?, ?, ?, CASE WHEN ?='Inactive' THEN 1 ELSE 0 END,
+                            CASE WHEN ?='Inactive' THEN CURRENT_TIMESTAMP ELSE NULL END, CURRENT_TIMESTAMP)
+                    """,
+                    (name, email, details, status, status, status),
+                )
+
 def clean_event_name(name):
     name = name.lower().strip()
 
@@ -319,6 +370,8 @@ def init_db():
             WHERE event_name = ? AND ticket_name = ?
         )
         """, (event, name, price, max_q, event, name))
+
+    seed_vip_signups_from_csv(cursor)
 
     # Ensure historical membership record exists on deploy.
     cursor.execute(
