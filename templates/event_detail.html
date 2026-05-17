@@ -59,7 +59,19 @@
 </section>
 
 <section class="ticket-section">
-    <div class="ticket-grid">
+    {% if event.name == "Battle of the DJs" %}
+    <div class="ticket-box" style="width:min(980px,100%);border:2px solid #D4AF37;background:#0f0f0f;text-align:center;margin:0 auto 24px;">
+        <h3 style="font-size:30px;line-height:1.2;margin-bottom:10px;">ONLINE TICKET SALES ARE NOW CLOSED</h3>
+        <p style="font-size:18px;color:#fff;line-height:1.6;margin:0;">
+            You can still attend tonight — tickets are available at the door.
+        </p>
+        <p style="font-size:16px;color:#D4AF37;line-height:1.6;margin-top:8px;">
+            This event is not sold out. Pull up early, bring your ID, and secure entry on-site.
+        </p>
+    </div>
+    {% endif %}
+
+    <div class="ticket-grid {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}">
         {% if is_quiet_storm %}
         <div class="ticket-box">
             <h3>General Admission</h3>
@@ -87,7 +99,9 @@
                 {% endif %}
             </p>
             <p>${{ "%.2f"|format(t.price) }}</p>
-            {% if t.sold_out %}
+            {% if event.name == "Battle of the DJs" %}
+            <span class="btn disabled">Online Sales Closed</span>
+            {% elif t.sold_out %}
             <span class="btn disabled">Sold Out</span>
             {% else %}
                 {% if t.name == "Early Bird" %}

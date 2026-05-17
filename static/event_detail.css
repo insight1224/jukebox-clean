@@ -41,6 +41,11 @@
     flex-wrap: wrap;
 }
 
+.battle-ticket-row {
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+
 /* BOX */
 .ticket-box {
     width: 260px;
