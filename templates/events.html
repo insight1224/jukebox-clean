@@ -13,6 +13,7 @@
 <div class="premium-row">
 
     {% for event in events %}
+    {% if event.name != "Battle of the DJs" %}
 
     <!-- CARD -->
     <div class="premium-card">
@@ -50,8 +51,34 @@
 
     </div>
 
+    {% endif %}
     {% endfor %}
 
+</div>
+
+<!-- PAST EVENTS -->
+<section class="section" style="margin-top:24px;">
+    <h2 class="section-title">Past Events</h2>
+</section>
+
+<div class="premium-row">
+    {% for event in events %}
+    {% if event.name == "Battle of the DJs" %}
+    <div class="premium-card">
+        {% if event.flyer.startswith('/static/') %}
+        <img src="{{ event.flyer }}" alt="{{ event.name }}">
+        {% else %}
+        <img src="{{ url_for('static', filename=event.flyer) }}" alt="{{ event.name }}">
+        {% endif %}
+        <div class="premium-overlay">
+            <div class="premium-content">
+                <h3>{{ event.name }}</h3>
+                <div class="meta">✅ Event Complete</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
 </div>
 
 <!-- VOTING SECTION -->
