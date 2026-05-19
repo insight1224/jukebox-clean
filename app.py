@@ -10,14 +10,25 @@ import sqlite3
 import smtplib
 import urllib.parse
 import requests
+from email import encoders
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
+from email.mime.image import MIMEImage
+from email.utils import make_msgid
 from functools import wraps
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
 from flask import Flask, Response, redirect, render_template, request, url_for
+try:
+    from google.oauth2.credentials import Credentials as GoogleCredentials
+    from google.auth.transport.requests import Request as GoogleRequest
+    from googleapiclient.discovery import build as google_build
+except Exception:
+    GoogleCredentials = None
+    GoogleRequest = None
+    google_build = None
 
 try:
     from dotenv import load_dotenv
@@ -635,31 +646,55 @@ def send_email(subject, body, to_email):
         return False
 
 
-def send_email_with_attachments(subject, body, to_email, attachments=None):
+def send_email_with_attachments(subject, body, to_email, attachments=None, flyer_inline=None, cta_text="", cta_url=""):
     email_address = (
-        os.getenv("EMAIL_ADDRESS", "").strip()
+        os.getenv("GMAIL_SENDER_EMAIL", "").strip()
+        or os.getenv("EMAIL_ADDRESS", "").strip()
         or os.getenv("SMTP_EMAIL_ADDRESS", "").strip()
+        or "thejukeboxloungenc@gmail.com"
     )
-    email_password = (
-        os.getenv("EMAIL_PASSWORD", "").strip()
-        or os.getenv("SMTP_EMAIL_PASSWORD", "").strip()
-    )
-    if not email_address or not email_password:
-        print("Email failed: SMTP credentials missing at runtime")
-        return False
 
     try:
-        msg = MIMEMultipart()
+        msg = MIMEMultipart("mixed")
         msg["Subject"] = subject
         msg["From"] = email_address
         msg["To"] = to_email
-        msg.attach(MIMEText(body, "plain"))
+
+        related_part = MIMEMultipart("related")
+        alternative_part = MIMEMultipart("alternative")
+        related_part.attach(alternative_part)
+
+        # Keep a short plain-text fallback (clients should prefer HTML alternative).
+        alternative_part.attach(MIMEText(body, "plain", "utf-8"))
+
         attachment_count = len(attachments or [])
+        safe_cta_text = (cta_text or "").strip()
+        safe_cta_url = (cta_url or "").strip()
         attachments_html = ""
         if attachment_count > 0:
             attachments_html = f"""
             <div style="margin-top:16px;padding:12px;border:1px solid rgba(212,175,55,0.25);border-radius:10px;background:#0c0c0c;color:#d9d9d9;">
               📎 {attachment_count} attachment(s) included with this email.
+            </div>
+            """
+
+        flyer_html = ""
+        flyer_cid = None
+        if flyer_inline and flyer_inline.get("content"):
+            flyer_cid = make_msgid(domain="jukeboxloungenc.com")[1:-1]
+            flyer_html = f"""
+            <div style="margin-top:14px;">
+              <img src="cid:{flyer_cid}" alt="Flyer" style="max-width:100%;height:auto;border-radius:10px;border:1px solid rgba(212,175,55,0.3);" />
+            </div>
+            """
+
+        cta_html = ""
+        if safe_cta_text and safe_cta_url:
+            cta_html = f"""
+            <div style="margin-top:16px;">
+              <a href="{safe_cta_url}" target="_blank" style="display:inline-block;padding:11px 16px;border-radius:8px;background:#D4AF37;color:#111;text-decoration:none;font-weight:700;">
+                {safe_cta_text}
+              </a>
             </div>
             """
 
@@ -672,21 +707,44 @@ def send_email_with_attachments(subject, body, to_email, attachments=None):
         """
         html_body = f"""
         <html>
-          <body style="margin:0;padding:18px;background:#070707;font-family:Arial,sans-serif;color:#fff;">
-            <div style="max-width:620px;margin:0 auto;background:#111;border:1px solid rgba(212,175,55,0.4);border-radius:14px;overflow:hidden;">
-              <div style="padding:18px;background:linear-gradient(135deg,#1a1a1a,#0a0a0a);border-bottom:1px solid rgba(212,175,55,0.25);text-align:center;">
-                <img src="https://www.jukeboxloungenc.com/static/images/hero.jpg" alt="The Jukebox Lounge NC" style="max-width:100%;height:auto;border-radius:8px;" />
+          <body style="margin:0;padding:22px;background:#0a1610;font-family:Arial,sans-serif;color:#fff;">
+            <div style="max-width:640px;margin:0 auto;background:linear-gradient(160deg,#102217,#0d130f);border:1px solid rgba(212,175,55,0.55);border-radius:16px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.45);">
+              <div style="padding:14px 18px;background:linear-gradient(120deg,#1f4d34,#123625 45%,#1b1b1b);border-bottom:1px solid rgba(212,175,55,0.35);text-align:center;">
+                <img src="https://www.jukeboxloungenc.com/static/images/hero.jpg" alt="The Jukebox Lounge NC" style="width:120px;max-width:100%;height:auto;border-radius:8px;border:1px solid rgba(212,175,55,0.65);" />
               </div>
-              <div style="padding:20px 22px;color:#e8e8e8;line-height:1.6;">
-                <p>{body.replace(chr(10), '<br>')}</p>
+              <div style="padding:20px 22px;color:#f4efe2;line-height:1.7;">
+                <p style="margin:0 0 12px;color:#ffe7a8;font-size:17px;font-weight:700;">Jukebox Lounge Update</p>
+                <p style="margin:0;">{body.replace(chr(10), '<br>')}</p>
+                {flyer_html}
+                {cta_html}
                 {attachments_html}
                 {signature_html}
               </div>
+              <div style="height:8px;background:linear-gradient(90deg,#D4AF37,#f2d06b,#D4AF37);"></div>
             </div>
           </body>
         </html>
         """
-        msg.attach(MIMEText(html_body, "html"))
+        alternative_part.attach(MIMEText(html_body, "html", "utf-8"))
+
+        if flyer_cid:
+            flyer_filename = (flyer_inline.get("filename") or "flyer.jpg").strip()
+            flyer_content = flyer_inline.get("content") or b""
+            flyer_mime = (flyer_inline.get("mimetype") or "image/jpeg").strip().lower()
+            if "/" in flyer_mime:
+                flyer_main, flyer_sub = flyer_mime.split("/", 1)
+            else:
+                flyer_main, flyer_sub = "image", "jpeg"
+            if flyer_main == "image":
+                img_part = MIMEImage(flyer_content, _subtype=flyer_sub)
+            else:
+                img_part = MIMEApplication(flyer_content, Name=flyer_filename)
+            img_part.add_header("Content-ID", f"<{flyer_cid}>")
+            img_part.add_header("Content-Disposition", f'inline; filename="{flyer_filename}"')
+            related_part.attach(img_part)
+
+        # Attach the composed related/alternative body first.
+        msg.attach(related_part)
 
         for item in (attachments or []):
             filename = (item.get("filename") or "attachment").strip()
@@ -697,13 +755,61 @@ def send_email_with_attachments(subject, body, to_email, attachments=None):
             part["Content-Disposition"] = f'attachment; filename="{filename}"'
             msg.attach(part)
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-            smtp.login(email_address, email_password)
-            smtp.send_message(msg)
+        if not send_via_gmail_api(msg):
+            # Fallback only if Gmail API is not configured yet.
+            email_password = (
+                os.getenv("EMAIL_PASSWORD", "").strip()
+                or os.getenv("SMTP_EMAIL_PASSWORD", "").strip()
+            )
+            if not email_password:
+                print("Email failed: Gmail API and SMTP credentials missing.")
+                return False
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+                smtp.login(email_address, email_password)
+                smtp.send_message(msg)
         print(f"[mass-email] sent to {to_email} with {len(attachments or [])} attachments")
         return True
     except Exception as e:
         print("Email failed:", e)
+        return False
+
+
+def send_via_gmail_api(mime_msg):
+    """
+    Sends message through Gmail API using OAuth credentials.
+    Env required:
+      GMAIL_CLIENT_ID
+      GMAIL_CLIENT_SECRET
+      GMAIL_REFRESH_TOKEN
+      GMAIL_SENDER_EMAIL (optional, defaults to me)
+    """
+    if not (GoogleCredentials and GoogleRequest and google_build):
+        print("[gmail-api] google client libraries not installed.")
+        return False
+
+    client_id = os.getenv("GMAIL_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GMAIL_CLIENT_SECRET", "").strip()
+    refresh_token = os.getenv("GMAIL_REFRESH_TOKEN", "").strip()
+    if not client_id or not client_secret or not refresh_token:
+        print("[gmail-api] missing OAuth env vars.")
+        return False
+
+    try:
+        creds = GoogleCredentials(
+            token=None,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=["https://www.googleapis.com/auth/gmail.send"],
+        )
+        creds.refresh(GoogleRequest())
+        service = google_build("gmail", "v1", credentials=creds, cache_discovery=False)
+        raw_message = base64.urlsafe_b64encode(mime_msg.as_bytes()).decode("utf-8")
+        service.users().messages().send(userId="me", body={"raw": raw_message}).execute()
+        return True
+    except Exception as exc:
+        print("[gmail-api] send failed:", exc)
         return False
 
 
@@ -1740,15 +1846,15 @@ def home():
 @app.route("/dashboard")
 @requires_auth
 def dashboard():
-    single_tickets = 49
+    single_tickets = 187
     vip_tickets = 6
     total_tickets_sold = single_tickets + vip_tickets
     estimated_attendance = total_tickets_sold
     active_memberships = 1
 
-    ticket_revenue = 1769.75
+    ticket_revenue = 4515.15
     membership_revenue = 10.00
-    total_revenue = 1779.75
+    total_revenue = 4525.15
 
     metrics = {
         "single_tickets": single_tickets,
@@ -1766,9 +1872,17 @@ def dashboard():
             "name": "Battle of the DJs",
             "tickets": [
                 {"name": "Early Bird", "quantity": 22, "price": 14.0204545455},
-                {"name": "General Admissions", "quantity": 26, "price": 19.2423076923},
+                {"name": "General Admissions", "quantity": 37, "price": 19.0459459459},
                 {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
                 {"name": "DJ VIP", "quantity": 0, "price": 0},
+                {
+                    "name": "Door Sales",
+                    "quantity": 127,
+                    "price": 0,
+                    "revenue_override": 2540.00,
+                    "cash_amount": 1320.00,
+                    "square_amount": 1220.00,
+                },
             ],
         },
         {
@@ -1783,7 +1897,7 @@ def dashboard():
         event_total_tickets = 0
         event_total_revenue = 0
         for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket["quantity"] * ticket["price"]
+            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
             ticket["revenue"] = ticket_revenue_generated
             event_total_tickets += ticket["quantity"]
             event_total_revenue += ticket_revenue_generated
@@ -1827,6 +1941,109 @@ def dashboard():
         active_suggestions=active_suggestions,
         archived_suggestions=archived_suggestions,
         square_connected=False,
+    )
+
+
+@app.route("/bookkeeping")
+@requires_auth
+def bookkeeping():
+    door_sales = [
+        {
+            "date": "2026-05-17",
+            "event_name": "Battle of the DJs",
+            "ticket_type": "General Admission",
+            "quantity": 5,
+            "payment_method": "Cash",
+            "amount": 100.00,
+            "staff_member": "Ashley",
+            "notes": "Front door walk-ups",
+        },
+        {
+            "date": "2026-05-17",
+            "event_name": "Battle of the DJs",
+            "ticket_type": "General Admission",
+            "quantity": 2,
+            "payment_method": "Cash App",
+            "amount": 40.00,
+            "staff_member": "Keeva",
+            "notes": "Late arrivals",
+        },
+    ]
+
+    door_sales_revenue = round(sum(item["amount"] for item in door_sales), 2)
+    ticket_revenue = round(1769.75 + door_sales_revenue, 2)
+    membership_revenue = 10.00
+    total_revenue = round(ticket_revenue + membership_revenue, 2)
+    total_expenses = 642.90
+    net_profit = round(total_revenue - total_expenses, 2)
+
+    summary = {
+        "total_revenue": total_revenue,
+        "total_expenses": total_expenses,
+        "net_profit": net_profit,
+        "ticket_revenue": ticket_revenue,
+        "membership_revenue": membership_revenue,
+        "door_sales_revenue": door_sales_revenue,
+    }
+
+    transactions = [
+        {
+            "date": "2026-05-17",
+            "type": "Income",
+            "category": "Ticket Sales",
+            "description": "Battle of the DJs online + door ticket sales",
+            "amount": 1769.75,
+            "payment_method": "Square / Cash",
+            "related_event": "Battle of the DJs",
+            "notes": "Includes Early Bird, GA, VIP.",
+        },
+        {
+            "date": "2026-05-17",
+            "type": "Expense",
+            "category": "Talent",
+            "description": "DJ performance payout",
+            "amount": 350.00,
+            "payment_method": "Zelle",
+            "related_event": "Battle of the DJs",
+            "notes": "Main set payment.",
+        },
+        {
+            "date": "2026-05-17",
+            "type": "Expense",
+            "category": "Venue",
+            "description": "Venue usage fee",
+            "amount": 180.00,
+            "payment_method": "Card",
+            "related_event": "Battle of the DJs",
+            "notes": "Night-of event fee.",
+        },
+        {
+            "date": "2026-05-17",
+            "type": "Expense",
+            "category": "Marketing",
+            "description": "Flyer + ad spend",
+            "amount": 112.90,
+            "payment_method": "Card",
+            "related_event": "Battle of the DJs",
+            "notes": "Social promotion and print.",
+        },
+        {
+            "date": "2026-05-16",
+            "type": "Income",
+            "category": "Membership",
+            "description": "Jukebox Circle monthly membership",
+            "amount": 10.00,
+            "payment_method": "Square",
+            "related_event": "N/A",
+            "notes": "Recurring member payment.",
+        },
+    ]
+
+    return render_template(
+        "bookkeeping.html",
+        summary=summary,
+        transactions=transactions,
+        door_sales=door_sales,
     )
 
 
@@ -2926,6 +3143,8 @@ def mass_email_leads():
     category = (request.form.get("category") or "").strip()
     subject = (request.form.get("subject") or "").strip()
     body = (request.form.get("body") or "").strip()
+    cta_text = (request.form.get("cta_text") or "").strip()
+    cta_url = (request.form.get("cta_url") or "").strip()
 
     if category not in ("VIP Signup", "Membership Signup"):
         return redirect("/admin/leads?msg=Invalid+email+category")
@@ -2934,6 +3153,7 @@ def mass_email_leads():
         return redirect(f"/admin/leads?type={t}&msg=Subject+and+message+are+required")
 
     attachments = []
+    flyer_inline = None
     files = request.files.getlist("attachments")
     if not files and request.files.get("attachments"):
         files = [request.files.get("attachments")]
@@ -2947,49 +3167,92 @@ def mass_email_leads():
         attachments.append({"filename": filename, "content": content})
     print(f"[mass-email] attachments uploaded={len(attachments)}")
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT DISTINCT LOWER(TRIM(email))
-        FROM leads
-        WHERE email IS NOT NULL
-          AND TRIM(email) <> ''
-          AND type = ?
-          AND status = 'Active'
-        """
-        ,
-        (category,),
-    )
-    rows = cursor.fetchall()
-    conn.close()
+    flyer_file = request.files.get("flyer_image")
+    if flyer_file and flyer_file.filename:
+        flyer_filename = os.path.basename(flyer_file.filename.strip())
+        flyer_content = flyer_file.read()
+        flyer_mimetype = (flyer_file.mimetype or "").strip().lower()
+        if flyer_content:
+            flyer_inline = {
+                "filename": flyer_filename,
+                "content": flyer_content,
+                "mimetype": flyer_mimetype or "image/jpeg",
+            }
+    print(f"[mass-email] flyer inline uploaded={bool(flyer_inline)}")
 
-    recipients = [r[0] for r in rows if r and r[0]]
-    sent = 0
-    failed = 0
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT LOWER(TRIM(email))
+            FROM leads
+            WHERE email IS NOT NULL
+              AND TRIM(email) <> ''
+              AND type = ?
+              AND status = 'Active'
+            """,
+            (category,),
+        )
+        rows = cursor.fetchall()
+        conn.close()
 
-    for recipient in recipients:
-        ok = send_email_with_attachments(subject, body, recipient, attachments=attachments)
-        if ok:
-            sent += 1
-        else:
-            failed += 1
+        recipients = [r[0] for r in rows if r and r[0]]
+        if not recipients:
+            t = urllib.parse.quote_plus(category.lower())
+            return redirect(f"/admin/leads?type={t}&msg=No+active+recipients+found")
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        INSERT INTO mass_email_log (category, subject, recipients_count, attachments_count, sent_count, failed_count)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """,
-        (category, subject, len(recipients), len(attachments), sent, failed),
-    )
-    conn.commit()
-    conn.close()
+        sent = 0
+        failed = 0
+        for recipient in recipients:
+            ok = send_email_with_attachments(
+                subject,
+                body,
+                recipient,
+                attachments=attachments,
+                flyer_inline=flyer_inline,
+                cta_text=cta_text,
+                cta_url=cta_url,
+            )
+            if ok:
+                sent += 1
+            else:
+                failed += 1
 
-    t = urllib.parse.quote_plus(category.lower())
-    msg = urllib.parse.quote_plus(f"Mass email complete: sent {sent}, failed {failed}.")
-    return redirect(f"/admin/leads?type={t}&msg={msg}")
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mass_email_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT,
+                subject TEXT,
+                recipients_count INTEGER DEFAULT 0,
+                attachments_count INTEGER DEFAULT 0,
+                sent_count INTEGER DEFAULT 0,
+                failed_count INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        cursor.execute(
+            """
+            INSERT INTO mass_email_log (category, subject, recipients_count, attachments_count, sent_count, failed_count)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (category, subject, len(recipients), len(attachments), sent, failed),
+        )
+        conn.commit()
+        conn.close()
+
+        t = urllib.parse.quote_plus(category.lower())
+        msg = urllib.parse.quote_plus(f"Mass email complete: sent {sent}, failed {failed}.")
+        return redirect(f"/admin/leads?type={t}&msg={msg}")
+    except Exception as exc:
+        print("[mass-email] route failed:", exc)
+        t = urllib.parse.quote_plus(category.lower())
+        err = urllib.parse.quote_plus(f"Mass email failed: {str(exc)[:120]}")
+        return redirect(f"/admin/leads?type={t}&msg={err}")
 
 
 @app.route("/admin/leads")
@@ -3023,14 +3286,27 @@ def admin_leads():
         """
     )
     rows = cursor.fetchall()
-    cursor.execute(
-        """
-        SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
-        FROM mass_email_log
-        ORDER BY id DESC
-        LIMIT 10
-        """
-    )
+    if type_filter in ("vip signup", "membership signup"):
+        target_category = "VIP Signup" if type_filter == "vip signup" else "Membership Signup"
+        cursor.execute(
+            """
+            SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
+            FROM mass_email_log
+            WHERE category = ?
+            ORDER BY id DESC
+            LIMIT 10
+            """,
+            (target_category,),
+        )
+    else:
+        cursor.execute(
+            """
+            SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
+            FROM mass_email_log
+            ORDER BY id DESC
+            LIMIT 10
+            """
+        )
     mass_email_logs = cursor.fetchall()
     conn.close()
 
@@ -3065,6 +3341,30 @@ def admin_leads():
 
     application_mode = type_filter in ("dj application", "vendor application")
     mass_email_mode = type_filter in ("vip signup", "membership signup")
+    mass_email_recipients = []
+    if mass_email_mode:
+        target_category = "VIP Signup" if type_filter == "vip signup" else "Membership Signup"
+
+        # Primary: active recipients only (case-insensitive)
+        for lead in filtered:
+            if lead["category"] != target_category:
+                continue
+            if (lead["status"] or "").strip().lower() != "active":
+                continue
+            email = (lead["email"] or "").strip().lower()
+            if email and email not in mass_email_recipients:
+                mass_email_recipients.append(email)
+
+        # Fallback: if none marked Active, use non-archived rows for that same log.
+        if not mass_email_recipients:
+            for lead in filtered:
+                if lead["category"] != target_category:
+                    continue
+                if int(lead.get("archived", 0)) == 1:
+                    continue
+                email = (lead["email"] or "").strip().lower()
+                if email and email not in mass_email_recipients:
+                    mass_email_recipients.append(email)
     vip_active_count = 0
     membership_active_count = 0
     for lead in filtered:
@@ -3086,6 +3386,7 @@ def admin_leads():
         mass_email_logs=mass_email_logs,
         vip_active_count=vip_active_count,
         membership_active_count=membership_active_count,
+        mass_email_recipients=mass_email_recipients,
     )
 
 

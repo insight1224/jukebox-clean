@@ -41,22 +41,46 @@
   </form>
 
   {% if mass_email_mode %}
-  <form method="POST" action="/admin/leads/mass-email" class="kpi-group" style="margin-top:14px;" enctype="multipart/form-data">
-    <input type="hidden" name="category" value="{% if type_filter == 'membership signup' %}Membership Signup{% else %}VIP Signup{% endif %}">
-    <div style="display:grid;gap:8px;">
-      <label>Subject</label>
-      <input class="lead-search" type="text" name="subject" placeholder="Email subject" required>
-      <label>Message</label>
-      <textarea class="lead-search" name="body" rows="4" placeholder="Write your message to all active members..." required></textarea>
-      <label>Attachments / Pictures (optional)</label>
-      <input class="lead-search" type="file" name="attachments" multiple accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt">
-      <div>
-        <button class="btn" type="submit">Send Mass Email</button>
+  <div style="margin-top:14px;">
+    <button class="btn" type="button" id="openMassEmailModal">Mass Email</button>
+    <span style="margin-left:10px;color:#D4AF37;">Active recipients: {{ mass_email_recipients|length }}</span>
+  </div>
+
+  <div id="massEmailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:2000;align-items:center;justify-content:center;padding:16px;">
+    <div style="width:min(720px,100%);max-height:90vh;overflow:auto;background:#141414;border:1px solid #D4AF37;border-radius:12px;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;color:#D4AF37;">Send Mass Email</h3>
+        <button class="btn" type="button" id="closeMassEmailModal">Close</button>
       </div>
+
+      <form method="POST" action="/admin/leads/mass-email" class="kpi-group" enctype="multipart/form-data">
+        <input type="hidden" name="category" value="{% if type_filter == 'membership signup' %}Membership Signup{% else %}VIP Signup{% endif %}">
+        <div style="display:grid;gap:8px;">
+          <label>Subject</label>
+          <input class="lead-search" type="text" name="subject" placeholder="Email subject" required>
+          <label>Message</label>
+          <textarea class="lead-search" name="body" rows="6" placeholder="Write your message to all active members..." required></textarea>
+          <label>Flyer Upload (shows inside email)</label>
+          <input class="lead-search" type="file" name="flyer_image" accept=".png,.jpg,.jpeg,.gif,.webp">
+          <label>CTA Button Text (optional)</label>
+          <input class="lead-search" type="text" name="cta_text" placeholder="Get Tickets">
+          <label>CTA Button Link (optional)</label>
+          <input class="lead-search" type="url" name="cta_url" placeholder="https://www.jukeboxloungenc.com/events">
+          <label>Attachments / Pictures (optional)</label>
+          <input class="lead-search" type="file" name="attachments" multiple accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt">
+          <div>
+            <button class="btn" type="submit">Send Mass Email</button>
+          </div>
+        </div>
+      </form>
     </div>
-  </form>
+  </div>
 
   <div class="table-wrap" style="margin-top:14px;">
+    <button class="btn" type="button" id="toggleEmailHistory" aria-expanded="true" style="margin-bottom:10px;">
+      Collapse Email Send History
+    </button>
+    <div id="emailHistoryPanel">
     <table class="styled-table">
       <thead>
         <tr>
@@ -80,9 +104,14 @@
           <td>{{ log[4] }}</td>
           <td>{{ log[5] }}</td>
         </tr>
+        {% else %}
+        <tr>
+          <td colspan="7">No sent-email history yet for this log.</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
+    </div>
   </div>
   {% endif %}
 
@@ -149,4 +178,41 @@
     </table>
   </div>
 </section>
+{% if mass_email_mode %}
+<script>
+  (function () {
+    const modal = document.getElementById('massEmailModal');
+    const openBtn = document.getElementById('openMassEmailModal');
+    const closeBtn = document.getElementById('closeMassEmailModal');
+    if (!modal || !openBtn || !closeBtn) return;
+    openBtn.addEventListener('click', function () {
+      modal.style.display = 'flex';
+    });
+    closeBtn.addEventListener('click', function () {
+      modal.style.display = 'none';
+    });
+    modal.addEventListener('click', function (event) {
+      if (event.target === modal) modal.style.display = 'none';
+    });
+
+    const toggleBtn = document.getElementById('toggleEmailHistory');
+    const historyPanel = document.getElementById('emailHistoryPanel');
+    if (toggleBtn && historyPanel) {
+      toggleBtn.addEventListener('click', function () {
+        const isOpen = toggleBtn.getAttribute('aria-expanded') === 'true';
+        if (isOpen) {
+          historyPanel.style.display = 'none';
+          toggleBtn.setAttribute('aria-expanded', 'false');
+          toggleBtn.textContent = 'Expand Email Send History';
+        } else {
+          historyPanel.style.display = 'block';
+          toggleBtn.setAttribute('aria-expanded', 'true');
+          toggleBtn.textContent = 'Collapse Email Send History';
+        }
+      });
+    }
+
+  })();
+</script>
+{% endif %}
 {% endblock %}
