@@ -53,19 +53,23 @@
         <button class="btn" type="button" id="closeMassEmailModal">Close</button>
       </div>
 
-      <form class="kpi-group" onsubmit="return false;">
+      <form method="POST" action="/admin/leads/mass-email" class="kpi-group" enctype="multipart/form-data">
+        <input type="hidden" name="category" value="{% if type_filter == 'membership signup' %}Membership Signup{% else %}VIP Signup{% endif %}">
         <div style="display:grid;gap:8px;">
           <label>Subject</label>
-          <input class="lead-search" type="text" id="gmailMassSubject" placeholder="Email subject">
+          <input class="lead-search" type="text" name="subject" placeholder="Email subject" required>
           <label>Message</label>
-          <textarea class="lead-search" id="gmailMassBody" rows="6" placeholder="Write your message to all active members..."></textarea>
-          <label>Recipient Emails (auto-filled from this log)</label>
-          <textarea class="lead-search" id="gmailMassRecipients" rows="4" readonly></textarea>
-          <p id="massEmailStatus" style="margin:4px 0 0;color:#D4AF37;"></p>
+          <textarea class="lead-search" name="body" rows="6" placeholder="Write your message to all active members..." required></textarea>
+          <label>Flyer Upload (shows inside email)</label>
+          <input class="lead-search" type="file" name="flyer_image" accept=".png,.jpg,.jpeg,.gif,.webp">
+          <label>CTA Button Text (optional)</label>
+          <input class="lead-search" type="text" name="cta_text" placeholder="Get Tickets">
+          <label>CTA Button Link (optional)</label>
+          <input class="lead-search" type="url" name="cta_url" placeholder="https://www.jukeboxloungenc.com/events">
+          <label>Attachments / Pictures (optional)</label>
+          <input class="lead-search" type="file" name="attachments" multiple accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt">
           <div>
-            <button class="btn" type="button" id="sendFromJukeboxBtn">Send from Jukebox Gmail</button>
-            <button class="btn" type="button" id="openInGmailBtn">Open in Gmail</button>
-            <button class="btn" type="button" id="copyEmailsBtn">Copy Emails</button>
+            <button class="btn" type="submit">Send Mass Email</button>
           </div>
         </div>
       </form>
@@ -180,20 +184,7 @@
     const modal = document.getElementById('massEmailModal');
     const openBtn = document.getElementById('openMassEmailModal');
     const closeBtn = document.getElementById('closeMassEmailModal');
-    const subjectInput = document.getElementById('gmailMassSubject');
-    const bodyInput = document.getElementById('gmailMassBody');
-    const recipientsField = document.getElementById('gmailMassRecipients');
-    const statusText = document.getElementById('massEmailStatus');
-    const sendFromJukeboxBtn = document.getElementById('sendFromJukeboxBtn');
-    const openInGmailBtn = document.getElementById('openInGmailBtn');
-    const copyEmailsBtn = document.getElementById('copyEmailsBtn');
-    const recipients = {{ (mass_email_recipients | default([], true)) | tojson }};
-    const category = "{{ 'Membership Signup' if type_filter == 'membership signup' else 'VIP Signup' }}";
     if (!modal || !openBtn || !closeBtn) return;
-
-    if (recipientsField) {
-      recipientsField.value = recipients.join(', ');
-    }
 
     openBtn.addEventListener('click', function () {
       modal.style.display = 'flex';
@@ -204,71 +195,6 @@
     modal.addEventListener('click', function (event) {
       if (event.target === modal) modal.style.display = 'none';
     });
-
-    if (openInGmailBtn) {
-      openInGmailBtn.addEventListener('click', function () {
-        if (!recipients.length) {
-          alert('No active recipients found for this log.');
-          return;
-        }
-        const subject = (subjectInput?.value || '').trim();
-        const body = (bodyInput?.value || '').trim();
-        const bcc = recipients.join(',');
-        const gmailUrl =
-          'https://mail.google.com/mail/?view=cm&fs=1&tf=1'
-          + '&authuser=' + encodeURIComponent('thejukeboxloungenc@gmail.com')
-          + '&bcc=' + encodeURIComponent(bcc)
-          + '&su=' + encodeURIComponent(subject)
-          + '&body=' + encodeURIComponent(body);
-        window.open(gmailUrl, '_blank');
-      });
-    }
-
-    if (sendFromJukeboxBtn) {
-      sendFromJukeboxBtn.addEventListener('click', async function () {
-        if (!recipients.length) {
-          alert('No active recipients found for this log.');
-          return;
-        }
-        const subject = (subjectInput?.value || '').trim();
-        const body = (bodyInput?.value || '').trim();
-        if (!subject || !body) {
-          alert('Subject and message are required.');
-          return;
-        }
-        if (statusText) statusText.textContent = 'Sending...';
-        sendFromJukeboxBtn.disabled = true;
-        try {
-          const response = await fetch('/admin/leads/mass-email-send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ category, subject, body })
-          });
-          const payload = await response.json();
-          if (!response.ok || !payload.ok) throw new Error(payload.error || 'Failed to send.');
-          if (statusText) statusText.textContent = `Sent ${payload.sent} | Failed ${payload.failed}`;
-        } catch (err) {
-          if (statusText) statusText.textContent = `Error: ${err.message}`;
-        } finally {
-          sendFromJukeboxBtn.disabled = false;
-        }
-      });
-    }
-
-    if (copyEmailsBtn) {
-      copyEmailsBtn.addEventListener('click', async function () {
-        if (!recipients.length) {
-          alert('No active recipients found for this log.');
-          return;
-        }
-        try {
-          await navigator.clipboard.writeText(recipients.join(', '));
-          alert('Recipient emails copied.');
-        } catch (e) {
-          alert('Could not copy automatically. You can copy from the recipient box.');
-        }
-      });
-    }
 
     const toggleBtn = document.getElementById('toggleEmailHistory');
     const historyPanel = document.getElementById('emailHistoryPanel');
