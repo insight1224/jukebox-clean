@@ -3417,9 +3417,20 @@ def admin_leads():
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    # Be resilient to older live schemas that may not yet have new columns.
+    cursor.execute("PRAGMA table_info(leads)")
+    lead_columns = {r[1] for r in cursor.fetchall()}
+    has_archived = "archived" in lead_columns
+    has_created_at = "created_at" in lead_columns
+    has_notes = "notes" in lead_columns
+
+    archived_expr = "COALESCE(archived, 0)" if has_archived else "0"
+    created_expr = "COALESCE(created_at, '')" if has_created_at else "''"
+    notes_expr = "COALESCE(notes, '')" if has_notes else "''"
+
     cursor.execute(
-        """
-        SELECT id, type, name, email, details, status, COALESCE(archived, 0), COALESCE(created_at, ''), COALESCE(notes, '')
+        f"""
+        SELECT id, type, name, email, details, status, {archived_expr}, {created_expr}, {notes_expr}
         FROM leads
         ORDER BY id DESC
         """
