@@ -3305,42 +3305,33 @@ def admin_leads():
         """
     )
     rows = cursor.fetchall()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS mass_email_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            category TEXT,
-            subject TEXT,
-            recipients_count INTEGER DEFAULT 0,
-            attachments_count INTEGER DEFAULT 0,
-            sent_count INTEGER DEFAULT 0,
-            failed_count INTEGER DEFAULT 0,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-    if type_filter in ("vip signup", "membership signup"):
-        target_category = "VIP Signup" if type_filter == "vip signup" else "Membership Signup"
-        cursor.execute(
-            """
-            SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
-            FROM mass_email_log
-            WHERE category = ?
-            ORDER BY id DESC
-            LIMIT 10
-            """,
-            (target_category,),
-        )
-    else:
-        cursor.execute(
-            """
-            SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
-            FROM mass_email_log
-            ORDER BY id DESC
-            LIMIT 10
-            """
-        )
-    mass_email_logs = cursor.fetchall()
+    mass_email_logs = []
+    try:
+        if type_filter in ("vip signup", "membership signup"):
+            target_category = "VIP Signup" if type_filter == "vip signup" else "Membership Signup"
+            cursor.execute(
+                """
+                SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
+                FROM mass_email_log
+                WHERE category = ?
+                ORDER BY id DESC
+                LIMIT 10
+                """,
+                (target_category,),
+            )
+        else:
+            cursor.execute(
+                """
+                SELECT category, subject, recipients_count, attachments_count, sent_count, failed_count, created_at
+                FROM mass_email_log
+                ORDER BY id DESC
+                LIMIT 10
+                """
+            )
+        mass_email_logs = cursor.fetchall()
+    except sqlite3.OperationalError as exc:
+        print("[admin-leads] mass_email_log read skipped:", exc)
+        mass_email_logs = []
     conn.close()
 
     filtered = []
