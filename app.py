@@ -2974,6 +2974,25 @@ def event_detail(event_name):
         hero_flyer_url=hero_flyer_url,
     )
 
+
+@app.route("/vip-early-access")
+def vip_early_access_event():
+    # Intentionally unlinked private page for VIP early-access sharing.
+    event = {
+        "name": "Grown & Sexy",
+        "description": "The Jukebox Lounge NC presents Grown & Sexy: Melanin — the official finale of our 3-Part Grand Opening Series and Juneteenth Weekend Celebration. Join us June 20th at West End Social for a classy 30+ experience celebrating culture, confidence, music, and all shades of beautiful. Dressy casual to upscale attire encouraged. No athletic wear or ball caps.",
+        "event_datetime": "June 20, 2026",
+        "doors": "8:00 PM",
+        "location": "West End Social",
+        "ticket_label": "Juneteenth Weekend Celebration",
+        "dress_code": "Dressy casual to upscale attire encouraged. No athletic wear. No ball caps.",
+        "age_requirement": "30+ Event",
+        "featured_drink": "Keeva's Juke Joint Old-Fashioned: old-fashioned muddled oranges, splash of ginger ale.",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=West+End+Social",
+        "ticket_link": "https://square.link/u/51KF7WKE",
+    }
+    return render_template("vip_early_access_event.html", event=event)
+
 @app.route("/check-tickets")
 @requires_auth
 def check_tickets():

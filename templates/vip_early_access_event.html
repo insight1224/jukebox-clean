@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='event_detail.css') }}">
+<style>
+  .hero-description {
+    background: rgba(10, 10, 10, 0.62);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 12px;
+    padding: 14px 16px;
+    max-width: 980px;
+  }
+  .vibe-flyer-wrap {
+    width: 100%;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    border-radius: 12px;
+    background: rgba(12, 12, 12, 0.6);
+  }
+  .vibe-flyer-wrap img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 10px;
+  }
+  .details-vibe-row {
+    width: min(1100px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(320px, 520px) minmax(260px, 420px);
+    gap: 18px;
+    align-items: start;
+    justify-content: center;
+  }
+  .details-vibe-row .event-card {
+    margin: 0;
+    max-width: none;
+  }
+  @media (max-width: 980px) {
+    .details-vibe-row {
+      grid-template-columns: 1fr;
+    }
+    .details-vibe-row .event-card {
+      margin: 0 auto;
+      max-width: 520px;
+    }
+    .vibe-flyer-wrap {
+      max-width: 520px;
+      margin: 0 auto;
+    }
+  }
+</style>
+
+<section class="event-hero" style="background-image: url('/static/images/flyer-juneteenth-finale.png');">
+  <div class="hero-overlay">
+    <div class="hero-content">
+      <h1>{{ event.name }}</h1>
+      <p class="hero-description">{{ event.description }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="ticket-section">
+  <div class="details-vibe-row">
+  <div class="event-card">
+    <h2 class="event-title">{{ event.name }}</h2>
+    <p class="event-subtitle">{{ event.ticket_label }}</p>
+    <div class="event-info">
+      <div class="info-block">
+        <p>📍 <strong>Location</strong></p>
+        <p>{{ event.location }}</p>
+      </div>
+      <div class="info-block">
+        <p>🕒 <strong>Date</strong></p>
+        <p>{{ event.event_datetime }}</p>
+        <p>Doors Open: {{ event.doors }}</p>
+      </div>
+      <div class="info-block">
+        <p>🎟️ <strong>Tickets</strong></p>
+        <p>VIP Early Access Tickets</p>
+      </div>
+    </div>
+    <div class="event-actions">
+      <a href="{{ event.map_link }}" target="_blank" rel="noopener noreferrer">📍 View Map</a>
+    </div>
+  </div>
+  <div class="vibe-flyer-wrap">
+    <img src="/static/images/flyer-vibe-chart.png" alt="The Vibe color inspiration flyer">
+  </div>
+  </div>
+</section>
+
+<section class="ticket-section">
+  <div class="ticket-grid">
+    <div class="ticket-box highlight" style="max-width:520px;margin:0 auto;text-align:center;">
+      <h3>VIP Early Access Tickets</h3>
+      <p>Use this private link to purchase before public release.</p>
+      <a class="btn" href="{{ event.ticket_link }}" target="_blank" rel="noopener noreferrer">Get Early Access</a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}
