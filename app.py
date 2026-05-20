@@ -8,6 +8,7 @@ import os
 import secrets
 import sqlite3
 import smtplib
+import traceback
 import urllib.parse
 import requests
 from email import encoders
@@ -3159,47 +3160,47 @@ def delete_lead(id):
 @app.route("/admin/leads/mass-email", methods=["POST"])
 @requires_auth
 def mass_email_leads():
-    category = (request.form.get("category") or "").strip()
-    subject = (request.form.get("subject") or "").strip()
-    body = (request.form.get("body") or "").strip()
-    cta_text = (request.form.get("cta_text") or "").strip()
-    cta_url = (request.form.get("cta_url") or "").strip()
-
-    if category not in ("VIP Signup", "Membership Signup"):
-        return redirect("/admin/leads?msg=Invalid+email+category")
-    if not subject or not body:
-        t = urllib.parse.quote_plus(category.lower())
-        return redirect(f"/admin/leads?type={t}&msg=Subject+and+message+are+required")
-
-    attachments = []
-    flyer_inline = None
-    files = request.files.getlist("attachments")
-    if not files and request.files.get("attachments"):
-        files = [request.files.get("attachments")]
-    for file in files:
-        if not file or not file.filename:
-            continue
-        filename = os.path.basename(file.filename.strip())
-        content = file.read()
-        if not content:
-            continue
-        attachments.append({"filename": filename, "content": content})
-    print(f"[mass-email] attachments uploaded={len(attachments)}")
-
-    flyer_file = request.files.get("flyer_image")
-    if flyer_file and flyer_file.filename:
-        flyer_filename = os.path.basename(flyer_file.filename.strip())
-        flyer_content = flyer_file.read()
-        flyer_mimetype = (flyer_file.mimetype or "").strip().lower()
-        if flyer_content:
-            flyer_inline = {
-                "filename": flyer_filename,
-                "content": flyer_content,
-                "mimetype": flyer_mimetype or "image/jpeg",
-            }
-    print(f"[mass-email] flyer inline uploaded={bool(flyer_inline)}")
-
     try:
+        category = (request.form.get("category") or "").strip()
+        subject = (request.form.get("subject") or "").strip()
+        body = (request.form.get("body") or "").strip()
+        cta_text = (request.form.get("cta_text") or "").strip()
+        cta_url = (request.form.get("cta_url") or "").strip()
+
+        if category not in ("VIP Signup", "Membership Signup"):
+            return redirect("/admin/leads?msg=Invalid+email+category")
+        if not subject or not body:
+            t = urllib.parse.quote_plus(category.lower())
+            return redirect(f"/admin/leads?type={t}&msg=Subject+and+message+are+required")
+
+        attachments = []
+        flyer_inline = None
+        files = request.files.getlist("attachments")
+        if not files and request.files.get("attachments"):
+            files = [request.files.get("attachments")]
+        for file in files:
+            if not file or not file.filename:
+                continue
+            filename = os.path.basename(file.filename.strip())
+            content = file.read()
+            if not content:
+                continue
+            attachments.append({"filename": filename, "content": content})
+        print(f"[mass-email] attachments uploaded={len(attachments)}")
+
+        flyer_file = request.files.get("flyer_image")
+        if flyer_file and flyer_file.filename:
+            flyer_filename = os.path.basename(flyer_file.filename.strip())
+            flyer_content = flyer_file.read()
+            flyer_mimetype = (flyer_file.mimetype or "").strip().lower()
+            if flyer_content:
+                flyer_inline = {
+                    "filename": flyer_filename,
+                    "content": flyer_content,
+                    "mimetype": flyer_mimetype or "image/jpeg",
+                }
+        print(f"[mass-email] flyer inline uploaded={bool(flyer_inline)}")
+
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute(
@@ -3269,7 +3270,9 @@ def mass_email_leads():
         return redirect(f"/admin/leads?type={t}&msg={msg}")
     except Exception as exc:
         print("[mass-email] route failed:", exc)
-        t = urllib.parse.quote_plus(category.lower())
+        traceback.print_exc()
+        fallback_category = (request.form.get("category") or "VIP Signup").strip().lower()
+        t = urllib.parse.quote_plus(fallback_category)
         err = urllib.parse.quote_plus(f"Mass email failed: {str(exc)[:120]}")
         return redirect(f"/admin/leads?type={t}&msg={err}")
 
