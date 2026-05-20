@@ -3274,9 +3274,11 @@ def delete_lead(id):
     return redirect(request.referrer or "/admin/leads")
 
 
-@app.route("/admin/leads/mass-email", methods=["POST"])
+@app.route("/admin/leads/mass-email", methods=["GET", "POST"])
 @requires_auth
 def mass_email_leads():
+    if request.method == "GET":
+        return redirect("/admin/leads?msg=Use+the+Mass+Email+button+inside+VIP+or+Membership+logs")
     try:
         category = (request.form.get("category") or "").strip()
         subject = (request.form.get("subject") or "").strip()
