@@ -2005,6 +2005,32 @@ def dashboard():
         """
     )
     membership_log_count = int(cursor.fetchone()[0] or 0)
+
+    cursor.execute(
+        """
+        SELECT DISTINCT LOWER(TRIM(email))
+        FROM leads
+        WHERE type = 'VIP Signup'
+          AND LOWER(COALESCE(status, '')) = 'active'
+          AND email IS NOT NULL
+          AND TRIM(email) <> ''
+        ORDER BY LOWER(TRIM(email))
+        """
+    )
+    vip_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+
+    cursor.execute(
+        """
+        SELECT DISTINCT LOWER(TRIM(email))
+        FROM leads
+        WHERE type = 'Membership Signup'
+          AND LOWER(COALESCE(status, '')) = 'active'
+          AND email IS NOT NULL
+          AND TRIM(email) <> ''
+        ORDER BY LOWER(TRIM(email))
+        """
+    )
+    membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
     conn.close()
 
     active_members = []
@@ -2030,6 +2056,8 @@ def dashboard():
         total_demand_votes=total_demand_votes,
         active_suggestions=active_suggestions,
         archived_suggestions=archived_suggestions,
+        vip_recipients=vip_recipients,
+        membership_recipients=membership_recipients,
         square_connected=False,
     )
 
