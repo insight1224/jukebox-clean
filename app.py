@@ -647,7 +647,7 @@ def send_email(subject, body, to_email):
         return False
 
 
-def send_email_with_attachments(subject, body, to_email, attachments=None, flyer_inline=None, cta_text="", cta_url=""):
+def send_email_with_attachments(subject, body, to_email, attachments=None, flyer_inline=None, cta_text="", cta_url="", require_gmail_api=False):
     email_address = (
         os.getenv("GMAIL_SENDER_EMAIL", "").strip()
         or os.getenv("EMAIL_ADDRESS", "").strip()
@@ -757,6 +757,9 @@ def send_email_with_attachments(subject, body, to_email, attachments=None, flyer
             msg.attach(part)
 
         if not send_via_gmail_api(msg):
+            if require_gmail_api:
+                print("Email failed: Gmail API send required but unavailable.")
+                return False
             # Fallback only if Gmail API is not configured yet.
             email_password = (
                 os.getenv("EMAIL_PASSWORD", "").strip()
@@ -773,6 +776,92 @@ def send_email_with_attachments(subject, body, to_email, attachments=None, flyer
     except Exception as e:
         print("Email failed:", e)
         return False
+
+
+@app.route("/admin/leads/mass-email-send", methods=["POST"])
+@requires_auth
+def mass_email_send_locked():
+    try:
+        payload = request.get_json(silent=True) or {}
+        category = (payload.get("category") or "").strip()
+        subject = (payload.get("subject") or "").strip()
+        body = (payload.get("body") or "").strip()
+
+        if category not in ("VIP Signup", "Membership Signup"):
+            return {"ok": False, "error": "Invalid email category."}, 400
+        if not subject or not body:
+            return {"ok": False, "error": "Subject and message are required."}, 400
+
+        sender = (os.getenv("GMAIL_SENDER_EMAIL") or "").strip().lower()
+        if sender and sender != "thejukeboxloungenc@gmail.com":
+            return {"ok": False, "error": "GMAIL_SENDER_EMAIL must be set to thejukeboxloungenc@gmail.com."}, 400
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT LOWER(TRIM(email))
+            FROM leads
+            WHERE email IS NOT NULL
+              AND TRIM(email) <> ''
+              AND type = ?
+              AND LOWER(COALESCE(status, '')) = 'active'
+            """,
+            (category,),
+        )
+        rows = cursor.fetchall()
+        recipients = [r[0] for r in rows if r and r[0]]
+        if not recipients:
+            conn.close()
+            return {"ok": False, "error": "No active recipients found for this log."}, 400
+
+        sent = 0
+        failed = 0
+        for recipient in recipients:
+            ok = send_email_with_attachments(
+                subject=subject,
+                body=body,
+                to_email=recipient,
+                attachments=[],
+                flyer_inline=None,
+                cta_text="",
+                cta_url="",
+                require_gmail_api=True,
+            )
+            if ok:
+                sent += 1
+            else:
+                failed += 1
+
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS mass_email_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                category TEXT,
+                subject TEXT,
+                recipients_count INTEGER DEFAULT 0,
+                attachments_count INTEGER DEFAULT 0,
+                sent_count INTEGER DEFAULT 0,
+                failed_count INTEGER DEFAULT 0,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        cursor.execute(
+            """
+            INSERT INTO mass_email_log (category, subject, recipients_count, attachments_count, sent_count, failed_count)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (category, subject, len(recipients), 0, sent, failed),
+        )
+        conn.commit()
+        conn.close()
+
+        return {"ok": True, "sent": sent, "failed": failed, "recipients": len(recipients)}, 200
+    except Exception as exc:
+        print("[mass-email-send] route failed:", exc)
+        traceback.print_exc()
+        return {"ok": False, "error": str(exc)[:180]}, 500
 
 
 def send_via_gmail_api(mime_msg):
