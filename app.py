@@ -3305,6 +3305,20 @@ def admin_leads():
         """
     )
     rows = cursor.fetchall()
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS mass_email_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT,
+            subject TEXT,
+            recipients_count INTEGER DEFAULT 0,
+            attachments_count INTEGER DEFAULT 0,
+            sent_count INTEGER DEFAULT 0,
+            failed_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
     if type_filter in ("vip signup", "membership signup"):
         target_category = "VIP Signup" if type_filter == "vip signup" else "Membership Signup"
         cursor.execute(
