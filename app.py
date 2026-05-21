@@ -2429,6 +2429,21 @@ def debug_attendees():
     return {"status": "ok", "count": len(rows), "rows": rows}
 
 
+@app.route("/admin/storage-status")
+@requires_auth
+def admin_storage_status():
+    db_abspath = os.path.abspath(DB_PATH)
+    exists = os.path.exists(db_abspath)
+    writable = os.access(os.path.dirname(db_abspath) or ".", os.W_OK)
+    return {
+        "db_path": DB_PATH,
+        "db_abspath": db_abspath,
+        "exists": exists,
+        "parent_writable": writable,
+        "note": "If db_path points to local ephemeral filesystem on Render, data can reset on deploy."
+    }, 200
+
+
 @app.route("/upload-attendees", methods=["POST"])
 def upload_attendees():
     event_name = "Battle of the DJs"
@@ -3801,9 +3816,8 @@ def checkin(ticket_id):
 @app.route("/tickets/admin")
 @requires_auth
 def tickets_admin():
-    db_path = os.path.join(os.path.dirname(__file__), "database.db")
-    print(f"[tickets_admin] using database: {db_path}")
-    conn = sqlite3.connect(db_path)
+    print(f"[tickets_admin] using database: {DB_PATH}")
+    conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
     status_filter = (request.args.get("status") or "").strip().lower()
@@ -3874,8 +3888,7 @@ def run_backfill():
     print("PAYMENTS FOUND:", len(payments))
     print("=== BACKFILL DEBUG END ===")
 
-    db_path = os.path.join(os.path.dirname(__file__), "database.db")
-    conn = sqlite3.connect(db_path)
+    conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     created = 0
