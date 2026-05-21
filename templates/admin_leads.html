@@ -53,23 +53,17 @@
         <button class="btn" type="button" id="closeMassEmailModal">Close</button>
       </div>
 
-      <form method="POST" action="/admin/leads/mass-email" class="kpi-group" enctype="multipart/form-data">
-        <input type="hidden" name="category" value="{% if type_filter == 'membership signup' %}Membership Signup{% else %}VIP Signup{% endif %}">
+      <form class="kpi-group" onsubmit="return false;">
         <div style="display:grid;gap:8px;">
           <label>Subject</label>
-          <input class="lead-search" type="text" name="subject" placeholder="Email subject" required>
+          <input class="lead-search" type="text" id="massSubject" placeholder="Email subject" required>
           <label>Message</label>
-          <textarea class="lead-search" name="body" rows="6" placeholder="Write your message to all active members..." required></textarea>
-          <label>Flyer Upload (shows inside email)</label>
-          <input class="lead-search" type="file" name="flyer_image" accept=".png,.jpg,.jpeg,.gif,.webp">
-          <label>CTA Button Text (optional)</label>
-          <input class="lead-search" type="text" name="cta_text" placeholder="Get Tickets">
-          <label>CTA Button Link (optional)</label>
-          <input class="lead-search" type="url" name="cta_url" placeholder="https://www.jukeboxloungenc.com/events">
-          <label>Attachments / Pictures (optional)</label>
-          <input class="lead-search" type="file" name="attachments" multiple accept=".png,.jpg,.jpeg,.gif,.pdf,.doc,.docx,.txt">
+          <textarea class="lead-search" id="massBody" rows="6" placeholder="Write your message to all active members..." required></textarea>
+          <label>Recipient Emails (auto-filled from this log)</label>
+          <textarea class="lead-search" id="massRecipients" rows="5" readonly></textarea>
           <div>
-            <button class="btn" type="submit">Send Mass Email</button>
+            <button class="btn" type="button" id="openInGmailBtn">Open in Gmail</button>
+            <button class="btn" type="button" id="copyEmailsBtn">Copy Emails</button>
           </div>
         </div>
       </form>
@@ -184,7 +178,17 @@
     const modal = document.getElementById('massEmailModal');
     const openBtn = document.getElementById('openMassEmailModal');
     const closeBtn = document.getElementById('closeMassEmailModal');
+    const subjectInput = document.getElementById('massSubject');
+    const bodyInput = document.getElementById('massBody');
+    const recipientsField = document.getElementById('massRecipients');
+    const openInGmailBtn = document.getElementById('openInGmailBtn');
+    const copyEmailsBtn = document.getElementById('copyEmailsBtn');
+    const recipients = {{ (mass_email_recipients | default([], true)) | tojson }};
     if (!modal || !openBtn || !closeBtn) return;
+
+    if (recipientsField) {
+      recipientsField.value = recipients.join(', ');
+    }
 
     openBtn.addEventListener('click', function () {
       modal.style.display = 'flex';
@@ -195,6 +199,39 @@
     modal.addEventListener('click', function (event) {
       if (event.target === modal) modal.style.display = 'none';
     });
+
+    if (openInGmailBtn) {
+      openInGmailBtn.addEventListener('click', function () {
+        if (!recipients.length) {
+          alert('No active recipients found for this log.');
+          return;
+        }
+        const subject = (subjectInput?.value || '').trim();
+        const body = (bodyInput?.value || '').trim();
+        const gmailUrl =
+          'https://mail.google.com/mail/?view=cm&fs=1&tf=1'
+          + '&authuser=' + encodeURIComponent('thejukeboxloungenc@gmail.com')
+          + '&bcc=' + encodeURIComponent(recipients.join(','))
+          + '&su=' + encodeURIComponent(subject)
+          + '&body=' + encodeURIComponent(body);
+        window.open(gmailUrl, '_blank');
+      });
+    }
+
+    if (copyEmailsBtn) {
+      copyEmailsBtn.addEventListener('click', async function () {
+        if (!recipients.length) {
+          alert('No active recipients found for this log.');
+          return;
+        }
+        try {
+          await navigator.clipboard.writeText(recipients.join(', '));
+          alert('Recipient emails copied.');
+        } catch (e) {
+          alert('Could not copy automatically. You can copy from the recipient box.');
+        }
+      });
+    }
 
     const toggleBtn = document.getElementById('toggleEmailHistory');
     const historyPanel = document.getElementById('emailHistoryPanel');

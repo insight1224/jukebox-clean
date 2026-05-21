@@ -1236,44 +1236,50 @@ def create_lead_record(lead_type, name, email, details, status=None):
     clean_email = (email or "").strip().lower()
     clean_details = (details or "").strip()
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
     try:
-        cursor.execute(
-            """
-            INSERT INTO leads (type, name, email, details, status, archived, archived_at)
-            VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
-            """,
-            (
-                lead_type,
-                clean_name,
-                clean_email,
-                clean_details,
-                status_value,
-                archived,
-                archived,
-            ),
-        )
-    except sqlite3.OperationalError as exc:
-        # Backward-compatible fallback for local DBs that do not have archive columns yet.
-        print("[lead-save] schema fallback:", exc)
-        cursor.execute(
-            """
-            INSERT INTO leads (type, name, email, details, status)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (lead_type, clean_name, clean_email, clean_details, status_value),
-        )
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
 
-    conn.commit()
-    conn.close()
+        try:
+            cursor.execute(
+                """
+                INSERT INTO leads (type, name, email, details, status, archived, archived_at)
+                VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 1 THEN CURRENT_TIMESTAMP ELSE NULL END)
+                """,
+                (
+                    lead_type,
+                    clean_name,
+                    clean_email,
+                    clean_details,
+                    status_value,
+                    archived,
+                    archived,
+                ),
+            )
+        except sqlite3.OperationalError as exc:
+            # Backward-compatible fallback for local DBs that do not have archive columns yet.
+            print("[lead-save] schema fallback:", exc)
+            cursor.execute(
+                """
+                INSERT INTO leads (type, name, email, details, status)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (lead_type, clean_name, clean_email, clean_details, status_value),
+            )
+
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        print("[lead-save] failed:", exc)
+        traceback.print_exc()
+        return False
 
     # Notification is best-effort and must never break submit flow.
     try:
         notify_admin_new_lead(lead_type, clean_name, clean_email, status_value, clean_details)
     except Exception as exc:
         print("[lead-notify] non-fatal error:", exc)
+    return True
 
 
 def verify_square_signature(req):
@@ -3278,7 +3284,9 @@ def delete_lead(id):
 @requires_auth
 def mass_email_leads():
     if request.method == "GET":
-        return redirect("/admin/leads?msg=Use+the+Mass+Email+button+inside+VIP+or+Membership+logs")
+        return redirect("/admin/leads?msg=Use+Open+in+Gmail+inside+VIP+or+Membership+logs")
+    # Disable backend send path for now to avoid production 500s; use Gmail compose workflow.
+    return redirect("/admin/leads?msg=Mass+email+is+set+to+Open+in+Gmail+workflow")
     try:
         category = (request.form.get("category") or "").strip()
         subject = (request.form.get("subject") or "").strip()
