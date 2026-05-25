@@ -32,7 +32,15 @@
             <div class="premium-overlay">
                 <div class="premium-content">
 
+                    {% if event.flyer == "/static/images/flyer-juneteenth-finale.png" %}
+                    <h3>Juneteenth Celebration</h3>
+                    <div class="meta">Theme: Grown &amp; Sexy</div>
+                    {% else %}
                     <h3>{{ event.name }}</h3>
+                    {% if event.name == "Juneteenth Celebration" %}
+                    <div class="meta">Theme: {{ event.ticket_label }}</div>
+                    {% endif %}
+                    {% endif %}
 
                     <!-- SAFE META (NO DB DEPENDENCY) -->
                     <div class="meta">

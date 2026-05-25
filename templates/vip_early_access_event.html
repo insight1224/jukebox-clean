@@ -10,6 +10,59 @@
     padding: 14px 16px;
     max-width: 980px;
   }
+  .hero-vibe-wrap {
+    margin-top: 28px;
+    width: min(1100px, 100%);
+    background: rgba(8, 8, 8, 0.72);
+    border: 1px solid rgba(212, 175, 55, 0.4);
+    border-radius: 16px;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  .hero-vibe-title {
+    margin: 0 0 12px;
+    color: #d4af37;
+    font-size: clamp(20px, 3vw, 28px);
+    letter-spacing: 0;
+    text-align: left;
+  }
+  .hero-vibe-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .tone-item {
+    text-align: center;
+  }
+  .tone-swatch {
+    width: 100%;
+    height: 76px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+  }
+  .tone-label {
+    margin-top: 8px;
+    color: #e4d8b7;
+    font-size: clamp(11px, 1.6vw, 16px);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .hero-tone-line {
+    margin: 14px 0 0;
+    color: #d4af37;
+    text-align: left;
+    font-size: clamp(16px, 2vw, 24px);
+    font-weight: 700;
+  }
+  .details-vibe-row {
+    width: min(1100px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(320px, 520px) minmax(260px, 420px);
+    gap: 18px;
+    align-items: start;
+    justify-content: center;
+  }
   .vibe-flyer-wrap {
     width: 100%;
     margin: 0;
@@ -24,20 +77,17 @@
     display: block;
     border-radius: 10px;
   }
-  .details-vibe-row {
+  .details-card-wrap {
     width: min(1100px, 100%);
     margin: 0 auto;
-    display: grid;
-    grid-template-columns: minmax(320px, 520px) minmax(260px, 420px);
-    gap: 18px;
-    align-items: start;
-    justify-content: center;
-  }
-  .details-vibe-row .event-card {
-    margin: 0;
-    max-width: none;
   }
   @media (max-width: 980px) {
+    .hero-vibe-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .hero-vibe-wrap {
+      padding: 12px;
+    }
     .details-vibe-row {
       grid-template-columns: 1fr;
     }
@@ -55,16 +105,34 @@
 <section class="event-hero" style="background-image: url('/static/images/flyer-juneteenth-finale.png');">
   <div class="hero-overlay">
     <div class="hero-content">
-      <h1>{{ event.name }}</h1>
+      <h1>Juneteenth Celebration</h1>
+      <p class="event-subtitle" style="color:#D4AF37;font-weight:700;margin:10px 0 8px;">Grown &amp; Sexy</p>
       <p class="hero-description">{{ event.description }}</p>
     </div>
   </div>
 </section>
 
 <section class="ticket-section">
+  <div class="hero-vibe-wrap">
+    <h3 class="hero-vibe-title">THE VIBE COLOR CHART</h3>
+    <div class="hero-vibe-grid">
+      <div class="tone-item"><div class="tone-swatch" style="background:#3a1307;"></div><div class="tone-label">CHOCOLATE</div></div>
+      <div class="tone-item"><div class="tone-swatch" style="background:#5a2a11;"></div><div class="tone-label">DEEP MOCHA</div></div>
+      <div class="tone-item"><div class="tone-swatch" style="background:#744728;"></div><div class="tone-label">MOCHA</div></div>
+      <div class="tone-item"><div class="tone-swatch" style="background:#8a5a34;"></div><div class="tone-label">CARAMEL</div></div>
+      <div class="tone-item"><div class="tone-swatch" style="background:#b3844d;"></div><div class="tone-label">HONEY</div></div>
+      <div class="tone-item"><div class="tone-swatch" style="background:#c3a06d;"></div><div class="tone-label">TAN</div></div>
+      <div class="tone-item"><div class="tone-swatch" style="background:#d8cbac;"></div><div class="tone-label">CREAM</div></div>
+    </div>
+    <p class="hero-tone-line">CHOCOLATE • MOCHA • CARAMEL • TAN • ALL SHADES. ALL VIBES. ALL US.</p>
+  </div>
+</section>
+
+<section class="ticket-section">
   <div class="details-vibe-row">
+  <div class="details-card-wrap">
   <div class="event-card">
-    <h2 class="event-title">{{ event.name }}</h2>
+    <h2 class="event-title">Juneteenth Celebration</h2>
     <p class="event-subtitle">{{ event.ticket_label }}</p>
     <div class="event-info">
       <div class="info-block">
@@ -78,12 +146,13 @@
       </div>
       <div class="info-block">
         <p>🎟️ <strong>Tickets</strong></p>
-        <p>VIP Early Access Tickets</p>
+        <p>General Admission</p>
       </div>
     </div>
     <div class="event-actions">
       <a href="{{ event.map_link }}" target="_blank" rel="noopener noreferrer">📍 View Map</a>
     </div>
+  </div>
   </div>
   <div class="vibe-flyer-wrap">
     <img src="/static/images/flyer-vibe-chart.png" alt="The Vibe color inspiration flyer">
@@ -94,9 +163,16 @@
 <section class="ticket-section">
   <div class="ticket-grid">
     <div class="ticket-box highlight" style="max-width:520px;margin:0 auto;text-align:center;">
-      <h3>VIP Early Access Tickets</h3>
-      <p>Use this private link to purchase before public release.</p>
-      <a class="btn" href="{{ event.ticket_link }}" target="_blank" rel="noopener noreferrer">Get Early Access</a>
+      <h3>Early Bird</h3>
+      <p>$15.00</p>
+      <p>Limited early access pricing.</p>
+      <a class="btn" href="{{ event.ticket_link }}" target="_blank" rel="noopener noreferrer">Get Tickets</a>
+    </div>
+    <div class="ticket-box" style="max-width:520px;margin:0 auto;text-align:center;">
+      <h3>General Admission</h3>
+      <p>$20.00</p>
+      <p>Standard event entry ticket.</p>
+      <a class="btn" href="https://square.link/u/JWGsOuNZ" target="_blank" rel="noopener noreferrer">Get Tickets</a>
     </div>
   </div>
 </section>

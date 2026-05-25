@@ -1929,6 +1929,29 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
             "booth": {"price": 200, "sold": 0, "size": 6}
         }
     },
+    {
+        "id": 3,
+        "name": "Juneteenth Celebration",
+        "flyer": "/static/images/flyer-juneteenth-finale.png",
+        "description": "The Jukebox Lounge NC presents Grown & Sexy: Melanin — the official finale of our 3-Part Grand Opening Series and Juneteenth Weekend Celebration. Join us June 20th at West End Social for a classy 30+ experience celebrating culture, confidence, music, and all shades of beautiful. Dressy casual to upscale attire encouraged. No athletic wear or ball caps.",
+        "ticket_link": "https://square.link/u/51KF7WKE",
+        "event_datetime": "June 20, 2026",
+        "location": "West End Social",
+        "time": "8:00 PM - Late",
+        "doors": "8:00 PM",
+        "ticket_label": "Grown & Sexy",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=West+End+Social",
+        "early_link": "https://square.link/u/51KF7WKE",
+        "ga_link": "https://square.link/u/51KF7WKE",
+        "vip_link": "https://square.link/u/51KF7WKE",
+        "booth_link": "https://square.link/u/51KF7WKE",
+        "tickets": {
+            "early": {"price": 35, "sold": 0, "size": 100},
+            "ga": {"price": 35, "sold": 0, "size": 100},
+            "vip": {"price": 35, "sold": 0, "size": 100},
+            "booth": {"price": 35, "sold": 0, "size": 100}
+        }
+    },
 ]
 
 
@@ -3019,6 +3042,8 @@ def event_detail(event_name):
     from urllib.parse import unquote
 
     event_name = unquote(event_name).strip().lower()
+    if event_name == "grown & sexy" or event_name == "grown" or event_name.startswith("grown "):
+        event_name = "juneteenth celebration"
 
     print("🔥 EVENT PAGE HIT:", event_name)
 
@@ -3032,6 +3057,9 @@ def event_detail(event_name):
 
     if not event:
         return f"Event not found: {event_name}", 404
+
+    if event["name"] == "Juneteenth Celebration":
+        return render_template("vip_early_access_event.html", event=event)
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
