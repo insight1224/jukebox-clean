@@ -4412,8 +4412,163 @@ def qr(ticket_id):
 
 
 @app.route("/admin/dashboard-redesign")
+@requires_auth
 def admin_dashboard_redesign():
-    return render_template("dashboard_redesign.html")
+    single_tickets = 187
+    vip_tickets = 6
+    total_tickets_sold = single_tickets + vip_tickets
+    estimated_attendance = total_tickets_sold
+    active_memberships = 1
+
+    ticket_revenue = 4515.15
+    membership_revenue = 10.00
+    total_revenue = 4525.15
+
+    metrics = {
+        "single_tickets": single_tickets,
+        "total_tickets_sold": total_tickets_sold,
+        "vip_tickets": vip_tickets,
+        "estimated_attendance": estimated_attendance,
+        "ticket_revenue": ticket_revenue,
+        "active_memberships": active_memberships,
+        "membership_revenue": membership_revenue,
+        "total_revenue": total_revenue,
+    }
+
+    events = [
+        {
+            "name": "Battle of the DJs",
+            "tickets": [
+                {"name": "Early Bird", "quantity": 22, "price": 14.0204545455},
+                {"name": "General Admissions", "quantity": 37, "price": 19.0459459459},
+                {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
+                {"name": "DJ VIP", "quantity": 0, "price": 0},
+                {
+                    "name": "Door Sales",
+                    "quantity": 127,
+                    "price": 0,
+                    "revenue_override": 2540.00,
+                    "cash_amount": 1320.00,
+                    "square_amount": 1220.00,
+                },
+            ],
+        },
+        {
+            "name": "Quiet Storm Live",
+            "tickets": [
+                {"name": "General Admission", "quantity": 1, "price": 12},
+            ],
+        },
+    ]
+
+    for event in events:
+        event_total_tickets = 0
+        event_total_revenue = 0
+        for ticket in event["tickets"]:
+            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
+            ticket["revenue"] = ticket_revenue_generated
+            event_total_tickets += ticket["quantity"]
+            event_total_revenue += ticket_revenue_generated
+        event["total_tickets_sold"] = event_total_tickets
+        event["total_revenue"] = event_total_revenue
+
+    dashboard_preview_summary = {
+        "upcoming_events_count": len(events),
+        "door_sales_count": sum(
+            ticket.get("quantity", 0)
+            for event in events
+            for ticket in event.get("tickets", [])
+            if ticket.get("name") == "Door Sales"
+        ),
+        "door_sales_total": sum(
+            ticket.get("revenue", 0)
+            for event in events
+            for ticket in event.get("tickets", [])
+            if ticket.get("name") == "Door Sales"
+        ),
+        "door_sales_cash": sum(
+            ticket.get("cash_amount", 0)
+            for event in events
+            for ticket in event.get("tickets", [])
+            if ticket.get("name") == "Door Sales"
+        ),
+        "door_sales_square": sum(
+            ticket.get("square_amount", 0)
+            for event in events
+            for ticket in event.get("tickets", [])
+            if ticket.get("name") == "Door Sales"
+        ),
+    }
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Membership Signup'
+          AND status = 'Active'
+        """
+    )
+    membership_log_count = int(cursor.fetchone()[0] or 0)
+
+    cursor.execute(
+        """
+        SELECT DISTINCT LOWER(TRIM(email))
+        FROM leads
+        WHERE type = 'VIP Signup'
+          AND LOWER(COALESCE(status, '')) = 'active'
+          AND email IS NOT NULL
+          AND TRIM(email) <> ''
+        ORDER BY LOWER(TRIM(email))
+        """
+    )
+    vip_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+
+    cursor.execute(
+        """
+        SELECT DISTINCT LOWER(TRIM(email))
+        FROM leads
+        WHERE type = 'Membership Signup'
+          AND LOWER(COALESCE(status, '')) = 'active'
+          AND email IS NOT NULL
+          AND TRIM(email) <> ''
+        ORDER BY LOWER(TRIM(email))
+        """
+    )
+    membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+    conn.close()
+
+    active_members = []
+    vip_members = []
+    membership_log_members = []
+
+    event_demand_votes = []
+    total_demand_votes = 0
+
+    active_suggestions = []
+    archived_suggestions = []
+
+    return render_template(
+        "dashboard_redesign.html",
+        metrics=metrics,
+        events=events,
+        vip_members=vip_members,
+        membership_log_members=membership_log_members,
+        vip_count=len(vip_members),
+        membership_count=membership_log_count,
+        membership_log_count=membership_log_count,
+        event_demand_votes=event_demand_votes,
+        total_demand_votes=total_demand_votes,
+        active_suggestions=active_suggestions,
+        archived_suggestions=archived_suggestions,
+        vip_recipients=vip_recipients,
+        membership_recipients=membership_recipients,
+        square_connected=False,
+        dashboard_preview_summary=dashboard_preview_summary,
+    )
+
 
 # -------------------------
 # RUN
