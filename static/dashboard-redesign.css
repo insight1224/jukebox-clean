@@ -1,3 +1,6 @@
+html {
+  scroll-behavior: smooth;
+}
 :root {
   --bg: #090909;
   --panel: #151515;
@@ -126,16 +129,22 @@ body {
 }
 
 .btn,
-.quick-actions button {
+.quick-actions button,
+.quick-actions a {
   border: 0;
   border-radius: 14px;
   padding: 13px 18px;
   font-weight: 900;
   cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .btn.primary,
-.quick-actions button {
+.quick-actions button,
+.quick-actions a {
   background: var(--gold);
   color: #111;
 }
@@ -343,9 +352,10 @@ body {
   }
 
   .quick-actions button,
-  .btn {
-    width: 100%;
-  }
+.quick-actions a,
+.btn {
+  width: 100%;
+}
 }
 .section-panel {
   margin-top: 24px;
@@ -568,5 +578,199 @@ body {
   .members-row,
   .applications-row {
     min-width: 900px;
+  }
+}
+.revenue-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.revenue-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.revenue-card p {
+  margin: 0;
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.revenue-card h4 {
+  margin: 10px 0 6px;
+  font-size: 26px;
+}
+
+.revenue-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.revenue-breakdown-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.breakdown-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.breakdown-card h4 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.breakdown-row:last-child {
+  border-bottom: 0;
+}
+
+.breakdown-row span {
+  color: var(--muted);
+}
+
+.breakdown-row strong {
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .revenue-summary-grid,
+  .revenue-breakdown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+
+.settings-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 20px;
+}
+
+.settings-card h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.settings-card p {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.settings-card label {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.settings-card input,
+.settings-card select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #101010;
+  color: var(--text);
+  border-radius: 14px;
+  padding: 13px 14px;
+  font-size: 14px;
+  outline: none;
+}
+
+.settings-card input:focus,
+.settings-card select:focus {
+  border-color: rgba(214, 168, 79, 0.5);
+}
+
+.checkbox-line {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: flex-start;
+  gap: 10px !important;
+  color: var(--muted) !important;
+  font-weight: 700 !important;
+}
+
+.checkbox-line input {
+  width: auto;
+  margin-top: 2px;
+}
+
+@media (max-width: 900px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.preview-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  background: rgba(214, 168, 79, 0.13);
+  border: 1px solid rgba(214, 168, 79, 0.35);
+  border-radius: 18px;
+  padding: 14px 16px;
+  margin-bottom: 22px;
+}
+
+.preview-banner div {
+  display: grid;
+  gap: 4px;
+}
+
+.preview-banner strong {
+  color: var(--gold);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.preview-banner span {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.preview-banner a {
+  color: #111;
+  background: var(--gold);
+  text-decoration: none;
+  font-weight: 900;
+  border-radius: 999px;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
+@media (max-width: 700px) {
+  .preview-banner {
+    display: block;
+  }
+
+  .preview-banner a {
+    display: inline-flex;
+    margin-top: 12px;
   }
 }

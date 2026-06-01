@@ -33,6 +33,13 @@
     </aside>
 
     <main class="main-content" id="top">
+              <div class="preview-banner">
+        <div>
+          <strong>Preview Mode</strong>
+          <span>This redesigned dashboard is for client review only. The current live dashboard has not been replaced.</span>
+        </div>
+        <a href="/admin">Back to Current Dashboard</a>
+      </div>
       <header class="topbar">
         <div>
           <p class="eyebrow">Client Dashboard Preview</p>
@@ -85,13 +92,13 @@
       </section>
 
       <section class="quick-actions">
-        <button>Manage Events</button>
-        <button>Check In Guests</button>
-        <button>Add Door Sale</button>
-        <button>View Sales</button>
-        <button>VIP List</button>
-        <button>Reports</button>
-      </section>
+  <a href="#events">Manage Events</a>
+  <a href="#check-in">Check In Guests</a>
+  <a href="#door-sales">Add Door Sale</a>
+  <a href="#sales-revenue">View Sales</a>
+  <a href="#vip">VIP List</a>
+  <a href="#reports">Reports</a>
+</section>
 
       <section class="dashboard-grid">
         <div class="panel large-panel">
@@ -387,6 +394,92 @@
           </div>
         </div>
       </section>
+            <section class="section-panel" id="sales-revenue">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Sales & Revenue</p>
+            <h3>Event Revenue Tracking</h3>
+            <p>Track online ticket sales, door sales, payment methods, refunds, comps, expenses, and profit.</p>
+          </div>
+          <button class="btn primary">Add Expense</button>
+        </div>
+
+        <div class="revenue-summary-grid">
+          <div class="revenue-card">
+            <p>Gross Revenue</p>
+            <h4>$4,250</h4>
+            <span>Online + door sales</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Expenses</p>
+            <h4>$800</h4>
+            <span>Staff, DJ, supplies</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Net Profit</p>
+            <h4>$3,450</h4>
+            <span>After expenses</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Comps</p>
+            <h4>12</h4>
+            <span>Guest list / promo</span>
+          </div>
+        </div>
+
+        <div class="revenue-breakdown-grid">
+          <div class="breakdown-card">
+            <h4>Payment Breakdown</h4>
+
+            <div class="breakdown-row">
+              <span>Online Tickets</span>
+              <strong>$2,900</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Cash at Door</span>
+              <strong>$620</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Card at Door</span>
+              <strong>$410</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Cash App / Zelle</span>
+              <strong>$320</strong>
+            </div>
+          </div>
+
+          <div class="breakdown-card">
+            <h4>Ticket Type Revenue</h4>
+
+            <div class="breakdown-row">
+              <span>General Admission</span>
+              <strong>$1,875</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>VIP Tables</span>
+              <strong>$1,800</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Door Tickets</span>
+              <strong>$830</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Refunds</span>
+              <strong>-$255</strong>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <section class="section-panel" id="members">
         <div class="section-heading">
@@ -537,6 +630,103 @@
             <h4>Inquiry Report</h4>
             <p>General inquiries, private event requests, and lead statuses.</p>
             <button>Export CSV</button>
+          </div>
+        </div>
+      </section>
+            <section class="section-panel" id="settings">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Settings</p>
+            <h3>Dashboard Settings</h3>
+            <p>Manage event defaults, notification preferences, dashboard access, and website form routing.</p>
+          </div>
+          <button class="btn primary">Save Settings</button>
+        </div>
+
+        <div class="settings-grid">
+          <div class="settings-card">
+            <h4>Event Defaults</h4>
+            <p>Set default check-in behavior, VIP guest counts, and door sale payment methods.</p>
+
+            <label>
+              Default VIP Guest Count
+              <input type="number" value="6" />
+            </label>
+
+            <label>
+              Default Event Status
+              <select>
+                <option>Upcoming</option>
+                <option>Live</option>
+                <option>Completed</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="settings-card">
+            <h4>Website Form Routing</h4>
+            <p>Choose how website submissions should appear inside the dashboard.</p>
+
+            <label>
+              General Contact Forms
+              <select>
+                <option>Messages & Leads</option>
+                <option>Archive Only</option>
+              </select>
+            </label>
+
+            <label>
+              DJ / Band / Vendor Forms
+              <select>
+                <option>Applications</option>
+                <option>Messages & Leads</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="settings-card">
+            <h4>Notifications</h4>
+            <p>Preview settings for alerting the client when new submissions come in.</p>
+
+            <label class="checkbox-line">
+              <input type="checkbox" checked />
+              Email client when a new VIP inquiry comes in
+            </label>
+
+            <label class="checkbox-line">
+              <input type="checkbox" checked />
+              Email client when a new application comes in
+            </label>
+
+            <label class="checkbox-line">
+              <input type="checkbox" />
+              Send daily dashboard summary
+            </label>
+          </div>
+
+          <div class="settings-card">
+            <h4>Admin Access</h4>
+            <p>Placeholder for future staff/admin permissions.</p>
+
+            <label>
+              Staff Role
+              <select>
+                <option>Owner</option>
+                <option>Manager</option>
+                <option>Door Staff</option>
+                <option>Bookkeeper</option>
+              </select>
+            </label>
+
+            <label>
+              Access Level
+              <select>
+                <option>Full Dashboard</option>
+                <option>Check-In Only</option>
+                <option>Sales Only</option>
+                <option>View Only</option>
+              </select>
+            </label>
           </div>
         </div>
       </section>
