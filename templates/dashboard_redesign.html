@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Dashboard Redesign</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">JL</div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Admin Preview</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="active">Dashboard</a>
+        <a href="#">Events</a>
+        <a href="#">Check-In</a>
+        <a href="#">Door Sales</a>
+        <a href="#">VIP</a>
+        <a href="#">Sales & Revenue</a>
+        <a href="#">Messages & Leads</a>
+        <a href="#">Members</a>
+        <a href="#">Applications</a>
+        <a href="#">Reports</a>
+        <a href="#">Settings</a>
+      </nav>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Client Dashboard Preview</p>
+          <h2>Event Command Center</h2>
+          <p class="subtext">Track events, guests, VIPs, door sales, messages, members, and applications in one place.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="btn secondary">View Old Dashboard</button>
+          <button class="btn primary">Create Event</button>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <p>Upcoming Events</p>
+          <h3>4</h3>
+          <span>Next: Quiet Storm Live</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Tickets Sold</p>
+          <h3>127</h3>
+          <span>Across active events</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Guests Checked In</p>
+          <h3>84</h3>
+          <span>66% checked in</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Door Sales</p>
+          <h3>$420</h3>
+          <span>Tonight’s cash/card total</span>
+        </div>
+
+        <div class="stat-card">
+          <p>VIP Guests</p>
+          <h3>18</h3>
+          <span>3 VIP tables</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Total Revenue</p>
+          <h3>$3,260</h3>
+          <span>Online + door sales</span>
+        </div>
+      </section>
+
+      <section class="quick-actions">
+        <button>Manage Events</button>
+        <button>Check In Guests</button>
+        <button>Add Door Sale</button>
+        <button>View Sales</button>
+        <button>VIP List</button>
+        <button>Reports</button>
+      </section>
+
+      <section class="dashboard-grid">
+        <div class="panel large-panel">
+          <div class="panel-header">
+            <div>
+              <p class="eyebrow">Tonight’s Event</p>
+              <h3>Quiet Storm Live</h3>
+            </div>
+            <span class="badge live">Live</span>
+          </div>
+
+          <div class="event-progress">
+            <div>
+              <p>Check-In Progress</p>
+              <h4>84 / 127 guests</h4>
+            </div>
+            <div class="progress-bar">
+              <span style="width: 66%;"></span>
+            </div>
+          </div>
+
+          <div class="event-actions">
+            <button class="btn primary">Open Event</button>
+            <button class="btn secondary">Check In</button>
+            <button class="btn secondary">Add Door Sale</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>New Messages & Leads</h3>
+            <span class="badge">5 New</span>
+          </div>
+
+          <div class="mini-list">
+            <div>
+              <strong>VIP Membership Inquiry</strong>
+              <p>Customer asked about VIP packages.</p>
+            </div>
+            <div>
+              <strong>General Inquiry</strong>
+              <p>Question about upcoming event hours.</p>
+            </div>
+            <div>
+              <strong>Private Event Request</strong>
+              <p>Birthday party booking request.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Members</h3>
+            <span class="badge">12 New</span>
+          </div>
+
+          <div class="mini-list">
+            <div>
+              <strong>VIP Members</strong>
+              <p>6 new VIP signups this month.</p>
+            </div>
+            <div>
+              <strong>General Members</strong>
+              <p>14 active member records.</p>
+            </div>
+            <div>
+              <strong>Newsletter</strong>
+              <p>31 people signed up for updates.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <h3>Applications</h3>
+            <span class="badge warning">Review</span>
+          </div>
+
+          <div class="mini-list">
+            <div>
+              <strong>DJ Application</strong>
+              <p>2 new DJs waiting for review.</p>
+            </div>
+            <div>
+              <strong>Band Application</strong>
+              <p>1 band application submitted.</p>
+            </div>
+            <div>
+              <strong>Vendor Application</strong>
+              <p>3 vendor requests received.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

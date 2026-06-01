@@ -139,6 +139,66 @@ def requires_auth(f):
         return f(*args, **kwargs)
     return decorated
 
+def render_thank_you_safe(title, message):
+    try:
+        return render_template("thank_you.html", title=title, message=message)
+    except Exception as exc:
+        print("[thank-you] fallback render used:", exc)
+        traceback.print_exc()
+        safe_title = (title or "Thank You")
+        safe_message = (message or "Submission received.")
+        return (
+            f"""
+            <!doctype html>
+            <html>
+              <head>
+                <meta charset="utf-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>{safe_title}</title>
+                <style>
+                  body {{
+                    margin: 0;
+                    background: #0a0a0a;
+                    color: #f7f7f7;
+                    font-family: Arial, sans-serif;
+                    display: grid;
+                    place-items: center;
+                    min-height: 100vh;
+                  }}
+                  .card {{
+                    width: min(640px, 92vw);
+                    border: 1px solid rgba(212, 175, 55, 0.45);
+                    border-radius: 14px;
+                    background: #141414;
+                    padding: 28px;
+                    text-align: center;
+                  }}
+                  h1 {{ color: #D4AF37; margin: 0 0 10px; }}
+                  p {{ margin: 0 0 16px; line-height: 1.6; }}
+                  a {{
+                    display: inline-block;
+                    margin-top: 8px;
+                    color: #111;
+                    background: #D4AF37;
+                    text-decoration: none;
+                    font-weight: 700;
+                    border-radius: 8px;
+                    padding: 10px 14px;
+                  }}
+                </style>
+              </head>
+              <body>
+                <div class="card">
+                  <h1>{safe_title}</h1>
+                  <p>{safe_message}</p>
+                  <a href="/">Back Home</a>
+                </div>
+              </body>
+            </html>
+            """,
+            200,
+            {"Content-Type": "text/html; charset=utf-8"},
+        )
 
 # -------------------------
 # DATABASE SETUP
@@ -463,6 +523,30 @@ def purchase_ticket(event_name, ticket_name):
 
 app = Flask(__name__)
 
+@app.errorhandler(500)
+def handle_internal_server_error(err):
+    try:
+        failing_path = request.path or ""
+    except Exception:
+        failing_path = ""
+    print(f"[error-500] path={failing_path} err={err}")
+    traceback.print_exc()
+
+    form_paths = {
+        "/contact",
+        "/vip",
+        "/join-membership",
+        "/dj-signup",
+        "/vendor-signup",
+        "/event-interest",
+    }
+    if failing_path in form_paths:
+        return render_thank_you_safe(
+            "SUBMISSION RECEIVED",
+            "Thanks! We received your form and our team will follow up shortly.",
+        )
+    return ("Internal Server Error", 500)
+
 init_db()   # ✅ AFTER function exists
 # -------------------------
 # EMAIL CONFIG
@@ -781,87 +865,8 @@ def send_email_with_attachments(subject, body, to_email, attachments=None, flyer
 @app.route("/admin/leads/mass-email-send", methods=["POST"])
 @requires_auth
 def mass_email_send_locked():
-    try:
-        payload = request.get_json(silent=True) or {}
-        category = (payload.get("category") or "").strip()
-        subject = (payload.get("subject") or "").strip()
-        body = (payload.get("body") or "").strip()
-
-        if category not in ("VIP Signup", "Membership Signup"):
-            return {"ok": False, "error": "Invalid email category."}, 400
-        if not subject or not body:
-            return {"ok": False, "error": "Subject and message are required."}, 400
-
-        sender = (os.getenv("GMAIL_SENDER_EMAIL") or "").strip().lower()
-        if sender and sender != "thejukeboxloungenc@gmail.com":
-            return {"ok": False, "error": "GMAIL_SENDER_EMAIL must be set to thejukeboxloungenc@gmail.com."}, 400
-
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            SELECT DISTINCT LOWER(TRIM(email))
-            FROM leads
-            WHERE email IS NOT NULL
-              AND TRIM(email) <> ''
-              AND type = ?
-              AND LOWER(COALESCE(status, '')) = 'active'
-            """,
-            (category,),
-        )
-        rows = cursor.fetchall()
-        recipients = [r[0] for r in rows if r and r[0]]
-        if not recipients:
-            conn.close()
-            return {"ok": False, "error": "No active recipients found for this log."}, 400
-
-        sent = 0
-        failed = 0
-        for recipient in recipients:
-            ok = send_email_with_attachments(
-                subject=subject,
-                body=body,
-                to_email=recipient,
-                attachments=[],
-                flyer_inline=None,
-                cta_text="",
-                cta_url="",
-                require_gmail_api=True,
-            )
-            if ok:
-                sent += 1
-            else:
-                failed += 1
-
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS mass_email_log (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                category TEXT,
-                subject TEXT,
-                recipients_count INTEGER DEFAULT 0,
-                attachments_count INTEGER DEFAULT 0,
-                sent_count INTEGER DEFAULT 0,
-                failed_count INTEGER DEFAULT 0,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            )
-            """
-        )
-        cursor.execute(
-            """
-            INSERT INTO mass_email_log (category, subject, recipients_count, attachments_count, sent_count, failed_count)
-            VALUES (?, ?, ?, ?, ?, ?)
-            """,
-            (category, subject, len(recipients), 0, sent, failed),
-        )
-        conn.commit()
-        conn.close()
-
-        return {"ok": True, "sent": sent, "failed": failed, "recipients": len(recipients)}, 200
-    except Exception as exc:
-        print("[mass-email-send] route failed:", exc)
-        traceback.print_exc()
-        return {"ok": False, "error": str(exc)[:180]}, 500
+    # Safety lock: keep production stable by forcing Gmail compose workflow.
+    return {"ok": False, "error": "Backend mass send is disabled. Use Open in Gmail from VIP/Membership logs."}, 200
 
 
 def send_via_gmail_api(mime_msg):
@@ -2243,16 +2248,17 @@ def events():
 @app.route("/contact", methods=["GET", "POST"])
 def contact():
     if request.method == "POST":
-        name = request.form.get("name")
-        email = request.form.get("email")
-        message = request.form.get("message")
-
-        create_lead_record("Contact Message", name, email, message, "New")
-
-        return render_template(
-            "thank_you.html",
-            title="MESSAGE RECEIVED",
-            message="Your message has been sent. Our team will get back to you shortly."
+        try:
+            name = request.form.get("name")
+            email = request.form.get("email")
+            message = request.form.get("message")
+            create_lead_record("Contact Message", name, email, message, "New")
+        except Exception as exc:
+            print("[contact] submit failed:", exc)
+            traceback.print_exc()
+        return render_thank_you_safe(
+            "MESSAGE RECEIVED",
+            "Your message has been sent. Our team will get back to you shortly.",
         )
 
     return render_template("contact.html")
@@ -2690,15 +2696,156 @@ def membership():
     return render_template("membership.html")
 
 # -------------------------
+# MERCH PAGE
+# -------------------------
+@app.route("/merch")
+def merch():
+    merch_items = [
+        {
+            "id": "nc-born-bull-city-olive-1",
+            "name": "NC Born. Bull City Made Tee",
+            "color": "Garment-Dyed Olive",
+            "image": "images/merch-olive-bull-city-1.png",
+            "details": ["Vintage Wash Finish", "Front & Back Prints", "Unisex Fit", "Soft, Pre-Shrunk Cotton"],
+            "price": "$35.00",
+            "checkout_link": os.getenv("MERCH_LINK_NC_BORN_1", "").strip(),
+        },
+        {
+            "id": "jukebox-charcoal-vinyl",
+            "name": "Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Charcoal",
+            "image": "images/merch-charcoal-vinyl.png",
+            "details": ["Vintage Wash Finish", "Front & Back Prints", "Unisex Fit"],
+            "price": "$35.00",
+            "checkout_link": os.getenv("MERCH_LINK_CHARCOAL", "").strip(),
+        },
+        {
+            "id": "jukebox-olive-good-vibes",
+            "name": "The Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Olive",
+            "image": "images/merch-olive-good-vibes.png",
+            "details": ["Vintage Wash Finish", "Front & Back Prints", "Unisex Fit", "Soft, Pre-Shrunk Cotton"],
+            "price": "$35.00",
+            "checkout_link": os.getenv("MERCH_LINK_GOOD_VIBES", "").strip(),
+        },
+        {
+            "id": "nc-born-bull-city-olive-2",
+            "name": "NC Born. Bull City Made Tee",
+            "color": "Garment-Dyed Olive",
+            "image": "images/merch-olive-bull-city-2.png",
+            "details": ["Vintage Wash Finish", "Front & Back Prints", "Unisex Fit", "Soft, Pre-Shrunk Cotton"],
+            "price": "$35.00",
+            "checkout_link": os.getenv("MERCH_LINK_NC_BORN_2", "").strip(),
+        },
+        {
+            "id": "jukebox-black-durham",
+            "name": "The Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Black",
+            "image": "images/merch-black-durham.png",
+            "details": ["Vintage Wash Finish", "Front & Back Prints", "Unisex Fit", "Soft, Pre-Shrunk Cotton"],
+            "price": "$35.00",
+            "checkout_link": os.getenv("MERCH_LINK_BLACK_DURHAM", "").strip(),
+        },
+        {
+            "id": "jukebox-olive-never-old",
+            "name": "Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Olive",
+            "image": "images/merch-olive-jukebox-never-old.png",
+            "details": ["Vintage Wash Finish", "Front, Back & Sleeve Prints", "Unisex Fit"],
+            "price": "$35.00",
+            "checkout_link": os.getenv("MERCH_LINK_NEVER_OLD", "").strip(),
+        },
+    ]
+    return render_template("merch.html", merch_items=merch_items)
+
+# -------------------------
+# MERCH CHECKOUT
+# -------------------------
+@app.route("/merch/checkout", methods=["POST"])
+def merch_checkout():
+    merch_catalog = {
+        "nc-born-bull-city-olive-1": {
+            "name": "NC Born. Bull City Made Tee",
+            "color": "Garment-Dyed Olive",
+            "link": os.getenv("MERCH_LINK_NC_BORN_1", "").strip(),
+        },
+        "jukebox-charcoal-vinyl": {
+            "name": "Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Charcoal",
+            "link": os.getenv("MERCH_LINK_CHARCOAL", "").strip(),
+        },
+        "jukebox-olive-good-vibes": {
+            "name": "The Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Olive",
+            "link": os.getenv("MERCH_LINK_GOOD_VIBES", "").strip(),
+        },
+        "nc-born-bull-city-olive-2": {
+            "name": "NC Born. Bull City Made Tee",
+            "color": "Garment-Dyed Olive",
+            "link": os.getenv("MERCH_LINK_NC_BORN_2", "").strip(),
+        },
+        "jukebox-black-durham": {
+            "name": "The Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Black",
+            "link": os.getenv("MERCH_LINK_BLACK_DURHAM", "").strip(),
+        },
+        "jukebox-olive-never-old": {
+            "name": "Jukebox Lounge NC Tee",
+            "color": "Garment-Dyed Olive",
+            "link": os.getenv("MERCH_LINK_NEVER_OLD", "").strip(),
+        },
+    }
+
+    item_id = (request.form.get("item_id") or "").strip()
+    size = (request.form.get("size") or "").strip().upper()
+    quantity_raw = (request.form.get("quantity") or "1").strip()
+    customer_name = (request.form.get("customer_name") or "").strip()
+    customer_email = (request.form.get("customer_email") or "").strip().lower()
+
+    item = merch_catalog.get(item_id)
+    if not item:
+        return redirect("/merch")
+
+    try:
+        quantity = int(quantity_raw)
+    except Exception:
+        quantity = 1
+    if quantity < 1:
+        quantity = 1
+    if quantity > 10:
+        quantity = 10
+
+    details = (
+        f"Product: {item['name']} ({item['color']})\n"
+        f"Size: {size or 'N/A'}\n"
+        f"Quantity: {quantity}\n"
+        f"Source: Merch Checkout"
+    )
+    create_lead_record("Merch Order", customer_name or "Customer", customer_email, details, "New")
+
+    # Fallback to a shared merch link if product-specific link is not set yet.
+    checkout_link = item.get("link") or os.getenv("MERCH_LINK_DEFAULT", "").strip()
+    if checkout_link and checkout_link.startswith("http"):
+        return redirect(checkout_link)
+
+    return render_thank_you_safe(
+        "ORDER STARTED",
+        "Your order details were saved. Add your Square merch link env vars to enable direct checkout.",
+    )
+
+# -------------------------
 # JOIN MEMBERSHIP
 # -------------------------
 @app.route("/join-membership", methods=["POST"])
 def join_membership():
-    name = request.form.get("name")
-    email = request.form.get("email")
-
-    create_lead_record("Membership Signup", name, email, "Waiting for payment", "Active")
-    send_membership_welcome_email(name, email)
+    try:
+        name = request.form.get("name")
+        email = request.form.get("email")
+        create_lead_record("Membership Signup", name, email, "Waiting for payment", "Active")
+        send_membership_welcome_email(name, email)
+    except Exception as exc:
+        print("[join-membership] submit failed:", exc)
+        traceback.print_exc()
 
     return redirect("https://square.link/u/fgiSNspy")
 
@@ -2799,33 +2946,35 @@ def square_webhook():
 def dj_signup():
 
     if request.method == "POST":
+        try:
+            name = request.form.get("name")
+            brand = request.form.get("brand")
+            email = request.form.get("email")
+            phone = request.form.get("phone")
+            performer_type = request.form.get("type")
+            genre = request.form.get("genre")
+            links = request.form.get("links")
+            rate = request.form.get("rate")
+            comments = request.form.get("comments")
 
-        name = request.form.get("name")
-        brand = request.form.get("brand")
-        email = request.form.get("email")
-        phone = request.form.get("phone")
-        performer_type = request.form.get("type")
-        genre = request.form.get("genre")
-        links = request.form.get("links")
-        rate = request.form.get("rate")
-        comments = request.form.get("comments")
+            details = f"""
+            Brand: {brand}
+            Phone: {phone}
+            Type: {performer_type}
+            Genre: {genre}
+            Links: {links}
+            Rate: {rate}
+            Comments: {comments}
+            """
 
-        details = f"""
-        Brand: {brand}
-        Phone: {phone}
-        Type: {performer_type}
-        Genre: {genre}
-        Links: {links}
-        Rate: {rate}
-        Comments: {comments}
-        """
+            create_lead_record("DJ Application", name, email, details, "New")
+        except Exception as exc:
+            print("[dj-signup] submit failed:", exc)
+            traceback.print_exc()
 
-        create_lead_record("DJ Application", name, email, details, "New")
-
-        return render_template(
-            "thank_you.html",
-            title="APPLICATION RECEIVED",
-            message="Your application has been submitted successfully. Our team will review your sound and reach out if you're a fit for an upcoming Jukebox experience."
+        return render_thank_you_safe(
+            "APPLICATION RECEIVED",
+            "Your application has been submitted successfully. Our team will review your sound and reach out if you're a fit for an upcoming Jukebox experience.",
         )
 
     return render_template("dj_signup.html")
@@ -2834,38 +2983,40 @@ def dj_signup():
 @app.route("/vendor-signup", methods=["GET", "POST"])
 def vendor_signup():
     if request.method == "POST":
-        name = request.form.get("name")
-        business = request.form.get("business")
-        email = request.form.get("email")
-        phone = request.form.get("phone")
-        vendor_type = request.form.get("vendor_type")
-        products = request.form.get("products")
-        links = request.form.get("links")
-        setup = request.form.get("setup")
-        comments = request.form.get("comments")
+        try:
+            name = request.form.get("name")
+            business = request.form.get("business")
+            email = request.form.get("email")
+            phone = request.form.get("phone")
+            vendor_type = request.form.get("vendor_type")
+            products = request.form.get("products")
+            links = request.form.get("links")
+            setup = request.form.get("setup")
+            comments = request.form.get("comments")
 
-        details = f"""
-        Business: {business}
-        Phone: {phone}
-        Vendor Type: {vendor_type}
-        Products/Services: {products}
-        Links: {links}
-        Setup Needs: {setup}
-        Comments: {comments}
-        """
-        create_lead_record("Vendor Application", name, email, details, "New")
+            details = f"""
+            Business: {business}
+            Phone: {phone}
+            Vendor Type: {vendor_type}
+            Products/Services: {products}
+            Links: {links}
+            Setup Needs: {setup}
+            Comments: {comments}
+            """
+            create_lead_record("Vendor Application", name, email, details, "New")
+        except Exception as exc:
+            print("[vendor-signup] submit failed:", exc)
+            traceback.print_exc()
 
-        return render_template(
-            "thank_you.html",
-            title="APPLICATION RECEIVED",
-            message="Your vendor application has been submitted successfully. Our team will review and reach out with next steps.",
+        return render_thank_you_safe(
+            "APPLICATION RECEIVED",
+            "Your vendor application has been submitted successfully. Our team will review and reach out with next steps.",
         )
 
     return render_template("vendor_signup.html")
 
 @app.route("/vip", methods=["POST"])
 def vip_signup():
-
     name = request.form.get("name")
     email = request.form.get("email")
     phone = request.form.get("phone")
@@ -2874,7 +3025,11 @@ def vip_signup():
     Phone: {phone}
     """
 
-    create_lead_record("VIP Signup", name, email, details, "Active")
+    try:
+        create_lead_record("VIP Signup", name, email, details, "Active")
+    except Exception as exc:
+        print("[vip-signup] submit failed:", exc)
+        traceback.print_exc()
 
     welcome_plain = (
         f"Hi {name or 'VIP Member'},\n\n"
@@ -2920,42 +3075,44 @@ def vip_signup():
     send_ok = False
     recipient = (email or "").strip()
     if recipient:
-        send_ok = send_html_email(
-            "Welcome to The Jukebox Lounge VIP List",
-            recipient,
-            welcome_plain,
-            welcome_html,
-        )
+        try:
+            send_ok = send_html_email(
+                "Welcome to The Jukebox Lounge VIP List",
+                recipient,
+                welcome_plain,
+                welcome_html,
+            )
+        except Exception as exc:
+            print("[vip-signup] welcome email failed:", exc)
+            traceback.print_exc()
     print(f"[vip-welcome] recipient={recipient or '(missing)'} sent={send_ok}")
 
-    return render_template(
-        "thank_you.html",
-        title="WELCOME TO THE VIP EMAIL LIST",
-        message="You're officially on the VIP Email list. Get ready for exclusive drops, early access, and curated experiences."
+    return render_thank_you_safe(
+        "WELCOME TO THE VIP EMAIL LIST",
+        "You're officially on the VIP Email list. Get ready for exclusive drops, early access, and curated experiences.",
     )
 
 @app.route("/event-interest", methods=["POST"])
 def event_interest():
+    try:
+        raw_name = request.form.get("event_name")
+        event_name = clean_event_name(raw_name)
 
-    raw_name = request.form.get("event_name")
-    event_name = clean_event_name(raw_name)
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    # ✅ ONLY STORE REQUEST (NO AUTO VOTING)
-    cursor.execute("""
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("""
 INSERT INTO event_requests (event_name, status)
 VALUES (?, 'New')
 """, (event_name,))
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        print("[event-interest] submit failed:", exc)
+        traceback.print_exc()
 
-    conn.commit()
-    conn.close()
-
-    return render_template(
-        "thank_you.html",
-        title="SUBMITTED",
-        message="Your input helps shape future Jukebox events."
+    return render_thank_you_safe(
+        "SUBMITTED",
+        "Your input helps shape future Jukebox events.",
     )
 @app.route("/vote-event", methods=["POST"])
 def vote_event():
@@ -4253,8 +4410,15 @@ def qr(ticket_id):
 
     return send_file(buf, mimetype='image/png')
 
+
+@app.route("/admin/dashboard-redesign")
+def admin_dashboard_redesign():
+    return render_template("dashboard_redesign.html")
+
 # -------------------------
 # RUN
 # -------------------------
 if __name__ == "__main__":
     app.run(debug=True, port=5050, use_reloader=False)
+
+
