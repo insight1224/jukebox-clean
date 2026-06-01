@@ -74,12 +74,6 @@
         </div>
 
         <div class="stat-card">
-          <p>Door Sales</p>
-          <h3>${{ "%.2f"|format(dashboard_preview_summary.door_sales_total) }}</h3>
-          <span>{{ dashboard_preview_summary.door_sales_count }} door tickets</span>
-        </div>
-
-        <div class="stat-card">
           <p>VIP Tickets</p>
           <h3>{{ metrics.vip_tickets }}</h3>
           <span>VIP ticket purchases</span>
@@ -91,115 +85,124 @@
           <span>Tickets + memberships</span>
         </div>
       </section>
-
-      <section class="quick-actions">
-  <a href="#events">Manage Events</a>
-  <a href="#check-in">Check In Guests</a>
-  <a href="#door-sales">Add Door Sale</a>
-  <a href="#sales-revenue">View Sales</a>
-  <a href="#vip">VIP List</a>
-  <a href="#reports">Reports</a>
-</section>
-
       <section class="dashboard-grid">
         <div class="panel large-panel">
           <div class="panel-header">
             <div>
-              <p class="eyebrow">Tonight’s Event</p>
-              <h3>Quiet Storm Live</h3>
+              <p class="eyebrow">Upcoming Events</p>
+              <h3>Event Lineup</h3>
             </div>
-            <span class="badge live">Live</span>
+            <span class="badge">Preview</span>
           </div>
 
-          <div class="event-progress">
-            <div>
-              <p>Check-In Progress</p>
-              <h4>84 / 127 guests</h4>
-            </div>
-            <div class="progress-bar">
-              <span style="width: 66%;"></span>
-            </div>
-          </div>
+          <div class="upcoming-event-list">
+            {% for event in events %}
+            <div class="upcoming-event-card">
+              <div class="upcoming-event-top">
+                <div>
+                  <h4>{{ event.name }}</h4>
+                  <p>{{ event.total_tickets_sold }} tickets sold</p>
+                </div>
+                <span class="badge {% if loop.first %}live{% endif %}">
+                  {% if loop.first %}Featured{% else %}Upcoming{% endif %}
+                </span>
+              </div>
 
-          <div class="event-actions">
-            <button class="btn primary">Open Event</button>
-            <button class="btn secondary">Check In</button>
-            <button class="btn secondary">Add Door Sale</button>
-          </div>
-        </div>
+              <div class="event-progress">
+                <div>
+                  <p>Event Revenue</p>
+                  <h4>${{ "%.2f"|format(event.total_revenue) }}</h4>
+                </div>
+                <div class="progress-bar">
+                  <span style="width: {% if event.total_tickets_sold > 0 %}66{% else %}12{% endif %}%;"></span>
+                </div>
+              </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <h3>New Messages & Leads</h3>
-            <span class="badge">5 New</span>
-          </div>
-
-          <div class="mini-list">
-            <div>
-              <strong>VIP Membership Inquiry</strong>
-              <p>Customer asked about VIP packages.</p>
+              <div class="event-actions">
+                <button class="btn primary">Open Event</button>
+                <button class="btn secondary">Guest List</button>
+                <button class="btn secondary">Revenue</button>
+              </div>
             </div>
-            <div>
-              <strong>General Inquiry</strong>
-              <p>Question about upcoming event hours.</p>
-            </div>
-            <div>
-              <strong>Private Event Request</strong>
-              <p>Birthday party booking request.</p>
-            </div>
+            {% endfor %}
           </div>
         </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Members</h3>
-            <span class="badge">12 New</span>
+        <div class="dashboard-side-stack">
+          <div class="panel">
+            <div class="panel-header">
+              <h3>New Messages & Leads</h3>
+              <span class="badge">5 New</span>
+            </div>
+
+            <div class="mini-list">
+              <div>
+                <strong>VIP Membership Inquiry</strong>
+                <p>Customer asked about VIP packages.</p>
+              </div>
+              <div>
+                <strong>General Inquiry</strong>
+                <p>Question about upcoming event hours.</p>
+              </div>
+              <div>
+                <strong>Private Event Request</strong>
+                <p>Birthday party booking request.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="mini-list">
-            <div>
-              <strong>VIP Members</strong>
-              <p>6 new VIP signups this month.</p>
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Members</h3>
+              <span class="badge">12 New</span>
             </div>
-            <div>
-              <strong>General Members</strong>
-              <p>14 active member records.</p>
-            </div>
-            <div>
-              <strong>Newsletter</strong>
-              <p>31 people signed up for updates.</p>
+
+            <div class="mini-list">
+              <div>
+                <strong>VIP Members</strong>
+                <p>6 new VIP signups this month.</p>
+              </div>
+              <div>
+                <strong>General Members</strong>
+                <p>14 active member records.</p>
+              </div>
+              <div>
+                <strong>Newsletter</strong>
+                <p>31 people signed up for updates.</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="panel">
-          <div class="panel-header">
-            <h3>Applications</h3>
-            <span class="badge warning">Review</span>
-          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <h3>Applications</h3>
+              <span class="badge warning">Review</span>
+            </div>
 
-          <div class="mini-list">
-            <div>
-              <strong>DJ Application</strong>
-              <p>2 new DJs waiting for review.</p>
-            </div>
-            <div>
-              <strong>Band Application</strong>
-              <p>1 band application submitted.</p>
-            </div>
-            <div>
-              <strong>Vendor Application</strong>
-              <p>3 vendor requests received.</p>
+            <div class="mini-list">
+              <div>
+                <strong>DJ Application</strong>
+                <p>2 new DJs waiting for review.</p>
+              </div>
+              <div>
+                <strong>Band Application</strong>
+                <p>1 band application submitted.</p>
+              </div>
+              <div>
+                <strong>Vendor Application</strong>
+                <p>3 vendor requests received.</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
-            <section class="section-panel" id="events">
+
+      <section class="section-panel" id="events">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Events</p>
-            <h3>Event Management</h3>
-            <p>View upcoming, live, and completed events in one place.</p>
+            <h3>Upcoming Event Management</h3>
+            <p>View and manage upcoming events in one place.</p>
           </div>
           <button class="btn primary">Add New Event</button>
         </div>
@@ -214,32 +217,23 @@
             <span>Actions</span>
           </div>
 
+          {% for event in events %}
           <div class="table-row">
-            <span>Quiet Storm Live</span>
-            <span>Tonight</span>
-            <span><span class="badge live">Live</span></span>
-            <span>127 sold</span>
-            <span>$3,260</span>
-            <span class="row-actions">
-              <button>Open</button>
-              <button>Check In</button>
-            </span>
-          </div>
-
-          <div class="table-row">
-            <span>Battle of the DJs</span>
+            <span>{{ event.name }}</span>
             <span>Upcoming</span>
-            <span><span class="badge">Upcoming</span></span>
-            <span>84 sold</span>
-            <span>$2,140</span>
+            <span><span class="badge {% if loop.first %}live{% endif %}">{% if loop.first %}Featured{% else %}Upcoming{% endif %}</span></span>
+            <span>{{ event.total_tickets_sold }} sold</span>
+            <span>${{ "%.2f"|format(event.total_revenue) }}</span>
             <span class="row-actions">
               <button>Open</button>
-              <button>Import</button>
+              <button>Guest List</button>
             </span>
           </div>
+          {% endfor %}
         </div>
       </section>
-            <section class="section-panel" id="event-detail-preview">
+
+      <section class="section-panel" id="event-detail-preview">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Individual Event View</p>

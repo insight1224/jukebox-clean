@@ -157,7 +157,7 @@ body {
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(140px, 1fr));
+  grid-template-columns: repeat(5, minmax(140px, 1fr));
   gap: 16px;
   margin-bottom: 18px;
 }
@@ -201,8 +201,18 @@ body {
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr;
+  grid-template-columns: minmax(420px, 1.15fr) minmax(320px, 0.85fr);
   gap: 18px;
+  align-items: start;
+}
+
+.dashboard-side-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.large-panel {
+  grid-row: auto;
 }
 
 .large-panel {
@@ -887,4 +897,33 @@ body {
   .event-detail-grid {
     grid-template-columns: 1fr;
   }
+}
+.upcoming-event-list {
+  display: grid;
+  gap: 16px;
+}
+
+.upcoming-event-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 18px;
+}
+
+.upcoming-event-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.upcoming-event-top h4 {
+  margin: 0 0 6px;
+  font-size: 22px;
+}
+
+.upcoming-event-top p {
+  margin: 0;
+  color: var(--muted);
 }

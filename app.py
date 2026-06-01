@@ -4437,26 +4437,16 @@ def admin_dashboard_redesign():
 
     events = [
         {
-            "name": "Battle of the DJs",
-            "tickets": [
-                {"name": "Early Bird", "quantity": 22, "price": 14.0204545455},
-                {"name": "General Admissions", "quantity": 37, "price": 19.0459459459},
-                {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
-                {"name": "DJ VIP", "quantity": 0, "price": 0},
-                {
-                    "name": "Door Sales",
-                    "quantity": 127,
-                    "price": 0,
-                    "revenue_override": 2540.00,
-                    "cash_amount": 1320.00,
-                    "square_amount": 1220.00,
-                },
-            ],
-        },
-        {
             "name": "Quiet Storm Live",
             "tickets": [
                 {"name": "General Admission", "quantity": 1, "price": 12},
+            ],
+        },
+        {
+            "name": "Juneteenth Celebration",
+            "tickets": [
+                {"name": "General Admission", "quantity": 0, "price": 0},
+                {"name": "VIP Section", "quantity": 0, "price": 0},
             ],
         },
     ]
