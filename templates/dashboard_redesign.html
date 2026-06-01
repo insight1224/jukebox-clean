@@ -186,6 +186,161 @@
           </div>
         </div>
       </section>
+            <section class="section-panel" id="events">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Events</p>
+            <h3>Event Management</h3>
+            <p>View upcoming, live, and completed events in one place.</p>
+          </div>
+          <button class="btn primary">Add New Event</button>
+        </div>
+
+        <div class="table-card">
+          <div class="table-row table-head">
+            <span>Event</span>
+            <span>Date</span>
+            <span>Status</span>
+            <span>Tickets</span>
+            <span>Revenue</span>
+            <span>Actions</span>
+          </div>
+
+          <div class="table-row">
+            <span>Quiet Storm Live</span>
+            <span>Tonight</span>
+            <span><span class="badge live">Live</span></span>
+            <span>127 sold</span>
+            <span>$3,260</span>
+            <span class="row-actions">
+              <button>Open</button>
+              <button>Check In</button>
+            </span>
+          </div>
+
+          <div class="table-row">
+            <span>Battle of the DJs</span>
+            <span>Upcoming</span>
+            <span><span class="badge">Upcoming</span></span>
+            <span>84 sold</span>
+            <span>$2,140</span>
+            <span class="row-actions">
+              <button>Open</button>
+              <button>Import</button>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="check-in">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Check-In</p>
+            <h3>Live Door Check-In</h3>
+            <p>Search guests quickly by name, email, phone, or order number.</p>
+          </div>
+          <button class="btn primary">Start Check-In Mode</button>
+        </div>
+
+        <div class="checkin-preview">
+          <input type="text" placeholder="Search guest name, email, phone, or order number..." />
+
+          <div class="guest-card">
+            <div>
+              <h4>Monica Johnson</h4>
+              <p>VIP Table — Includes 6 guests</p>
+              <small>Checked in: 2 of 6</small>
+            </div>
+            <div class="row-actions">
+              <button>Check In 1</button>
+              <button>Check In All</button>
+              <button>Undo</button>
+            </div>
+          </div>
+
+          <div class="guest-card">
+            <div>
+              <h4>Terrance Brown</h4>
+              <p>General Admission — 2 tickets</p>
+              <small>Checked in: 0 of 2</small>
+            </div>
+            <div class="row-actions">
+              <button>Check In 1</button>
+              <button>Check In All</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="door-sales">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Door Sales</p>
+            <h3>Add Door Sale</h3>
+            <p>Track walk-up sales and connect them to event totals.</p>
+          </div>
+        </div>
+
+        <form class="form-grid">
+          <input type="text" placeholder="Customer name" />
+          <input type="text" placeholder="Ticket type" />
+          <input type="number" placeholder="Quantity" />
+          <select>
+            <option>Payment Method</option>
+            <option>Cash</option>
+            <option>Card</option>
+            <option>Cash App</option>
+            <option>Zelle</option>
+            <option>Comp</option>
+            <option>Other</option>
+          </select>
+          <input type="text" placeholder="Amount paid" />
+          <input type="text" placeholder="Notes" />
+          <button class="btn primary" type="button">Save Door Sale</button>
+        </form>
+      </section>
+
+      <section class="section-panel" id="vip">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">VIP</p>
+            <h3>VIP Guest Tracking</h3>
+            <p>Manage VIP tables, guest counts, notes, and arrival status.</p>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-row table-head">
+            <span>VIP Name</span>
+            <span>Package</span>
+            <span>Guests</span>
+            <span>Status</span>
+            <span>Actions</span>
+          </div>
+
+          <div class="table-row">
+            <span>Monica Johnson</span>
+            <span>VIP Table</span>
+            <span>2 of 6 checked in</span>
+            <span><span class="badge live">Arrived</span></span>
+            <span class="row-actions">
+              <button>Add Note</button>
+              <button>Check In</button>
+            </span>
+          </div>
+
+          <div class="table-row">
+            <span>Chris Williams</span>
+            <span>Birthday VIP</span>
+            <span>0 of 8 checked in</span>
+            <span><span class="badge warning">Waiting</span></span>
+            <span class="row-actions">
+              <button>Add Note</button>
+              <button>Check In</button>
+            </span>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 </body>
