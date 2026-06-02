@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Events Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Events Preview</p>
+        </div>
+      </div>
+
+                        <nav class="sidebar-nav">
+        <a href="/admin/dashboard-redesign">Dashboard</a>
+        <a href="/admin/dashboard-redesign/events" class="active">Events</a>
+        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
+        <a href="/admin/dashboard-redesign/messages">Messages</a>
+        <a href="/admin/dashboard-redesign/members">Members</a>
+        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/admin/dashboard-redesign#reports">Reports</a>
+        <a href="/admin/dashboard-redesign#settings">Settings</a>
+      </nav>
+    </aside>
+
+    <main class="main-content" id="top">
+      <div class="preview-banner">
+        <div>
+          <strong>Events Tab Preview</strong>
+          <span>This screen keeps event management and check-in tools in one place.</span>
+        </div>
+        <a href="/admin/dashboard-redesign">Back to Dashboard</a>
+      </div>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Events Dashboard</p>
+          <h2>Event Management Center</h2>
+          <p class="subtext">Manage upcoming events, guest lists, VIP lists, and event check-in from one screen.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="btn primary" type="button" id="addNewEventButton">Add New Event</button>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <p>Events</p>
+          <h3>{{ dashboard_preview_summary.upcoming_events_count }}</h3>
+          <span>Currently listed events</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Tickets Sold</p>
+          <h3>{{ metrics.single_tickets }}</h3>
+          <span>Excludes VIP tickets</span>
+        </div>
+
+        <div class="stat-card">
+          <p>VIP Tickets</p>
+          <h3>{{ metrics.vip_tickets }}</h3>
+          <span>VIP ticket purchases</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Estimated Attendance</p>
+          <h3>{{ metrics.estimated_attendance }}</h3>
+          <span>Based on ticket totals</span>
+        </div>
+      </section>
+
+      <section class="section-panel" id="events">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Events</p>
+            <h3>Upcoming Event Management</h3>
+            <p>View and manage upcoming events in one place.</p>
+          </div>
+          <button class="btn primary" type="button" id="addNewEventButtonSecondary">Add New Event</button>
+        </div>
+
+        <div class="table-card" id="eventManagementTable">
+          <div class="table-row table-head">
+            <span>Event</span>
+            <span>Date</span>
+            <span>Status</span>
+            <span>Tickets</span>
+            <span>Revenue</span>
+            <span>Actions</span>
+          </div>
+
+          {% for event in events %}
+          <div class="table-row">
+            <span>{{ event.name }}</span>
+            <span>Upcoming</span>
+            <span><span class="badge {% if loop.first %}live{% endif %}">{% if loop.first %}Featured{% else %}Upcoming{% endif %}</span></span>
+            <span>{{ event.total_tickets_sold }} sold</span>
+            <span>${{ "%.2f"|format(event.total_revenue) }}</span>
+            <span class="row-actions">
+              <button class="js-open-event" type="button" data-event-target="event-modal-{{ loop.index }}" data-event-name="{{ event.name }}">Open</button>
+              <button class="js-open-guest-list" type="button" data-guest-target="guest-list-modal-{{ loop.index }}" data-guest-event-name="{{ event.name }}">Guest List</button>
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="section-panel" id="check-in">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Check-In</p>
+            <h3>Event Check-In Center</h3>
+            <p>Select an event to open the live check-in screen for that specific event.</p>
+          </div>
+        </div>
+
+        <div class="checkin-event-grid">
+          {% for event in events %}
+          <div class="checkin-event-card">
+            <div>
+              <p class="eyebrow">Event Check-In</p>
+              <h4>{{ event.name }}</h4>
+              <p>{{ event.total_tickets_sold }} guests/tickets currently listed for this event.</p>
+            </div>
+
+            <div class="checkin-event-meta">
+              <span class="badge {% if loop.first %}live{% endif %}">
+                {% if loop.first %}Featured{% else %}Upcoming{% endif %}
+              </span>
+              <button
+                class="btn primary js-open-checkin"
+                type="button"
+                data-checkin-target="checkin-modal-{{ loop.index }}"
+                data-checkin-name="{{ event.name }}"
+              >
+                Open Check-In
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="section-panel" id="door-sales">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Ticket Sales</p>
+            <h3>Add Ticket Sale</h3>
+            <p>Track ticket sales by event, payment method, and sales source.</p>
+          </div>
+        </div>
+
+        <form class="form-grid">
+          <select>
+            <option>Select Event</option>
+            {% for event in events %}
+            <option>{{ event.name }}</option>
+            {% endfor %}
+          </select>
+
+          <input type="text" placeholder="Customer name" />
+          <input type="text" placeholder="Ticket type" />
+          <input type="number" placeholder="Quantity" />
+
+          <select>
+            <option>Payment Method / Source</option>
+            <option>Cash</option>
+            <option>Card</option>
+            <option>Cash App</option>
+            <option>Zelle</option>
+            <option>Eventbrite</option>
+            <option>Square</option>
+            <option>Comp</option>
+            <option>Other</option>
+          </select>
+
+          <input type="number" placeholder="Amount paid" />
+          <input type="text" placeholder="Staff / notes" />
+
+          <button class="btn primary" type="button">Save Ticket Sale</button>
+        </form>
+      </section>
+
+      <div class="event-modal-overlay" id="eventModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Individual Event View</p>
+              <h3 id="eventModalTitle">Event Preview</h3>
+              <p>Individual event tracking for tickets, guest list, VIP list, check-in, and notes.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="eventModalClose">Close</button>
+          </div>
+
+          {% for event in events %}
+          <div class="event-modal-content" id="event-modal-{{ loop.index }}">
+            <div class="event-detail-stats">
+              <div>
+                <p>Total Tickets</p>
+                <strong>{{ event.total_tickets_sold }}</strong>
+                <span>All ticket types</span>
+              </div>
+
+              <div>
+                <p>Total Revenue</p>
+                <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+                <span>Ticket revenue</span>
+              </div>
+
+              <div>
+                <p>Ticket Types</p>
+                <strong>{{ event.tickets|length }}</strong>
+                <span>Categories tracked</span>
+              </div>
+
+              <div>
+                <p>Event Status</p>
+                <strong>{% if loop.first %}Featured{% else %}Upcoming{% endif %}</strong>
+                <span>Preview status</span>
+              </div>
+            </div>
+
+            <div class="event-detail-grid">
+              <div class="event-detail-panel">
+                <h5>Ticket Breakdown</h5>
+                {% for ticket in event.tickets %}
+                <div class="breakdown-row">
+                  <span>{{ ticket.name }}</span>
+                  <strong>{{ ticket.quantity }} sold</strong>
+                </div>
+                {% endfor %}
+              </div>
+
+              <div class="event-detail-panel">
+                <h5>Revenue Breakdown</h5>
+                {% for ticket in event.tickets %}
+                <div class="breakdown-row">
+                  <span>{{ ticket.name }}</span>
+                  <strong>${{ "%.2f"|format(ticket.revenue) }}</strong>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+
+            <div class="event-detail-actions">
+              <button class="js-event-action-guest-list" type="button" data-guest-target="guest-list-modal-{{ loop.index }}" data-guest-event-name="{{ event.name }}">Guest List</button>
+              <button class="js-event-action-vip-list" type="button" data-vip-target="vip-list-modal-{{ loop.index }}" data-vip-event-name="{{ event.name }}">VIP List</button>
+              <button class="js-event-action-checkin" type="button" data-checkin-target="checkin-modal-{{ loop.index }}" data-checkin-name="{{ event.name }}">Check-In</button>
+              <button class="js-event-action-notes" type="button" data-event-name="{{ event.name }}">Notes</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="guestListModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Guest List</p>
+              <h3 id="guestListModalTitle">Event Guest List</h3>
+              <p>View guests and ticket purchasers for this specific event.</p>
+            </div>
+            <div class="modal-header-actions">
+              <button class="event-modal-close js-back-to-event" type="button">Back to Event</button>
+              <button class="event-modal-close" type="button" id="guestListModalClose">Close</button>
+            </div>
+          </div>
+
+          {% for event in events %}
+          <div class="guest-list-modal-content" id="guest-list-modal-{{ loop.index }}">
+            <div class="table-card guest-list-table">
+              <div class="table-row guest-list-row table-head">
+                <span>Name</span>
+                <span>Email</span>
+                <span>Phone</span>
+                <span>Ticket Type</span>
+                <span>Quantity</span>
+                <span>Source</span>
+              </div>
+
+              {% if loop.first %}
+              <div class="table-row guest-list-row">
+                <span>Monica Johnson</span>
+                <span>monica@example.com</span>
+                <span>(919) 555-0142</span>
+                <span>VIP Table</span>
+                <span>6</span>
+                <span>Online</span>
+              </div>
+
+              <div class="table-row guest-list-row">
+                <span>Terrance Brown</span>
+                <span>terrance@example.com</span>
+                <span>(919) 555-0177</span>
+                <span>General Admission</span>
+                <span>2</span>
+                <span>Online</span>
+              </div>
+              {% else %}
+              <div class="empty-state">
+                <h4>No guests added yet</h4>
+                <p>Once tickets are imported or sold for this event, guests will appear here.</p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="vipListModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Event VIP List</p>
+              <h3 id="vipListModalTitle">VIP List</h3>
+              <p>View VIP tables, reserved sections, guest counts, status, and notes for this specific event.</p>
+            </div>
+            <div class="modal-header-actions">
+              <button class="event-modal-close js-back-to-event" type="button">Back to Event</button>
+              <button class="event-modal-close" type="button" id="vipListModalClose">Close</button>
+            </div>
+          </div>
+
+          {% for event in events %}
+          <div class="vip-list-modal-content" id="vip-list-modal-{{ loop.index }}">
+            {% if loop.first %}
+            <div class="table-card">
+              <div class="table-row vip-row table-head">
+                <span>VIP Name</span>
+                <span>Package</span>
+                <span>Guests Included</span>
+                <span>Status</span>
+                <span>Notes</span>
+                <span>Actions</span>
+              </div>
+
+              <div class="table-row vip-row">
+                <span>Monica Johnson</span>
+                <span>VIP Table</span>
+                <span>6 guests</span>
+                <span><span class="badge live">Arrived</span></span>
+                <span>Birthday section near stage</span>
+                <span class="row-actions">
+                  <button type="button">View</button>
+                  <button type="button">Add Note</button>
+                </span>
+              </div>
+
+              <div class="table-row vip-row">
+                <span>Chris Williams</span>
+                <span>Birthday VIP</span>
+                <span>8 guests</span>
+                <span><span class="badge warning">Reserved</span></span>
+                <span>Waiting on final guest names</span>
+                <span class="row-actions">
+                  <button type="button">View</button>
+                  <button type="button">Add Note</button>
+                </span>
+              </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+              <h4>No VIP packages added yet</h4>
+              <p>VIP tables, birthday sections, and reserved packages for this event will appear here.</p>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="checkinModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Live Door Check-In</p>
+              <h3 id="checkinModalTitle">Event Check-In</h3>
+              <p>Search guests for this specific event by name, email, phone, or order number.</p>
+            </div>
+            <div class="modal-header-actions">
+              <button class="event-modal-close js-back-to-event" type="button">Back to Event</button>
+              <button class="event-modal-close" type="button" id="checkinModalClose">Close</button>
+            </div>
+          </div>
+
+          {% for event in events %}
+          <div class="checkin-modal-content" id="checkin-modal-{{ loop.index }}">
+            <div class="checkin-preview">
+              <input type="text" placeholder="Search guest name, email, phone, or order number..." />
+
+              <div class="guest-card checkin-guest" data-checked-in="2" data-total-guests="6">
+                <div>
+                  <h4>Monica Johnson</h4>
+                  <p>VIP Table — Includes 6 guests</p>
+                  <small>Checked in: <span class="checked-count">2</span> of <span class="total-count">6</span></small>
+                </div>
+                <div class="row-actions">
+                  <button class="js-checkin-one" type="button">Check In 1</button>
+                  <button class="js-checkin-all" type="button">Check In All</button>
+                  <button class="js-checkin-undo" type="button">Undo</button>
+                </div>
+              </div>
+
+              <div class="guest-card checkin-guest" data-checked-in="0" data-total-guests="2">
+                <div>
+                  <h4>Terrance Brown</h4>
+                  <p>General Admission — 2 tickets</p>
+                  <small>Checked in: <span class="checked-count">0</span> of <span class="total-count">2</span></small>
+                </div>
+                <div class="row-actions">
+                  <button class="js-checkin-one" type="button">Check In 1</button>
+                  <button class="js-checkin-all" type="button">Check In All</button>
+                  <button class="js-checkin-undo" type="button">Undo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="eventNoteModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Event Notes</p>
+              <h3 id="eventNoteModalTitle">Event Notes</h3>
+              <p>Add internal notes for this event preview.</p>
+            </div>
+            <div class="modal-header-actions">
+              <button class="event-modal-close js-back-to-event" type="button">Back to Event</button>
+              <button class="event-modal-close" type="button" id="eventNoteModalClose">Close</button>
+            </div>
+          </div>
+
+          <div class="note-form">
+            <label>
+              Note
+              <textarea id="eventNoteText" placeholder="Example: Follow up with VIP guest, confirm performer, update ticket setup, etc."></textarea>
+            </label>
+
+            <button class="btn primary" type="button" id="eventNoteSave">Save Note</button>
+
+            <div class="note-preview" id="eventNotePreview">
+              No event note saved in this preview yet.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="addEventModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Add Event</p>
+              <h3>Add New Event</h3>
+              <p>Create a preview event and add it to the upcoming event list.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="addEventModalClose">Close</button>
+          </div>
+
+          <form class="add-event-form">
+            <label>
+              Event Name
+              <input id="newEventName" type="text" placeholder="Example: R&B Night" />
+            </label>
+
+            <label>
+              Event Date
+              <input id="newEventDate" type="text" placeholder="Example: June 19, 2026" />
+            </label>
+
+            <label>
+              Starting Tickets Sold
+              <input id="newEventTickets" type="number" min="0" placeholder="Example: 0" />
+            </label>
+
+            <label>
+              Starting Revenue
+              <input id="newEventRevenue" type="number" min="0" step="0.01" placeholder="Example: 0.00" />
+            </label>
+
+            <button class="btn primary" type="button" id="saveNewEventButton">Save Event</button>
+
+            <div class="note-preview">
+              Preview only: this adds the event to the page visually. Later, this will save to the database.
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const eventModalOverlay = document.getElementById("eventModalOverlay");
+    const eventModalClose = document.getElementById("eventModalClose");
+    const eventModalTitle = document.getElementById("eventModalTitle");
+    const eventModalButtons = document.querySelectorAll(".js-open-event");
+    const eventModalContents = document.querySelectorAll(".event-modal-content");
+
+    eventModalButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-event-target");
+        const eventName = button.getAttribute("data-event-name");
+
+        eventModalContents.forEach((content) => content.classList.remove("active"));
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          eventModalTitle.textContent = eventName;
+          eventModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    eventModalClose.addEventListener("click", () => {
+      eventModalOverlay.classList.remove("active");
+    });
+
+    eventModalOverlay.addEventListener("click", (event) => {
+      if (event.target === eventModalOverlay) {
+        eventModalOverlay.classList.remove("active");
+      }
+    });
+
+    const guestListModalOverlay = document.getElementById("guestListModalOverlay");
+    const guestListModalClose = document.getElementById("guestListModalClose");
+    const guestListModalTitle = document.getElementById("guestListModalTitle");
+    const guestListModalContents = document.querySelectorAll(".guest-list-modal-content");
+
+    function openGuestList(targetId, eventName) {
+      eventModalOverlay.classList.remove("active");
+      guestListModalContents.forEach((content) => content.classList.remove("active"));
+
+      const targetContent = document.getElementById(targetId);
+
+      if (targetContent) {
+        targetContent.classList.add("active");
+        guestListModalTitle.textContent = eventName + " Guest List";
+        guestListModalOverlay.classList.add("active");
+      }
+    }
+
+    document.querySelectorAll(".js-open-guest-list, .js-event-action-guest-list").forEach((button) => {
+      button.addEventListener("click", () => {
+        openGuestList(button.getAttribute("data-guest-target"), button.getAttribute("data-guest-event-name"));
+      });
+    });
+
+    guestListModalClose.addEventListener("click", () => {
+      guestListModalOverlay.classList.remove("active");
+    });
+
+    const vipListModalOverlay = document.getElementById("vipListModalOverlay");
+    const vipListModalClose = document.getElementById("vipListModalClose");
+    const vipListModalTitle = document.getElementById("vipListModalTitle");
+    const vipListModalContents = document.querySelectorAll(".vip-list-modal-content");
+
+    document.querySelectorAll(".js-event-action-vip-list").forEach((button) => {
+      button.addEventListener("click", () => {
+        eventModalOverlay.classList.remove("active");
+        vipListModalContents.forEach((content) => content.classList.remove("active"));
+
+        const targetContent = document.getElementById(button.getAttribute("data-vip-target"));
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          vipListModalTitle.textContent = button.getAttribute("data-vip-event-name") + " VIP List";
+          vipListModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    vipListModalClose.addEventListener("click", () => {
+      vipListModalOverlay.classList.remove("active");
+    });
+
+    const checkinModalOverlay = document.getElementById("checkinModalOverlay");
+    const checkinModalClose = document.getElementById("checkinModalClose");
+    const checkinModalTitle = document.getElementById("checkinModalTitle");
+    const checkinModalContents = document.querySelectorAll(".checkin-modal-content");
+
+    document.querySelectorAll(".js-open-checkin, .js-event-action-checkin").forEach((button) => {
+      button.addEventListener("click", () => {
+        eventModalOverlay.classList.remove("active");
+        checkinModalContents.forEach((content) => content.classList.remove("active"));
+
+        const targetContent = document.getElementById(button.getAttribute("data-checkin-target"));
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          checkinModalTitle.textContent = button.getAttribute("data-checkin-name");
+          checkinModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    checkinModalClose.addEventListener("click", () => {
+      checkinModalOverlay.classList.remove("active");
+    });
+
+    function updateCheckinGuestCard(card, newCheckedInCount) {
+      const totalGuests = Number(card.getAttribute("data-total-guests"));
+      const safeCount = Math.max(0, Math.min(newCheckedInCount, totalGuests));
+
+      card.setAttribute("data-checked-in", safeCount);
+      card.querySelector(".checked-count").textContent = safeCount;
+
+      if (safeCount >= totalGuests) {
+        card.classList.add("fully-checked-in");
+      } else {
+        card.classList.remove("fully-checked-in");
+      }
+    }
+
+    document.querySelectorAll(".checkin-guest").forEach((card) => {
+      card.querySelector(".js-checkin-one").addEventListener("click", () => {
+        updateCheckinGuestCard(card, Number(card.getAttribute("data-checked-in")) + 1);
+      });
+
+      card.querySelector(".js-checkin-all").addEventListener("click", () => {
+        updateCheckinGuestCard(card, Number(card.getAttribute("data-total-guests")));
+      });
+
+      card.querySelector(".js-checkin-undo").addEventListener("click", () => {
+        updateCheckinGuestCard(card, Number(card.getAttribute("data-checked-in")) - 1);
+      });
+    });
+
+    const eventNoteModalOverlay = document.getElementById("eventNoteModalOverlay");
+    const eventNoteModalClose = document.getElementById("eventNoteModalClose");
+    const eventNoteModalTitle = document.getElementById("eventNoteModalTitle");
+    const eventNoteText = document.getElementById("eventNoteText");
+    const eventNoteSave = document.getElementById("eventNoteSave");
+    const eventNotePreview = document.getElementById("eventNotePreview");
+
+    document.querySelectorAll(".js-event-action-notes").forEach((button) => {
+      button.addEventListener("click", () => {
+        eventModalOverlay.classList.remove("active");
+        eventNoteModalTitle.textContent = button.getAttribute("data-event-name") + " Notes";
+        eventNoteText.value = "";
+        eventNoteModalOverlay.classList.add("active");
+      });
+    });
+
+    eventNoteSave.addEventListener("click", () => {
+      const note = eventNoteText.value.trim();
+
+      if (!note) {
+        eventNotePreview.textContent = "Please enter a note before saving.";
+        return;
+      }
+
+      eventNotePreview.textContent = eventNoteModalTitle.textContent + ": " + note;
+    });
+
+    eventNoteModalClose.addEventListener("click", () => {
+      eventNoteModalOverlay.classList.remove("active");
+    });
+
+    document.querySelectorAll(".js-back-to-event").forEach((button) => {
+      button.addEventListener("click", () => {
+        guestListModalOverlay.classList.remove("active");
+        vipListModalOverlay.classList.remove("active");
+        checkinModalOverlay.classList.remove("active");
+        eventNoteModalOverlay.classList.remove("active");
+        eventModalOverlay.classList.add("active");
+      });
+    });
+
+    const addEventModalOverlay = document.getElementById("addEventModalOverlay");
+    const addEventModalClose = document.getElementById("addEventModalClose");
+    const saveNewEventButton = document.getElementById("saveNewEventButton");
+    const newEventName = document.getElementById("newEventName");
+    const newEventDate = document.getElementById("newEventDate");
+    const newEventTickets = document.getElementById("newEventTickets");
+    const newEventRevenue = document.getElementById("newEventRevenue");
+    const eventManagementTable = document.getElementById("eventManagementTable");
+
+    function openAddEventModal() {
+      addEventModalOverlay.classList.add("active");
+    }
+
+    document.getElementById("addNewEventButton").addEventListener("click", openAddEventModal);
+    document.getElementById("addNewEventButtonSecondary").addEventListener("click", openAddEventModal);
+
+    addEventModalClose.addEventListener("click", () => {
+      addEventModalOverlay.classList.remove("active");
+    });
+
+    function formatMoney(value) {
+      return "$" + Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    saveNewEventButton.addEventListener("click", () => {
+      const eventName = newEventName.value.trim();
+      const eventDate = newEventDate.value.trim() || "Upcoming";
+      const tickets = Number(newEventTickets.value || 0);
+      const revenue = Number(newEventRevenue.value || 0);
+
+      if (!eventName) {
+        alert("Please enter an event name.");
+        return;
+      }
+
+      const row = document.createElement("div");
+      row.className = "table-row";
+      row.innerHTML = `
+        <span>${eventName}</span>
+        <span>${eventDate}</span>
+        <span><span class="badge">Upcoming</span></span>
+        <span>${tickets} sold</span>
+        <span>${formatMoney(revenue)}</span>
+        <span class="row-actions">
+          <button type="button">Open</button>
+          <button type="button">Guest List</button>
+        </span>
+      `;
+
+      eventManagementTable.appendChild(row);
+
+      newEventName.value = "";
+      newEventDate.value = "";
+      newEventTickets.value = "";
+      newEventRevenue.value = "";
+      addEventModalOverlay.classList.remove("active");
+    });
+  </script>
+</body>
+</html>

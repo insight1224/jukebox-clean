@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Revenue Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+
+  <style>
+    #revenueDetailModalOverlay .revenue-detail-content {
+      display: none !important;
+    }
+
+    #revenueDetailModalOverlay .revenue-detail-content.active {
+      display: block !important;
+    }
+  </style>
+
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Revenue Preview</p>
+        </div>
+      </div>
+
+                        <nav class="sidebar-nav">
+        <a href="/admin/dashboard-redesign">Dashboard</a>
+        <a href="/admin/dashboard-redesign/events">Events</a>
+        <a href="/admin/dashboard-redesign/revenue" class="active">Revenue</a>
+        <a href="/admin/dashboard-redesign/messages">Messages</a>
+        <a href="/admin/dashboard-redesign/members">Members</a>
+        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/admin/dashboard-redesign#reports">Reports</a>
+        <a href="/admin/dashboard-redesign#settings">Settings</a>
+      </nav>
+    </aside>
+
+    <main class="main-content" id="top">
+      <div class="preview-banner">
+        <div>
+          <strong>Revenue Tab Preview</strong>
+          <span>This screen keeps all event, ticket, membership, and past revenue summaries in one place.</span>
+        </div>
+        <a href="/admin/dashboard-redesign">Back to Dashboard</a>
+      </div>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Revenue Dashboard</p>
+          <h2>Revenue Command Center</h2>
+          <p class="subtext">Review ticket revenue, membership revenue, past event revenue, expenses, and exports.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="btn secondary js-export-revenue-report" type="button" id="exportRevenueOverview">Export Report</button>
+        </div>
+      </header>
+
+      <section class="section-panel event-ticket-summary-section" id="event-ticket-summary">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Events & Tickets</p>
+            <h3>Events & Ticket Summary</h3>
+            <p>Click an event to view its individual ticket and revenue breakdown.</p>
+          </div>
+        </div>
+
+        <div class="membership-kpi-grid event-ticket-overview-grid">
+          <div class="revenue-card">
+            <p>Events</p>
+            <h4>{{ dashboard_preview_summary.upcoming_events_count }}</h4>
+            <span>Currently listed events</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Tickets Sold</p>
+            <h4>{{ metrics.single_tickets }}</h4>
+            <span>Excludes VIP tickets</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>VIP Tickets</p>
+            <h4>{{ metrics.vip_tickets }}</h4>
+            <span>VIP ticket purchases</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Ticket Revenue</p>
+            <h4>${{ "%.2f"|format(metrics.ticket_revenue) }}</h4>
+            <span>Ticket sales only</span>
+          </div>
+        </div>
+
+        <div class="membership-breakdown-grid event-ticket-breakdown-grid">
+          {% for event in events %}
+          <button class="breakdown-card event-revenue-card js-open-revenue-modal" type="button" data-target="event-revenue-{{ loop.index }}" data-title="{{ event.name }}">
+            <h4>{{ event.name }}</h4>
+
+            <div class="breakdown-row">
+              <span>Tickets Sold</span>
+              <strong>{{ event.total_tickets_sold }}</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Revenue</span>
+              <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Ticket Types</span>
+              <strong>{{ event.tickets|length }}</strong>
+            </div>
+          </button>
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="section-panel past-events-summary-section" id="past-events-revenue">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Past Events</p>
+            <h3>Past Events Revenue Summary</h3>
+            <p>Review completed events, total revenue, expenses, net profit, and event-specific details.</p>
+          </div>
+        </div>
+
+        <div class="membership-kpi-grid past-events-kpi-grid">
+          <div class="revenue-card">
+            <p>Completed Events</p>
+            <h4>1</h4>
+            <span>Past event records</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Past Revenue</p>
+            <h4>$4,503.15</h4>
+            <span>Completed event revenue</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Past Expenses</p>
+            <h4>$800</h4>
+            <span>Completed event expenses</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Past Net Profit</p>
+            <h4>$3,703.15</h4>
+            <span>Revenue after expenses</span>
+          </div>
+        </div>
+
+        <div class="membership-breakdown-grid past-events-breakdown-grid">
+          <button class="breakdown-card past-event-revenue-card js-open-revenue-modal" type="button" data-target="past-battle-djs" data-title="Battle of the DJs">
+            <h4>Battle of the DJs</h4>
+
+            <div class="breakdown-row">
+              <span>Tickets Sold</span>
+              <strong>192</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Revenue</span>
+              <strong>$4,503.15</strong>
+            </div>
+
+            <div class="breakdown-row">
+              <span>Net Profit</span>
+              <strong>$3,703.15</strong>
+            </div>
+          </button>
+        </div>
+      </section>
+
+      <section class="section-panel membership-summary-section" id="membership-summary">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Memberships</p>
+            <h3>Membership Revenue Summary</h3>
+            <p>Track membership counts, paid member activity, and recurring revenue.</p>
+          </div>
+        </div>
+
+        <div class="membership-kpi-grid">
+          <div class="revenue-card">
+            <p>Total Members</p>
+            <h4>20</h4>
+            <span>Originals + Jukebox Circle</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>VIP Email List</p>
+            <h4>31</h4>
+            <span>Email subscribers</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Monthly Revenue</p>
+            <h4>$200</h4>
+            <span>Estimated recurring revenue</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Annual Projection</p>
+            <h4>$2,400</h4>
+            <span>Based on monthly revenue</span>
+          </div>
+        </div>
+
+        <div class="membership-breakdown-grid">
+          <div class="breakdown-card">
+            <h4>Jukebox Circle Originals</h4>
+            <div class="breakdown-row">
+              <span>Active Members</span>
+              <strong>12</strong>
+            </div>
+            <div class="breakdown-row">
+              <span>Monthly Revenue</span>
+              <strong>$120</strong>
+            </div>
+          </div>
+
+          <div class="breakdown-card">
+            <h4>Jukebox Circle</h4>
+            <div class="breakdown-row">
+              <span>Active Members</span>
+              <strong>8</strong>
+            </div>
+            <div class="breakdown-row">
+              <span>Monthly Revenue</span>
+              <strong>$80</strong>
+            </div>
+          </div>
+
+          <div class="breakdown-card">
+            <h4>VIP Email List</h4>
+            <div class="breakdown-row">
+              <span>Email Subscribers</span>
+              <strong>31</strong>
+            </div>
+            <div class="breakdown-row">
+              <span>Revenue</span>
+              <strong>$0</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel" id="sales-revenue">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Revenue</p>
+            <h3>Event Revenue Tracking</h3>
+            <p>Track ticket revenue, expenses, payment methods, and profit.</p>
+          </div>
+          <div class="section-actions">
+            <button class="btn secondary js-export-revenue-report" type="button" id="exportEventRevenueButton">Export Report</button>
+            <button class="btn primary" type="button" id="addExpenseButton">Add Expense</button>
+          </div>
+        </div>
+
+        <div class="revenue-summary-grid">
+          <div class="revenue-card">
+            <p>Gross Revenue</p>
+            <h4>$4,250</h4>
+            <span>Online + ticket sales</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Expenses</p>
+            <h4 id="expenseTotal">$800</h4>
+            <span>Staff, DJ, supplies</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Net Profit</p>
+            <h4 id="netProfitTotal">$3,450</h4>
+            <span>After expenses</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Comps</p>
+            <h4>12</h4>
+            <span>Guest list / promo</span>
+          </div>
+        </div>
+      </section>
+
+      <div class="event-modal-overlay" id="revenueDetailModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Revenue Details</p>
+              <h3 id="revenueDetailTitle">Revenue Details</h3>
+              <p>Individual revenue breakdown for the selected item.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="revenueDetailClose">Close</button>
+          </div>
+
+          {% for event in events %}
+          <div class="revenue-detail-content" id="event-revenue-{{ loop.index }}">
+            <div class="event-detail-stats">
+              <div>
+                <p>Total Tickets</p>
+                <strong>{{ event.total_tickets_sold }}</strong>
+                <span>All ticket categories</span>
+              </div>
+              <div>
+                <p>Total Revenue</p>
+                <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+                <span>Event ticket revenue</span>
+              </div>
+              <div>
+                <p>Ticket Types</p>
+                <strong>{{ event.tickets|length }}</strong>
+                <span>Categories tracked</span>
+              </div>
+              <div>
+                <p>Status</p>
+                <strong>Upcoming</strong>
+                <span>Preview status</span>
+              </div>
+            </div>
+
+            <div class="event-detail-grid">
+              <div class="event-detail-panel">
+                <h5>Ticket Breakdown</h5>
+                {% for ticket in event.tickets %}
+                <div class="breakdown-row">
+                  <span>{{ ticket.name }}</span>
+                  <strong>{{ ticket.quantity }} sold</strong>
+                </div>
+                {% endfor %}
+              </div>
+
+              <div class="event-detail-panel">
+                <h5>Revenue Breakdown</h5>
+                {% for ticket in event.tickets %}
+                <div class="breakdown-row">
+                  <span>{{ ticket.name }}</span>
+                  <strong>${{ "%.2f"|format(ticket.revenue) }}</strong>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+
+          <div class="revenue-detail-content" id="past-battle-djs">
+            <div class="event-detail-stats">
+              <div>
+                <p>Tickets Sold</p>
+                <strong>192</strong>
+                <span>Completed event total</span>
+              </div>
+              <div>
+                <p>Total Revenue</p>
+                <strong>$4,503.15</strong>
+                <span>Ticket sales total</span>
+              </div>
+              <div>
+                <p>Expenses</p>
+                <strong>$800.00</strong>
+                <span>Estimated expenses</span>
+              </div>
+              <div>
+                <p>Net Profit</p>
+                <strong>$3,703.15</strong>
+                <span>Revenue after expenses</span>
+              </div>
+            </div>
+
+            <div class="event-detail-grid">
+              <div class="event-detail-panel">
+                <h5>Ticket Breakdown</h5>
+
+                <div class="breakdown-row">
+                  <span>Early Bird</span>
+                  <strong>22 sold</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>General Admissions</span>
+                  <strong>37 sold</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>VIP</span>
+                  <strong>6 sold</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>DJ VIP</span>
+                  <strong>0 sold</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>Eventbrite</span>
+                  <strong>65 sold</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>Door - Square</span>
+                  <strong>$1,220.00</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>Door - Cash</span>
+                  <strong>$1,320.00</strong>
+                </div>
+              </div>
+
+              <div class="event-detail-panel">
+                <h5>Revenue Breakdown</h5>
+
+                <div class="breakdown-row">
+                  <span>Early Bird</span>
+                  <strong>$308.45</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>General Admissions</span>
+                  <strong>$704.70</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>VIP</span>
+                  <strong>$950.00</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>DJ VIP</span>
+                  <strong>$0.00</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>Eventbrite Total</span>
+                  <strong>$1,963.15</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>Door - Square</span>
+                  <strong>$1,220.00</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>Door - Cash</span>
+                  <strong>$1,320.00</strong>
+                </div>
+
+                <div class="breakdown-row">
+                  <span>Total Revenue</span>
+                  <strong>$4,503.15</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      </div>
+
+      <div class="event-modal-overlay" id="expenseModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Add Expense</p>
+              <h3>Add Event Expense</h3>
+              <p>Track expenses by event so profit totals stay accurate.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="expenseModalClose">Close</button>
+          </div>
+
+          <form class="expense-form">
+            <label>
+              Event
+              <select id="expenseEvent">
+                <option>Select Event</option>
+                {% for event in events %}
+                <option>{{ event.name }}</option>
+                {% endfor %}
+                <option>Battle of the DJs</option>
+              </select>
+            </label>
+
+            <label>
+              Expense Category
+              <select id="expenseCategory">
+                <option>Select Category</option>
+                <option>Staff</option>
+                <option>DJ / Performer</option>
+                <option>Security</option>
+                <option>Supplies</option>
+                <option>Marketing</option>
+                <option>Decor</option>
+                <option>Food / Catering</option>
+                <option>Other</option>
+              </select>
+            </label>
+
+            <label>
+              Amount
+              <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+            </label>
+
+            <label>
+              Notes
+              <textarea id="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
+            </label>
+
+            <button class="btn primary" type="button" id="expenseSave">Save Expense</button>
+
+            <div class="expense-preview">
+              <h4>Saved Expenses Preview</h4>
+              <div id="expenseSavedList">
+                <p class="muted-preview">No new expenses added in this preview yet.</p>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const revenueDetailModalOverlay = document.getElementById("revenueDetailModalOverlay");
+    const revenueDetailClose = document.getElementById("revenueDetailClose");
+    const revenueDetailTitle = document.getElementById("revenueDetailTitle");
+    const revenueDetailContents = document.querySelectorAll("#revenueDetailModalOverlay .revenue-detail-content");
+
+    function hideAllRevenueDetails() {
+      revenueDetailContents.forEach((content) => {
+        content.classList.remove("active");
+        content.style.display = "none";
+      });
+    }
+
+    hideAllRevenueDetails();
+
+    document.querySelectorAll(".js-open-revenue-modal").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-target");
+        const title = button.getAttribute("data-title") || "Revenue Details";
+
+        hideAllRevenueDetails();
+
+        const target = document.getElementById(targetId);
+
+        if (target) {
+          target.classList.add("active");
+          target.style.display = "block";
+          revenueDetailTitle.textContent = title + " Revenue";
+          revenueDetailModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    if (revenueDetailClose) {
+      revenueDetailClose.addEventListener("click", () => {
+        revenueDetailModalOverlay.classList.remove("active");
+        hideAllRevenueDetails();
+      });
+    }
+
+    if (revenueDetailModalOverlay) {
+      revenueDetailModalOverlay.addEventListener("click", (event) => {
+        if (event.target === revenueDetailModalOverlay) {
+          revenueDetailModalOverlay.classList.remove("active");
+          hideAllRevenueDetails();
+        }
+      });
+    }
+  </script>
+
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const revenueDetailModalOverlay = document.getElementById("revenueDetailModalOverlay");
+    const revenueDetailClose = document.getElementById("revenueDetailClose");
+    const revenueDetailTitle = document.getElementById("revenueDetailTitle");
+    const revenueDetailContents = document.querySelectorAll("#revenueDetailModalOverlay .revenue-detail-content");
+
+    function hideAllRevenueDetails() {
+      revenueDetailContents.forEach((content) => {
+        content.classList.remove("active");
+        content.style.display = "none";
+      });
+    }
+
+    hideAllRevenueDetails();
+
+    document.querySelectorAll(".js-open-revenue-modal").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-target");
+        const title = button.getAttribute("data-title") || "Revenue Details";
+
+        hideAllRevenueDetails();
+
+        const target = document.getElementById(targetId);
+
+        if (target && revenueDetailModalOverlay) {
+          target.classList.add("active");
+          target.style.display = "block";
+          revenueDetailTitle.textContent = title + " Revenue";
+          revenueDetailModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    if (revenueDetailClose) {
+      revenueDetailClose.addEventListener("click", () => {
+        revenueDetailModalOverlay.classList.remove("active");
+        hideAllRevenueDetails();
+      });
+    }
+
+    if (revenueDetailModalOverlay) {
+      revenueDetailModalOverlay.addEventListener("click", (event) => {
+        if (event.target === revenueDetailModalOverlay) {
+          revenueDetailModalOverlay.classList.remove("active");
+          hideAllRevenueDetails();
+        }
+      });
+    }
+
+    const addExpenseButton = document.getElementById("addExpenseButton");
+    const expenseModalOverlay = document.getElementById("expenseModalOverlay");
+    const expenseModalClose = document.getElementById("expenseModalClose");
+    const expenseSave = document.getElementById("expenseSave");
+    const expenseEvent = document.getElementById("expenseEvent");
+    const expenseCategory = document.getElementById("expenseCategory");
+    const expenseAmount = document.getElementById("expenseAmount");
+    const expenseNotes = document.getElementById("expenseNotes");
+    const expenseSavedList = document.getElementById("expenseSavedList");
+    const expenseTotal = document.getElementById("expenseTotal");
+    const netProfitTotal = document.getElementById("netProfitTotal");
+
+    function moneyToNumber(value) {
+      return Number(String(value || "").replace(/[$,]/g, "")) || 0;
+    }
+
+    function formatMoney(value) {
+      return "$" + Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+    }
+
+    if (addExpenseButton) {
+      addExpenseButton.addEventListener("click", () => {
+        if (expenseModalOverlay) {
+          expenseModalOverlay.classList.add("active");
+        }
+      });
+    }
+
+    if (expenseModalClose) {
+      expenseModalClose.addEventListener("click", () => {
+        expenseModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (expenseModalOverlay) {
+      expenseModalOverlay.addEventListener("click", (event) => {
+        if (event.target === expenseModalOverlay) {
+          expenseModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    if (expenseSave) {
+      expenseSave.addEventListener("click", () => {
+        const eventName = expenseEvent.value;
+        const category = expenseCategory.value;
+        const amount = Number(expenseAmount.value || 0);
+        const notes = expenseNotes.value.trim();
+
+        if (!eventName || eventName === "Select Event") {
+          alert("Please select an event.");
+          return;
+        }
+
+        if (!category || category === "Select Category") {
+          alert("Please select an expense category.");
+          return;
+        }
+
+        if (!amount || amount <= 0) {
+          alert("Please enter an expense amount.");
+          return;
+        }
+
+        const emptyText = expenseSavedList.querySelector(".muted-preview");
+        if (emptyText) {
+          emptyText.remove();
+        }
+
+        const row = document.createElement("div");
+        row.className = "expense-preview-row";
+        row.innerHTML = `
+          <div>
+            <strong>${eventName}</strong>
+            <span>${category}${notes ? " • " + notes : ""}</span>
+          </div>
+          <strong>${formatMoney(amount)}</strong>
+        `;
+
+        expenseSavedList.appendChild(row);
+
+        if (expenseTotal) {
+          expenseTotal.textContent = formatMoney(moneyToNumber(expenseTotal.textContent) + amount);
+        }
+
+        if (netProfitTotal) {
+          netProfitTotal.textContent = formatMoney(moneyToNumber(netProfitTotal.textContent) - amount);
+        }
+
+        expenseAmount.value = "";
+        expenseNotes.value = "";
+      });
+    }
+
+    function downloadRevenueReport() {
+      const rows = [
+        ["Section", "Label", "Value", "Notes"],
+        ["Events & Tickets", "Tickets Sold", "187", "Excludes VIP tickets"],
+        ["Events & Tickets", "VIP Tickets", "6", "VIP ticket purchases"],
+        ["Events & Tickets", "Ticket Revenue", "$4,515.15", "Ticket sales only"],
+        ["Past Events", "Battle of the DJs Revenue", "$4,503.15", "Completed event revenue"],
+        ["Past Events", "Battle of the DJs Expenses", "$800.00", "Completed event expenses"],
+        ["Past Events", "Battle of the DJs Net Profit", "$3,703.15", "Revenue after expenses"],
+        ["Memberships", "Total Members", "20", "Originals + Jukebox Circle"],
+        ["Memberships", "Monthly Revenue", "$200", "Estimated recurring revenue"],
+        ["Revenue Tracking", "Expenses", expenseTotal ? expenseTotal.textContent : "$800", "Current expense total"],
+        ["Revenue Tracking", "Net Profit", netProfitTotal ? netProfitTotal.textContent : "$3,450", "Current net profit"]
+      ];
+
+      document.querySelectorAll(".expense-preview-row").forEach((row) => {
+        const description = row.querySelector("div")?.textContent.trim().replace(/\s+/g, " ") || "Added Expense";
+        const amount = row.querySelector(":scope > strong")?.textContent.trim() || "";
+        rows.push(["Added Expenses", description, amount, "Added during preview"]);
+      });
+
+      const csv = rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "jukebox-revenue-report.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.querySelectorAll(".js-export-revenue-report").forEach((button) => {
+      button.addEventListener("click", downloadRevenueReport);
+    });
+  });
+</script>
+
+</body>
+</html>

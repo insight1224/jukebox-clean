@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Messages Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Messages Preview</p>
+        </div>
+      </div>
+
+                        <nav class="sidebar-nav">
+        <a href="/admin/dashboard-redesign">Dashboard</a>
+        <a href="/admin/dashboard-redesign/events">Events</a>
+        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
+        <a href="/admin/dashboard-redesign/messages" class="active">Messages</a>
+        <a href="/admin/dashboard-redesign/members">Members</a>
+        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/admin/dashboard-redesign#reports">Reports</a>
+        <a href="/admin/dashboard-redesign#settings">Settings</a>
+      </nav>
+    </aside>
+
+    <main class="main-content" id="top">
+      <div class="preview-banner">
+        <div>
+          <strong>Messages Tab Preview</strong>
+          <span>This screen keeps website inquiries, private event requests, VIP interest, replies, and archives in one place.</span>
+        </div>
+        <a href="/admin/dashboard-redesign">Back to Dashboard</a>
+      </div>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Messages Dashboard</p>
+          <h2>Website Inquiries & Leads</h2>
+          <p class="subtext">Review new messages, mark replies, archive old inquiries, and view message details.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="btn secondary" type="button" id="viewArchivedMessages">Archived Messages</button>
+          <button class="btn primary" type="button" id="viewAllMessages">View All Messages</button>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <p>New Messages</p>
+          <h3>2</h3>
+          <span>Needs review</span>
+        </div>
+
+        <div class="stat-card">
+          <p>VIP Interest</p>
+          <h3>1</h3>
+          <span>Membership inquiry</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Private Events</p>
+          <h3>1</h3>
+          <span>Booking request</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Archived</p>
+          <h3 id="archivedMessageCount">0</h3>
+          <span>Moved out of active list</span>
+        </div>
+      </section>
+
+      <section class="section-panel" id="messages-leads">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Messages</p>
+            <h3>Website Inquiries</h3>
+            <p>Manage incoming website messages, VIP interest, and private event requests.</p>
+          </div>
+          <div class="section-actions">
+            <button class="btn secondary" type="button" id="viewArchivedMessagesSecondary">Archived Messages</button>
+            <button class="btn primary" type="button" id="viewAllMessagesSecondary">View All Messages</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-row leads-row table-head">
+            <span>Name</span>
+            <span>Type</span>
+            <span>Message</span>
+            <span>Status</span>
+            <span>Date</span>
+            <span>Actions</span>
+          </div>
+
+          <div class="table-row leads-row message-row" data-message-name="Danielle Carter">
+            <span>Danielle Carter</span>
+            <span>VIP Member</span>
+            <span>Interested in VIP membership options.</span>
+            <span><span class="badge warning message-status-badge">New</span></span>
+            <span>Today</span>
+            <span class="row-actions">
+              <button class="js-message-status" type="button" data-status="New">New</button>
+              <button class="js-message-status" type="button" data-status="Replied">Replied</button>
+              <button class="js-archive-message" type="button">Archived</button>
+              <button class="js-delete-message" type="button">Delete</button>
+            </span>
+          </div>
+
+          <div class="table-row leads-row message-row" data-message-name="Marcus Lee">
+            <span>Marcus Lee</span>
+            <span>Private Event</span>
+            <span>Asked about booking a birthday celebration.</span>
+            <span><span class="badge message-status-badge">New</span></span>
+            <span>Yesterday</span>
+            <span class="row-actions">
+              <button class="js-message-status" type="button" data-status="New">New</button>
+              <button class="js-message-status" type="button" data-status="Replied">Replied</button>
+              <button class="js-archive-message" type="button">Archived</button>
+              <button class="js-delete-message" type="button">Delete</button>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <div class="event-modal-overlay" id="allMessagesModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">All Messages</p>
+              <h3>All Website Inquiries</h3>
+              <p>View active website inquiries, VIP interest, private event requests, and customer messages.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="allMessagesClose">Close</button>
+          </div>
+
+          <div class="table-card">
+            <div class="table-row leads-row table-head">
+              <span>Name</span>
+              <span>Type</span>
+              <span>Message</span>
+              <span>Status</span>
+              <span>Date</span>
+              <span>Actions</span>
+            </div>
+
+            <div id="allMessagesList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="archivedMessagesModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Archived Messages</p>
+              <h3>Archived Website Inquiries</h3>
+              <p>Messages moved out of the active inbox will appear here.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="archivedMessagesClose">Close</button>
+          </div>
+
+          <div class="table-card">
+            <div class="table-row leads-row table-head">
+              <span>Name</span>
+              <span>Type</span>
+              <span>Message</span>
+              <span>Status</span>
+              <span>Date</span>
+              <span>Actions</span>
+            </div>
+
+            <div id="archivedMessagesList">
+              <div class="empty-state">
+                <h4>No archived messages yet</h4>
+                <p>When a message is archived in this preview, it will move here.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="messageDetailModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Message Details</p>
+              <h3 id="messageDetailTitle">Website Inquiry</h3>
+              <p id="messageDetailSubtitle">Message details will appear here.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="messageDetailClose">Close</button>
+          </div>
+
+          <div class="note-preview" id="messageDetailBody">
+            Select a message to view details.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const archivedMessagesModalOverlay = document.getElementById("archivedMessagesModalOverlay");
+    const archivedMessagesClose = document.getElementById("archivedMessagesClose");
+    const archivedMessagesList = document.getElementById("archivedMessagesList");
+    const archivedMessageCount = document.getElementById("archivedMessageCount");
+
+    const allMessagesModalOverlay = document.getElementById("allMessagesModalOverlay");
+    const allMessagesClose = document.getElementById("allMessagesClose");
+    const allMessagesList = document.getElementById("allMessagesList");
+
+    const messageDetailModalOverlay = document.getElementById("messageDetailModalOverlay");
+    const messageDetailClose = document.getElementById("messageDetailClose");
+    const messageDetailTitle = document.getElementById("messageDetailTitle");
+    const messageDetailSubtitle = document.getElementById("messageDetailSubtitle");
+    const messageDetailBody = document.getElementById("messageDetailBody");
+
+    function updateArchivedCount() {
+      const rows = archivedMessagesList.querySelectorAll(".message-row");
+      archivedMessageCount.textContent = rows.length;
+    }
+
+    function openMessageDetailFromRow(row) {
+      if (!row) return;
+
+      const columns = row.querySelectorAll(":scope > span");
+
+      const name = columns[0]?.textContent.trim() || "Website Inquiry";
+      const type = columns[1]?.textContent.trim() || "Message";
+      const message = columns[2]?.textContent.trim() || "No message available.";
+      const status = columns[3]?.textContent.trim() || "New";
+      const date = columns[4]?.textContent.trim() || "";
+
+      messageDetailTitle.textContent = name;
+      messageDetailSubtitle.textContent = type + " • " + status + " • " + date;
+      messageDetailBody.textContent = message;
+      messageDetailModalOverlay.classList.add("active");
+    }
+
+    document.querySelectorAll(".js-message-status").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest(".message-row");
+        const status = button.getAttribute("data-status");
+        const badge = row.querySelector(".message-status-badge");
+
+        if (badge) {
+          badge.textContent = status;
+          badge.classList.remove("warning", "live");
+
+          if (status === "New") {
+            badge.classList.add("warning");
+          }
+
+          if (status === "Replied") {
+            badge.classList.add("live");
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll(".js-archive-message").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest(".message-row");
+
+        if (!row) return;
+
+        const emptyState = archivedMessagesList.querySelector(".empty-state");
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        const clonedRow = row.cloneNode(true);
+        const badge = clonedRow.querySelector(".message-status-badge");
+
+        if (badge) {
+          badge.textContent = "Archived";
+          badge.classList.remove("warning", "live");
+        }
+
+        const actions = clonedRow.querySelector(".row-actions");
+        if (actions) {
+          actions.innerHTML = "<button class='js-view-archived-message' type='button'>View</button>";
+        }
+
+        archivedMessagesList.appendChild(clonedRow);
+        row.remove();
+        updateArchivedCount();
+      });
+    });
+
+    document.querySelectorAll(".js-delete-message").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest(".message-row");
+        if (!row) return;
+
+        const name = row.getAttribute("data-message-name") || "this message";
+        const confirmed = confirm("Delete " + name + " from Website Inquiries?");
+
+        if (confirmed) {
+          row.remove();
+        }
+      });
+    });
+
+    function openAllMessages() {
+      allMessagesList.innerHTML = "";
+
+      const activeRows = document.querySelectorAll("#messages-leads .message-row");
+
+      if (!activeRows.length) {
+        allMessagesList.innerHTML = `
+          <div class="empty-state">
+            <h4>No active messages</h4>
+            <p>Active website inquiries will appear here.</p>
+          </div>
+        `;
+      }
+
+      activeRows.forEach((row) => {
+        const clonedRow = row.cloneNode(true);
+        const actions = clonedRow.querySelector(".row-actions");
+
+        if (actions) {
+          actions.innerHTML = "<button class='js-view-message-detail' type='button'>View</button>";
+        }
+
+        allMessagesList.appendChild(clonedRow);
+      });
+
+      allMessagesModalOverlay.classList.add("active");
+    }
+
+    function openArchivedMessages() {
+      archivedMessagesModalOverlay.classList.add("active");
+    }
+
+    document.getElementById("viewAllMessages").addEventListener("click", openAllMessages);
+    document.getElementById("viewAllMessagesSecondary").addEventListener("click", openAllMessages);
+    document.getElementById("viewArchivedMessages").addEventListener("click", openArchivedMessages);
+    document.getElementById("viewArchivedMessagesSecondary").addEventListener("click", openArchivedMessages);
+
+    document.addEventListener("click", (event) => {
+      if (
+        event.target.classList.contains("js-view-message-detail") ||
+        event.target.classList.contains("js-view-archived-message")
+      ) {
+        openMessageDetailFromRow(event.target.closest(".message-row"));
+      }
+    });
+
+    allMessagesClose.addEventListener("click", () => {
+      allMessagesModalOverlay.classList.remove("active");
+    });
+
+    archivedMessagesClose.addEventListener("click", () => {
+      archivedMessagesModalOverlay.classList.remove("active");
+    });
+
+    messageDetailClose.addEventListener("click", () => {
+      messageDetailModalOverlay.classList.remove("active");
+    });
+  </script>
+</body>
+</html>

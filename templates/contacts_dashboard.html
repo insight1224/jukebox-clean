@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Contact Log</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Contact Log</p>
+        </div>
+      </div>
+
+            <nav class="sidebar-nav">
+        <a href="/admin/dashboard-redesign">Dashboard</a>
+        <a href="/admin/dashboard-redesign/events">Events</a>
+        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
+        <a href="/admin/dashboard-redesign/messages">Messages</a>
+        <a href="/admin/dashboard-redesign/members">Members</a>
+        <a href="/admin/dashboard-redesign/contacts" class="active">Contact Log</a>
+        <a href="/admin/dashboard-redesign#reports">Reports</a>
+        <a href="/admin/dashboard-redesign#settings">Settings</a>
+      </nav>
+    </aside>
+
+    <main class="main-content" id="top">
+      <div class="preview-banner">
+        <div>
+          <strong>Contact Log Preview</strong>
+          <span>This screen keeps talent, performer, vendor, and partner contacts in one place.</span>
+        </div>
+        <a href="/admin/dashboard-redesign">Back to Dashboard</a>
+      </div>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Contact Log</p>
+          <h2>Talent & Vendor Contact Log</h2>
+          <p class="subtext">Keep track of DJs, bands, performers, vendors, and partners who submit interest through the website.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="btn secondary" type="button" id="exportContactsButton">Export Contacts</button>
+          <button class="btn primary" type="button" id="addContactButton">Add Contact</button>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <p>Talent Contacts</p>
+          <h3>3</h3>
+          <span>DJs, bands, hosts, performers</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Vendor Contacts</p>
+          <h3>3</h3>
+          <span>Food, decor, media, services</span>
+        </div>
+
+        <div class="stat-card">
+          <p>New Contacts</p>
+          <h3>2</h3>
+          <span>Recently submitted</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Preferred Vendors</p>
+          <h3>1</h3>
+          <span>Marked preferred</span>
+        </div>
+      </section>
+
+      <section class="section-panel" id="applications">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Contact Log</p>
+            <h3>Talent & Vendor Contact Log</h3>
+            <p>Keep track of people she may want to book or contact for future events.</p>
+          </div>
+          <button class="btn primary" type="button" id="viewFullContactLog">View Full Log</button>
+        </div>
+
+        <div class="contact-log-grid">
+          <div class="contact-log-panel">
+            <div class="contact-log-header">
+              <div>
+                <p class="eyebrow">Entertainment</p>
+                <h4>Talent Contacts</h4>
+                <p>DJs, bands, performers, hosts, and entertainers she may want to book for future events.</p>
+              </div>
+              <span class="badge warning">2 New</span>
+            </div>
+
+            <div class="contact-scroll-list" id="talentContactList">
+              <div class="contact-log-row" data-contact-name="DJ Showtime" data-contact-type="DJ" data-contact-email="djshowtime@example.com">
+                <div>
+                  <strong>DJ Showtime</strong>
+                  <span>DJ · djshowtime@example.com</span>
+                </div>
+                <div class="row-actions">
+                  <button class="js-view-contact" type="button">View</button>
+                  <button class="js-delete-contact" type="button">Delete</button>
+                </div>
+              </div>
+
+              <div class="contact-log-row" data-contact-name="Soul Rhythm Band" data-contact-type="Band" data-contact-email="booking@example.com">
+                <div>
+                  <strong>Soul Rhythm Band</strong>
+                  <span>Band · booking@example.com</span>
+                </div>
+                <div class="row-actions">
+                  <button class="js-view-contact" type="button">View</button>
+                  <button class="js-delete-contact" type="button">Delete</button>
+                </div>
+              </div>
+
+              <div class="contact-log-row" data-contact-name="MC Jay" data-contact-type="Host" data-contact-email="mcjay@example.com">
+                <div>
+                  <strong>MC Jay</strong>
+                  <span>Host · mcjay@example.com</span>
+                </div>
+                <div class="row-actions">
+                  <button class="js-view-contact" type="button">View</button>
+                  <button class="js-delete-contact" type="button">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="contact-log-panel">
+            <div class="contact-log-header">
+              <div>
+                <p class="eyebrow">Vendors</p>
+                <h4>Vendor & Partner Contacts</h4>
+                <p>Food vendors, decorators, photographers, promoters, service providers, and event partners.</p>
+              </div>
+              <span class="badge live">Preferred</span>
+            </div>
+
+            <div class="contact-scroll-list" id="vendorContactList">
+              <div class="contact-log-row" data-contact-name="Chef T’s Plates" data-contact-type="Food Vendor" data-contact-email="vendor@example.com">
+                <div>
+                  <strong>Chef T’s Plates</strong>
+                  <span>Food Vendor · vendor@example.com</span>
+                </div>
+                <div class="row-actions">
+                  <button class="js-view-contact" type="button">View</button>
+                  <button class="js-delete-contact" type="button">Delete</button>
+                </div>
+              </div>
+
+              <div class="contact-log-row" data-contact-name="Glow Decor Co." data-contact-type="Decor" data-contact-email="decor@example.com">
+                <div>
+                  <strong>Glow Decor Co.</strong>
+                  <span>Decor · decor@example.com</span>
+                </div>
+                <div class="row-actions">
+                  <button class="js-view-contact" type="button">View</button>
+                  <button class="js-delete-contact" type="button">Delete</button>
+                </div>
+              </div>
+
+              <div class="contact-log-row" data-contact-name="Lens Life Media" data-contact-type="Photography" data-contact-email="media@example.com">
+                <div>
+                  <strong>Lens Life Media</strong>
+                  <span>Photography · media@example.com</span>
+                </div>
+                <div class="row-actions">
+                  <button class="js-view-contact" type="button">View</button>
+                  <button class="js-delete-contact" type="button">Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="event-modal-overlay" id="contactDetailModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Contact Details</p>
+              <h3 id="contactDetailTitle">Contact</h3>
+              <p id="contactDetailSubtitle">Contact information will appear here.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="contactDetailClose">Close</button>
+          </div>
+
+          <div class="note-preview" id="contactDetailBody">
+            Select a contact to view details.
+          </div>
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="addContactModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Add Contact</p>
+              <h3>Add Talent or Vendor</h3>
+              <p>Add a new contact to the talent or vendor log.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="addContactModalClose">Close</button>
+          </div>
+
+          <form class="add-member-form">
+            <label>
+              Contact Name
+              <input id="newContactName" type="text" placeholder="Example: DJ Fresh" />
+            </label>
+
+            <label>
+              Contact Type
+              <select id="newContactType">
+                <option>DJ</option>
+                <option>Band</option>
+                <option>Host</option>
+                <option>Performer</option>
+                <option>Food Vendor</option>
+                <option>Decor</option>
+                <option>Photography</option>
+                <option>Promoter</option>
+                <option>Service Provider</option>
+                <option>Other</option>
+              </select>
+            </label>
+
+            <label>
+              Email
+              <input id="newContactEmail" type="email" placeholder="Example: contact@email.com" />
+            </label>
+
+            <label>
+              Group
+              <select id="newContactGroup">
+                <option>Talent</option>
+                <option>Vendor</option>
+              </select>
+            </label>
+
+            <button class="btn primary" type="button" id="saveContactButton">Save Contact</button>
+
+            <div class="note-preview">
+              Preview only: this adds the contact visually. Later, this can save to the database.
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const contactDetailModalOverlay = document.getElementById("contactDetailModalOverlay");
+    const contactDetailClose = document.getElementById("contactDetailClose");
+    const contactDetailTitle = document.getElementById("contactDetailTitle");
+    const contactDetailSubtitle = document.getElementById("contactDetailSubtitle");
+    const contactDetailBody = document.getElementById("contactDetailBody");
+
+    function bindContactButtons() {
+      document.querySelectorAll(".js-view-contact").forEach((button) => {
+        if (button.dataset.bound === "true") return;
+        button.dataset.bound = "true";
+
+        button.addEventListener("click", () => {
+          const row = button.closest(".contact-log-row");
+          const name = row.getAttribute("data-contact-name");
+          const type = row.getAttribute("data-contact-type");
+          const email = row.getAttribute("data-contact-email");
+
+          contactDetailTitle.textContent = name;
+          contactDetailSubtitle.textContent = type + " • " + email;
+          contactDetailBody.textContent = "Contact saved for future event planning, booking, vendor outreach, or partnership follow-up.";
+          contactDetailModalOverlay.classList.add("active");
+        });
+      });
+
+      document.querySelectorAll(".js-delete-contact").forEach((button) => {
+        if (button.dataset.bound === "true") return;
+        button.dataset.bound = "true";
+
+        button.addEventListener("click", () => {
+          const row = button.closest(".contact-log-row");
+          const name = row.getAttribute("data-contact-name");
+
+          if (confirm("Delete " + name + " from the contact log?")) {
+            row.remove();
+          }
+        });
+      });
+    }
+
+    bindContactButtons();
+
+    contactDetailClose.addEventListener("click", () => {
+      contactDetailModalOverlay.classList.remove("active");
+    });
+
+    const addContactButton = document.getElementById("addContactButton");
+    const addContactModalOverlay = document.getElementById("addContactModalOverlay");
+    const addContactModalClose = document.getElementById("addContactModalClose");
+    const saveContactButton = document.getElementById("saveContactButton");
+
+    const newContactName = document.getElementById("newContactName");
+    const newContactType = document.getElementById("newContactType");
+    const newContactEmail = document.getElementById("newContactEmail");
+    const newContactGroup = document.getElementById("newContactGroup");
+
+    addContactButton.addEventListener("click", () => {
+      addContactModalOverlay.classList.add("active");
+    });
+
+    addContactModalClose.addEventListener("click", () => {
+      addContactModalOverlay.classList.remove("active");
+    });
+
+    saveContactButton.addEventListener("click", () => {
+      const name = newContactName.value.trim();
+      const type = newContactType.value;
+      const email = newContactEmail.value.trim() || "No email";
+      const group = newContactGroup.value;
+
+      if (!name) {
+        alert("Please enter a contact name.");
+        return;
+      }
+
+      const targetList = group === "Talent"
+        ? document.getElementById("talentContactList")
+        : document.getElementById("vendorContactList");
+
+      const row = document.createElement("div");
+      row.className = "contact-log-row";
+      row.setAttribute("data-contact-name", name);
+      row.setAttribute("data-contact-type", type);
+      row.setAttribute("data-contact-email", email);
+
+      row.innerHTML = `
+        <div>
+          <strong>${name}</strong>
+          <span>${type} · ${email}</span>
+        </div>
+        <div class="row-actions">
+          <button class="js-view-contact" type="button">View</button>
+          <button class="js-delete-contact" type="button">Delete</button>
+        </div>
+      `;
+
+      targetList.appendChild(row);
+
+      newContactName.value = "";
+      newContactEmail.value = "";
+      addContactModalOverlay.classList.remove("active");
+      bindContactButtons();
+    });
+
+    function downloadContactsCsv() {
+      const rows = [["Name", "Type", "Email", "Group"]];
+
+      document.querySelectorAll("#talentContactList .contact-log-row").forEach((row) => {
+        rows.push([
+          row.getAttribute("data-contact-name"),
+          row.getAttribute("data-contact-type"),
+          row.getAttribute("data-contact-email"),
+          "Talent"
+        ]);
+      });
+
+      document.querySelectorAll("#vendorContactList .contact-log-row").forEach((row) => {
+        rows.push([
+          row.getAttribute("data-contact-name"),
+          row.getAttribute("data-contact-type"),
+          row.getAttribute("data-contact-email"),
+          "Vendor"
+        ]);
+      });
+
+      const csv = rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "contact-log.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById("exportContactsButton").addEventListener("click", downloadContactsCsv);
+    document.getElementById("viewFullContactLog").addEventListener("click", () => {
+      document.getElementById("applications").scrollIntoView({ behavior: "smooth" });
+    });
+  </script>
+</body>
+</html>

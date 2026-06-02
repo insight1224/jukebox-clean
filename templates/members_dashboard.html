@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Members Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Members Preview</p>
+        </div>
+      </div>
+
+                  <nav class="sidebar-nav">
+        <a href="/admin/dashboard-redesign">Dashboard</a>
+        <a href="/admin/dashboard-redesign/events">Events</a>
+        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
+        <a href="/admin/dashboard-redesign/messages">Messages</a>
+        <a href="/admin/dashboard-redesign/members" class="active">Members</a>
+        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/admin/dashboard-redesign#reports">Reports</a>
+        <a href="/admin/dashboard-redesign#settings">Settings</a>
+      </nav>
+    </aside>
+
+    <main class="main-content" id="top">
+      <div class="preview-banner">
+        <div>
+          <strong>Members Tab Preview</strong>
+          <span>This screen keeps VIP email subscribers, Jukebox Circle Originals, and Jukebox Circle members in one place.</span>
+        </div>
+        <a href="/admin/dashboard-redesign">Back to Dashboard</a>
+      </div>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Members Dashboard</p>
+          <h2>Member List Overview</h2>
+          <p class="subtext">View, add, delete, copy, and export membership lists.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <button class="btn secondary js-copy-member-emails" type="button" data-member-list="all">Copy All Emails</button>
+          <button class="btn primary js-export-members" type="button" data-member-list="all">Export Members</button>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <p>VIP Email List</p>
+          <h3>31</h3>
+          <span>Email subscribers</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Original Members</p>
+          <h3>12</h3>
+          <span>Jukebox Circle Originals</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Jukebox Circle</p>
+          <h3>8</h3>
+          <span>General members</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Monthly Revenue</p>
+          <h3>$200</h3>
+          <span>Estimated membership revenue</span>
+        </div>
+      </section>
+
+      <section class="section-panel" id="members">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Members</p>
+            <h3>Member List Overview</h3>
+            <p>View VIP email subscribers, Jukebox Circle Originals, and Jukebox Circle members in one place.</p>
+          </div>
+        </div>
+
+        <div class="member-overview-grid">
+          <div class="member-overview-card">
+            <div class="member-card-header">
+              <div>
+                <p class="eyebrow">Email List</p>
+                <h4>VIP Email List</h4>
+              </div>
+              <span class="badge warning">31 Total</span>
+            </div>
+
+            <p>People who signed up to receive VIP updates, event announcements, and early access information.</p>
+
+            <div class="mini-list">
+              <div>
+                <strong>Danielle Carter</strong>
+                <p>danielle@example.com</p>
+              </div>
+
+              <div>
+                <strong>Marcus Lee</strong>
+                <p>marcus@example.com</p>
+              </div>
+            </div>
+
+            <div class="row-actions">
+              <button class="js-view-member-list" type="button" data-member-list="vip-email">View List</button>
+              <button class="js-add-member" type="button" data-member-list="vip-email">Add Person</button>
+              <button class="js-delete-member-list-item" type="button" data-member-list="vip-email">Delete</button>
+              <button class="js-copy-member-emails" type="button" data-member-list="vip-email">Copy Emails</button>
+              <button class="js-export-members" type="button" data-member-list="vip-email">Export</button>
+            </div>
+          </div>
+
+          <div class="member-overview-card">
+            <div class="member-card-header">
+              <div>
+                <p class="eyebrow">Original Members</p>
+                <h4>Jukebox Circle Originals</h4>
+              </div>
+              <span class="badge live">12 Active</span>
+            </div>
+
+            <p>Founding or early members who are part of the original Jukebox Circle group.</p>
+
+            <div class="mini-list">
+              <div>
+                <strong>Renee Thompson</strong>
+                <p>Original member · Active</p>
+              </div>
+
+              <div>
+                <strong>Anthony Green</strong>
+                <p>Original member · New</p>
+              </div>
+            </div>
+
+            <div class="row-actions">
+              <button class="js-view-member-list" type="button" data-member-list="originals">View List</button>
+              <button class="js-add-member" type="button" data-member-list="originals">Add Person</button>
+              <button class="js-delete-member-list-item" type="button" data-member-list="originals">Delete</button>
+              <button class="js-copy-member-emails" type="button" data-member-list="originals">Copy Emails</button>
+              <button class="js-export-members" type="button" data-member-list="originals">Export</button>
+            </div>
+          </div>
+
+          <div class="member-overview-card">
+            <div class="member-card-header">
+              <div>
+                <p class="eyebrow">Membership</p>
+                <h4>Jukebox Circle</h4>
+              </div>
+              <span class="badge warning">8 New</span>
+            </div>
+
+            <p>General Jukebox Circle members who signed up for membership access, updates, or perks.</p>
+
+            <div class="mini-list">
+              <div>
+                <strong>Nicole Harris</strong>
+                <p>General member · New</p>
+              </div>
+
+              <div>
+                <strong>Chris Williams</strong>
+                <p>General member · Active</p>
+              </div>
+            </div>
+
+            <div class="row-actions">
+              <button class="js-view-member-list" type="button" data-member-list="circle">View List</button>
+              <button class="js-add-member" type="button" data-member-list="circle">Add Person</button>
+              <button class="js-delete-member-list-item" type="button" data-member-list="circle">Delete</button>
+              <button class="js-copy-member-emails" type="button" data-member-list="circle">Copy Emails</button>
+              <button class="js-export-members" type="button" data-member-list="circle">Export</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="event-modal-overlay" id="memberListModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Member List</p>
+              <h3 id="memberListModalTitle">Members</h3>
+              <p id="memberListModalSubtitle">View selected member list details.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="memberListModalClose">Close</button>
+          </div>
+
+          <div class="table-card">
+            <div class="table-row member-list-row table-head">
+              <span>Name</span>
+              <span>Email</span>
+              <span>List</span>
+              <span>Status</span>
+              <span>Signup Date</span>
+            </div>
+
+            <div id="memberListModalRows"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="addMemberModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Add Member</p>
+              <h3 id="addMemberModalTitle">Add Person</h3>
+              <p id="addMemberModalSubtitle">Add someone manually to this list.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="addMemberModalClose">Close</button>
+          </div>
+
+          <form class="add-member-form">
+            <label>
+              Full Name
+              <input id="manualMemberName" type="text" placeholder="Example: Ashley Johnson" />
+            </label>
+
+            <label>
+              Email
+              <input id="manualMemberEmail" type="email" placeholder="Example: name@email.com" />
+            </label>
+
+            <label>
+              Status
+              <select id="manualMemberStatus">
+                <option>Subscribed</option>
+                <option>Active</option>
+                <option>New</option>
+              </select>
+            </label>
+
+            <button class="btn primary" type="button" id="saveManualMemberButton">Save Person</button>
+
+            <div class="note-preview">
+              Preview only: this adds the person to the page visually. Later, this will save to the database.
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="deleteMemberModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Delete Member</p>
+              <h3 id="deleteMemberModalTitle">Delete from List</h3>
+              <p id="deleteMemberModalSubtitle">Choose a person to remove from this preview list.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="deleteMemberModalClose">Close</button>
+          </div>
+
+          <div class="delete-member-list" id="deleteMemberList">
+            <div class="empty-state">
+              <h4>No members found</h4>
+              <p>This list does not have anyone to delete yet.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const memberLists = {
+      "vip-email": {
+        title: "VIP Email List",
+        subtitle: "People who signed up to receive VIP updates, announcements, and early access.",
+        fileName: "vip-email-list.csv",
+        rows: [
+          ["Danielle Carter", "danielle@example.com", "VIP Email List", "Subscribed", "Today"],
+          ["Marcus Lee", "marcus@example.com", "VIP Email List", "Subscribed", "Yesterday"]
+        ]
+      },
+      originals: {
+        title: "Jukebox Circle Originals",
+        subtitle: "Founding or early Jukebox Circle members.",
+        fileName: "jukebox-circle-originals.csv",
+        rows: [
+          ["Renee Thompson", "renee@example.com", "Jukebox Circle Originals", "Active", "This Month"],
+          ["Anthony Green", "anthony@example.com", "Jukebox Circle Originals", "New", "Today"]
+        ]
+      },
+      circle: {
+        title: "Jukebox Circle",
+        subtitle: "General Jukebox Circle members.",
+        fileName: "jukebox-circle.csv",
+        rows: [
+          ["Nicole Harris", "nicole@example.com", "Jukebox Circle", "New", "Today"],
+          ["Chris Williams", "chris@example.com", "Jukebox Circle", "Active", "This Month"]
+        ]
+      },
+      all: {
+        title: "All Members",
+        subtitle: "All member lists combined.",
+        fileName: "all-members.csv",
+        rows: []
+      }
+    };
+
+    function refreshAllMembers() {
+      memberLists.all.rows = [
+        ...memberLists["vip-email"].rows,
+        ...memberLists.originals.rows,
+        ...memberLists.circle.rows
+      ];
+    }
+
+    refreshAllMembers();
+
+    const memberListModalOverlay = document.getElementById("memberListModalOverlay");
+    const memberListModalClose = document.getElementById("memberListModalClose");
+    const memberListModalTitle = document.getElementById("memberListModalTitle");
+    const memberListModalSubtitle = document.getElementById("memberListModalSubtitle");
+    const memberListModalRows = document.getElementById("memberListModalRows");
+
+    function renderMemberRows(listKey) {
+      const list = memberLists[listKey];
+      memberListModalTitle.textContent = list.title;
+      memberListModalSubtitle.textContent = list.subtitle;
+
+      memberListModalRows.innerHTML = "";
+
+      list.rows.forEach((row) => {
+        const div = document.createElement("div");
+        div.className = "table-row member-list-row";
+        div.innerHTML = `
+          <span>${row[0]}</span>
+          <span>${row[1]}</span>
+          <span>${row[2]}</span>
+          <span>${row[3]}</span>
+          <span>${row[4]}</span>
+        `;
+        memberListModalRows.appendChild(div);
+      });
+
+      memberListModalOverlay.classList.add("active");
+    }
+
+    document.querySelectorAll(".js-view-member-list").forEach((button) => {
+      button.addEventListener("click", () => {
+        refreshAllMembers();
+        renderMemberRows(button.getAttribute("data-member-list"));
+      });
+    });
+
+    memberListModalClose.addEventListener("click", () => {
+      memberListModalOverlay.classList.remove("active");
+    });
+
+    function downloadMembersCsv(listKey) {
+      refreshAllMembers();
+
+      const list = memberLists[listKey];
+      const rows = [["Name", "Email", "List", "Status", "Signup Date"], ...list.rows];
+
+      const csv = rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = list.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.querySelectorAll(".js-export-members").forEach((button) => {
+      button.addEventListener("click", () => {
+        downloadMembersCsv(button.getAttribute("data-member-list"));
+      });
+    });
+
+    function copyMemberEmails(listKey, button) {
+      refreshAllMembers();
+
+      const emails = memberLists[listKey].rows.map((row) => row[1]).filter(Boolean).join(", ");
+
+      if (!emails) {
+        alert("No emails found for this list yet.");
+        return;
+      }
+
+      navigator.clipboard.writeText(emails).then(() => {
+        const originalText = button.textContent;
+        button.textContent = "Copied!";
+        setTimeout(() => button.textContent = originalText, 1500);
+      });
+    }
+
+    document.querySelectorAll(".js-copy-member-emails").forEach((button) => {
+      button.addEventListener("click", () => {
+        copyMemberEmails(button.getAttribute("data-member-list"), button);
+      });
+    });
+
+    const addMemberModalOverlay = document.getElementById("addMemberModalOverlay");
+    const addMemberModalClose = document.getElementById("addMemberModalClose");
+    const addMemberModalTitle = document.getElementById("addMemberModalTitle");
+    const addMemberModalSubtitle = document.getElementById("addMemberModalSubtitle");
+    const manualMemberName = document.getElementById("manualMemberName");
+    const manualMemberEmail = document.getElementById("manualMemberEmail");
+    const manualMemberStatus = document.getElementById("manualMemberStatus");
+    const saveManualMemberButton = document.getElementById("saveManualMemberButton");
+
+    let activeMemberListKey = "";
+
+    document.querySelectorAll(".js-add-member").forEach((button) => {
+      button.addEventListener("click", () => {
+        activeMemberListKey = button.getAttribute("data-member-list");
+        const list = memberLists[activeMemberListKey];
+
+        addMemberModalTitle.textContent = "Add to " + list.title;
+        addMemberModalSubtitle.textContent = "Manually add someone to the " + list.title + ".";
+        manualMemberName.value = "";
+        manualMemberEmail.value = "";
+        manualMemberStatus.value = "New";
+        addMemberModalOverlay.classList.add("active");
+      });
+    });
+
+    addMemberModalClose.addEventListener("click", () => {
+      addMemberModalOverlay.classList.remove("active");
+    });
+
+    saveManualMemberButton.addEventListener("click", () => {
+      const name = manualMemberName.value.trim();
+      const email = manualMemberEmail.value.trim();
+      const status = manualMemberStatus.value;
+
+      if (!name) {
+        alert("Please enter a name.");
+        return;
+      }
+
+      if (!email) {
+        alert("Please enter an email.");
+        return;
+      }
+
+      const listTitle = memberLists[activeMemberListKey].title;
+
+      memberLists[activeMemberListKey].rows.push([
+        name,
+        email,
+        listTitle,
+        status,
+        "Manual Entry"
+      ]);
+
+      const card = document.querySelector(`.js-add-member[data-member-list="${activeMemberListKey}"]`).closest(".member-overview-card");
+      const miniList = card.querySelector(".mini-list");
+
+      const item = document.createElement("div");
+      item.innerHTML = `
+        <strong>${name}</strong>
+        <p>${email}</p>
+      `;
+
+      miniList.appendChild(item);
+      addMemberModalOverlay.classList.remove("active");
+    });
+
+    const deleteMemberModalOverlay = document.getElementById("deleteMemberModalOverlay");
+    const deleteMemberModalClose = document.getElementById("deleteMemberModalClose");
+    const deleteMemberModalTitle = document.getElementById("deleteMemberModalTitle");
+    const deleteMemberModalSubtitle = document.getElementById("deleteMemberModalSubtitle");
+    const deleteMemberList = document.getElementById("deleteMemberList");
+
+    function renderDeleteMemberList(listKey) {
+      const list = memberLists[listKey];
+
+      deleteMemberModalTitle.textContent = "Delete from " + list.title;
+      deleteMemberModalSubtitle.textContent = "Choose a person to remove from " + list.title + ".";
+      deleteMemberList.innerHTML = "";
+
+      if (!list.rows.length) {
+        deleteMemberList.innerHTML = `
+          <div class="empty-state">
+            <h4>No members found</h4>
+            <p>This list does not have anyone to delete yet.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.rows.forEach((row, index) => {
+        const item = document.createElement("div");
+        item.className = "delete-member-row";
+        item.innerHTML = `
+          <div>
+            <strong>${row[0]}</strong>
+            <span>${row[1]}</span>
+          </div>
+          <button class="delete-button" type="button">Delete</button>
+        `;
+
+        item.querySelector("button").addEventListener("click", () => {
+          const confirmed = confirm("Delete " + row[0] + " from " + list.title + "?");
+
+          if (!confirmed) return;
+
+          const email = row[1];
+
+          memberLists[listKey].rows.splice(index, 1);
+
+          const card = document.querySelector(`.js-delete-member-list-item[data-member-list="${listKey}"]`).closest(".member-overview-card");
+          const miniItems = card.querySelectorAll(".mini-list > div");
+
+          miniItems.forEach((miniItem) => {
+            if ((miniItem.textContent || "").includes(email)) {
+              miniItem.remove();
+            }
+          });
+
+          renderDeleteMemberList(listKey);
+        });
+
+        deleteMemberList.appendChild(item);
+      });
+    }
+
+    document.querySelectorAll(".js-delete-member-list-item").forEach((button) => {
+      button.addEventListener("click", () => {
+        renderDeleteMemberList(button.getAttribute("data-member-list"));
+        deleteMemberModalOverlay.classList.add("active");
+      });
+    });
+
+    deleteMemberModalClose.addEventListener("click", () => {
+      deleteMemberModalOverlay.classList.remove("active");
+    });
+  </script>
+</body>
+</html>

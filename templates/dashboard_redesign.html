@@ -10,26 +10,25 @@
   <div class="dashboard-shell">
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">JL</div>
+        <div class="brand-logo-wrap">
+          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
         <div>
           <h1>Jukebox Lounge</h1>
           <p>Admin Preview</p>
         </div>
       </div>
 
-      <nav class="sidebar-nav">
-  <a href="#top" class="active">Dashboard</a>
-  <a href="#events">Events</a>
-  <a href="#check-in">Check-In</a>
-  <a href="#door-sales">Door Sales</a>
-  <a href="#vip">VIP</a>
-  <a href="#sales-revenue">Sales & Revenue</a>
-  <a href="#messages-leads">Messages & Leads</a>
-  <a href="#members">Members</a>
-  <a href="#applications">Applications</a>
-  <a href="#reports">Reports</a>
-  <a href="#settings">Settings</a>
-</nav>
+                        <nav class="sidebar-nav">
+        <a href="/admin/dashboard-redesign" class="active">Dashboard</a>
+        <a href="/admin/dashboard-redesign/events">Events</a>
+        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
+        <a href="/admin/dashboard-redesign/messages">Messages</a>
+        <a href="/admin/dashboard-redesign/members">Members</a>
+        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/admin/dashboard-redesign#reports">Reports</a>
+        <a href="/admin/dashboard-redesign#settings">Settings</a>
+      </nav>
     </aside>
 
     <main class="main-content" id="top">
@@ -47,30 +46,28 @@
           <p class="subtext">Track events, guests, VIPs, door sales, messages, members, and applications in one place.</p>
         </div>
 
-        <div class="topbar-actions">
+        <div class="topbar-actions topbar-tools">
+          <div class="global-search">
+            <span>Search</span>
+            <input type="text" id="dashboardSearch" placeholder="Search events, guests, members, messages..." />
+          </div>
           <button class="btn secondary">View Old Dashboard</button>
-          <button class="btn primary">Create Event</button>
+          <button class="btn primary" type="button" id="createEventTopButton">Create Event</button>
         </div>
       </header>
 
       
         <section class="stats-grid">
         <div class="stat-card">
-          <p>Upcoming Events</p>
+          <p>Events</p>
           <h3>{{ dashboard_preview_summary.upcoming_events_count }}</h3>
           <span>Events currently listed</span>
         </div>
 
         <div class="stat-card">
           <p>Tickets Sold</p>
-          <h3>{{ metrics.total_tickets_sold }}</h3>
-          <span>Single + VIP tickets</span>
-        </div>
-
-        <div class="stat-card">
-          <p>Estimated Attendance</p>
-          <h3>{{ metrics.estimated_attendance }}</h3>
-          <span>Based on ticket totals</span>
+          <h3>{{ metrics.single_tickets }}</h3>
+          <span>Excludes VIP tickets</span>
         </div>
 
         <div class="stat-card">
@@ -80,11 +77,18 @@
         </div>
 
         <div class="stat-card">
+          <p>Estimated Attendance</p>
+          <h3>{{ metrics.estimated_attendance }}</h3>
+          <span>Based on ticket totals</span>
+        </div>
+
+        <div class="stat-card">
           <p>Total Revenue</p>
           <h3>${{ "%.2f"|format(metrics.total_revenue) }}</h3>
           <span>Tickets + memberships</span>
         </div>
       </section>
+
       <section class="dashboard-grid">
         <div class="panel large-panel">
           <div class="panel-header">
@@ -95,7 +99,7 @@
             <span class="badge">Preview</span>
           </div>
 
-          <div class="upcoming-event-list">
+          <div class="upcoming-event-list" id="upcomingEventList">
             {% for event in events %}
             <div class="upcoming-event-card">
               <div class="upcoming-event-top">
@@ -118,11 +122,7 @@
                 </div>
               </div>
 
-              <div class="event-actions">
-                <button class="btn primary">Open Event</button>
-                <button class="btn secondary">Guest List</button>
-                <button class="btn secondary">Revenue</button>
-              </div>
+              
             </div>
             {% endfor %}
           </div>
@@ -137,7 +137,7 @@
 
             <div class="mini-list">
               <div>
-                <strong>VIP Membership Inquiry</strong>
+                <strong>VIP Email Listhip Inquiry</strong>
                 <p>Customer asked about VIP packages.</p>
               </div>
               <div>
@@ -159,510 +159,40 @@
 
             <div class="mini-list">
               <div>
-                <strong>VIP Members</strong>
-                <p>6 new VIP signups this month.</p>
+                <strong>VIP Email List</strong>
+                <p>31 people signed up for VIP updates and announcements.</p>
               </div>
               <div>
-                <strong>General Members</strong>
-                <p>14 active member records.</p>
+                <strong>Jukebox Circle Originals</strong>
+                <p>12 founding or early members currently active.</p>
               </div>
               <div>
-                <strong>Newsletter</strong>
-                <p>31 people signed up for updates.</p>
+                <strong>Jukebox Circle</strong>
+                <p>8 new Jukebox Circle members and ongoing membership activity.</p>
               </div>
             </div>
           </div>
 
           <div class="panel">
             <div class="panel-header">
-              <h3>Applications</h3>
+              <h3>Contacts</h3>
               <span class="badge warning">Review</span>
             </div>
 
             <div class="mini-list">
               <div>
-                <strong>DJ Application</strong>
-                <p>2 new DJs waiting for review.</p>
+                <strong>DJ Contact</strong>
+                <p>2 new DJ contacts saved.</p>
               </div>
               <div>
-                <strong>Band Application</strong>
-                <p>1 band application submitted.</p>
+                <strong>Band Contact</strong>
+                <p>1 band contact saved.</p>
               </div>
               <div>
-                <strong>Vendor Application</strong>
-                <p>3 vendor requests received.</p>
+                <strong>Vendor Contact</strong>
+                <p>3 vendor contacts saved.</p>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section-panel" id="events">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Events</p>
-            <h3>Upcoming Event Management</h3>
-            <p>View and manage upcoming events in one place.</p>
-          </div>
-          <button class="btn primary">Add New Event</button>
-        </div>
-
-        <div class="table-card">
-          <div class="table-row table-head">
-            <span>Event</span>
-            <span>Date</span>
-            <span>Status</span>
-            <span>Tickets</span>
-            <span>Revenue</span>
-            <span>Actions</span>
-          </div>
-
-          {% for event in events %}
-          <div class="table-row">
-            <span>{{ event.name }}</span>
-            <span>Upcoming</span>
-            <span><span class="badge {% if loop.first %}live{% endif %}">{% if loop.first %}Featured{% else %}Upcoming{% endif %}</span></span>
-            <span>{{ event.total_tickets_sold }} sold</span>
-            <span>${{ "%.2f"|format(event.total_revenue) }}</span>
-            <span class="row-actions">
-              <button>Open</button>
-              <button>Guest List</button>
-            </span>
-          </div>
-          {% endfor %}
-        </div>
-      </section>
-
-      <section class="section-panel" id="event-detail-preview">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Individual Event View</p>
-            <h3>Open Event Preview</h3>
-            <p>This is what the client would see after opening one specific event from the Events section.</p>
-          </div>
-          <button class="btn primary">Open Full Event</button>
-        </div>
-
-        {% for event in events %}
-        <div class="event-detail-card">
-          <div class="event-detail-top">
-            <div>
-              <p class="eyebrow">Event Detail</p>
-              <h4>{{ event.name }}</h4>
-              <p>Individual event tracking for tickets, revenue, door sales, VIP, and notes.</p>
-            </div>
-
-            <span class="badge {% if loop.first %}live{% endif %}">
-              {% if loop.first %}Featured Event{% else %}Event Preview{% endif %}
-            </span>
-          </div>
-
-          <div class="event-detail-stats">
-            <div>
-              <p>Total Tickets</p>
-              <strong>{{ event.total_tickets_sold }}</strong>
-              <span>All ticket types</span>
-            </div>
-
-            <div>
-              <p>Total Revenue</p>
-              <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
-              <span>Ticket revenue</span>
-            </div>
-
-            <div>
-              <p>Ticket Types</p>
-              <strong>{{ event.tickets|length }}</strong>
-              <span>Categories tracked</span>
-            </div>
-
-            <div>
-              <p>Event Status</p>
-              <strong>{% if loop.first %}Live{% else %}Upcoming{% endif %}</strong>
-              <span>Preview status</span>
-            </div>
-          </div>
-
-          <div class="event-detail-grid">
-            <div class="event-detail-panel">
-              <h5>Ticket Breakdown</h5>
-
-              {% for ticket in event.tickets %}
-              <div class="breakdown-row">
-                <span>{{ ticket.name }}</span>
-                <strong>{{ ticket.quantity }} sold</strong>
-              </div>
-              {% endfor %}
-            </div>
-
-            <div class="event-detail-panel">
-              <h5>Revenue Breakdown</h5>
-
-              {% for ticket in event.tickets %}
-              <div class="breakdown-row">
-                <span>{{ ticket.name }}</span>
-                <strong>${{ "%.2f"|format(ticket.revenue) }}</strong>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
-
-          <div class="event-detail-actions">
-            <button>Guest List</button>
-            <button>Check-In</button>
-            <button>Door Sales</button>
-            <button>VIP Guests</button>
-            <button>Revenue</button>
-            <button>Notes</button>
-            <button>Reports</button>
-          </div>
-        </div>
-        {% endfor %}
-      </section>
-
-      <section class="section-panel" id="check-in">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Check-In</p>
-            <h3>Live Door Check-In</h3>
-            <p>Search guests quickly by name, email, phone, or order number.</p>
-          </div>
-          <button class="btn primary">Start Check-In Mode</button>
-        </div>
-
-        <div class="checkin-preview">
-          <input type="text" placeholder="Search guest name, email, phone, or order number..." />
-
-          <div class="guest-card">
-            <div>
-              <h4>Monica Johnson</h4>
-              <p>VIP Table — Includes 6 guests</p>
-              <small>Checked in: 2 of 6</small>
-            </div>
-            <div class="row-actions">
-              <button>Check In 1</button>
-              <button>Check In All</button>
-              <button>Undo</button>
-            </div>
-          </div>
-
-          <div class="guest-card">
-            <div>
-              <h4>Terrance Brown</h4>
-              <p>General Admission — 2 tickets</p>
-              <small>Checked in: 0 of 2</small>
-            </div>
-            <div class="row-actions">
-              <button>Check In 1</button>
-              <button>Check In All</button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section-panel" id="door-sales">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Door Sales</p>
-            <h3>Add Door Sale</h3>
-            <p>Track walk-up sales and connect them to event totals.</p>
-          </div>
-        </div>
-
-        <form class="form-grid">
-          <input type="text" placeholder="Customer name" />
-          <input type="text" placeholder="Ticket type" />
-          <input type="number" placeholder="Quantity" />
-          <select>
-            <option>Payment Method</option>
-            <option>Cash</option>
-            <option>Card</option>
-            <option>Cash App</option>
-            <option>Zelle</option>
-            <option>Comp</option>
-            <option>Other</option>
-          </select>
-          <input type="text" placeholder="Amount paid" />
-          <input type="text" placeholder="Notes" />
-          <button class="btn primary" type="button">Save Door Sale</button>
-        </form>
-      </section>
-
-      <section class="section-panel" id="vip">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">VIP</p>
-            <h3>VIP Guest Tracking</h3>
-            <p>Manage VIP tables, guest counts, notes, and arrival status.</p>
-          </div>
-        </div>
-
-        <div class="table-card">
-          <div class="table-row table-head">
-            <span>VIP Name</span>
-            <span>Package</span>
-            <span>Guests</span>
-            <span>Status</span>
-            <span>Actions</span>
-          </div>
-
-          <div class="table-row">
-            <span>Monica Johnson</span>
-            <span>VIP Table</span>
-            <span>2 of 6 checked in</span>
-            <span><span class="badge live">Arrived</span></span>
-            <span class="row-actions">
-              <button>Add Note</button>
-              <button>Check In</button>
-            </span>
-          </div>
-
-          <div class="table-row">
-            <span>Chris Williams</span>
-            <span>Birthday VIP</span>
-            <span>0 of 8 checked in</span>
-            <span><span class="badge warning">Waiting</span></span>
-            <span class="row-actions">
-              <button>Add Note</button>
-              <button>Check In</button>
-            </span>
-          </div>
-        </div>
-      </section>
-            <section class="section-panel" id="messages-leads">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Messages & Leads</p>
-            <h3>Website Inquiries</h3>
-            <p>Track general inquiries, VIP interest, private event requests, and customer messages.</p>
-          </div>
-          <button class="btn primary">View All Messages</button>
-        </div>
-
-        <div class="table-card">
-          <div class="table-row leads-row table-head">
-            <span>Name</span>
-            <span>Type</span>
-            <span>Message</span>
-            <span>Status</span>
-            <span>Date</span>
-            <span>Actions</span>
-          </div>
-
-          <div class="table-row leads-row">
-            <span>Danielle Carter</span>
-            <span>VIP Member</span>
-            <span>Interested in VIP membership options.</span>
-            <span><span class="badge warning">New</span></span>
-            <span>Today</span>
-            <span class="row-actions">
-              <button>View</button>
-              <button>Contacted</button>
-              <button>Archive</button>
-            </span>
-          </div>
-
-          <div class="table-row leads-row">
-            <span>Marcus Lee</span>
-            <span>Private Event</span>
-            <span>Asked about booking a birthday celebration.</span>
-            <span><span class="badge">Waiting</span></span>
-            <span>Yesterday</span>
-            <span class="row-actions">
-              <button>View</button>
-              <button>Add Note</button>
-            </span>
-          </div>
-        </div>
-      </section>
-            <section class="section-panel" id="sales-revenue">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Sales & Revenue</p>
-            <h3>Event Revenue Tracking</h3>
-            <p>Track online ticket sales, door sales, payment methods, refunds, comps, expenses, and profit.</p>
-          </div>
-          <button class="btn primary">Add Expense</button>
-        </div>
-
-        <div class="revenue-summary-grid">
-          <div class="revenue-card">
-            <p>Gross Revenue</p>
-            <h4>$4,250</h4>
-            <span>Online + door sales</span>
-          </div>
-
-          <div class="revenue-card">
-            <p>Expenses</p>
-            <h4>$800</h4>
-            <span>Staff, DJ, supplies</span>
-          </div>
-
-          <div class="revenue-card">
-            <p>Net Profit</p>
-            <h4>$3,450</h4>
-            <span>After expenses</span>
-          </div>
-
-          <div class="revenue-card">
-            <p>Comps</p>
-            <h4>12</h4>
-            <span>Guest list / promo</span>
-          </div>
-        </div>
-
-        <div class="revenue-breakdown-grid">
-          <div class="breakdown-card">
-            <h4>Payment Breakdown</h4>
-
-            <div class="breakdown-row">
-              <span>Online Tickets</span>
-              <strong>$2,900</strong>
-            </div>
-
-            <div class="breakdown-row">
-              <span>Cash at Door</span>
-              <strong>$620</strong>
-            </div>
-
-            <div class="breakdown-row">
-              <span>Card at Door</span>
-              <strong>$410</strong>
-            </div>
-
-            <div class="breakdown-row">
-              <span>Cash App / Zelle</span>
-              <strong>$320</strong>
-            </div>
-          </div>
-
-          <div class="breakdown-card">
-            <h4>Ticket Type Revenue</h4>
-
-            <div class="breakdown-row">
-              <span>General Admission</span>
-              <strong>$1,875</strong>
-            </div>
-
-            <div class="breakdown-row">
-              <span>VIP Tables</span>
-              <strong>$1,800</strong>
-            </div>
-
-            <div class="breakdown-row">
-              <span>Door Tickets</span>
-              <strong>$830</strong>
-            </div>
-
-            <div class="breakdown-row">
-              <span>Refunds</span>
-              <strong>-$255</strong>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section-panel" id="members">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Members</p>
-            <h3>Member Tracking</h3>
-            <p>Keep up with VIP members, general members, and newsletter signups.</p>
-          </div>
-          <button class="btn primary">Export Members</button>
-        </div>
-
-        <div class="table-card">
-          <div class="table-row members-row table-head">
-            <span>Member</span>
-            <span>Email</span>
-            <span>Type</span>
-            <span>Status</span>
-            <span>Signup Date</span>
-            <span>Actions</span>
-          </div>
-
-          <div class="table-row members-row">
-            <span>Renee Thompson</span>
-            <span>renee@example.com</span>
-            <span>VIP Member</span>
-            <span><span class="badge live">Active</span></span>
-            <span>This Month</span>
-            <span class="row-actions">
-              <button>View</button>
-              <button>Add Note</button>
-            </span>
-          </div>
-
-          <div class="table-row members-row">
-            <span>Anthony Green</span>
-            <span>anthony@example.com</span>
-            <span>General Member</span>
-            <span><span class="badge warning">New</span></span>
-            <span>Today</span>
-            <span class="row-actions">
-              <button>View</button>
-              <button>Contacted</button>
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <section class="section-panel" id="applications">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Applications</p>
-            <h3>DJ, Band & Vendor Applications</h3>
-            <p>Review people who apply through the website to perform, DJ, vend, or partner with the lounge.</p>
-          </div>
-          <button class="btn primary">Review Applications</button>
-        </div>
-
-        <div class="table-card">
-          <div class="table-row applications-row table-head">
-            <span>Applicant</span>
-            <span>Application Type</span>
-            <span>Email</span>
-            <span>Status</span>
-            <span>Date</span>
-            <span>Actions</span>
-          </div>
-
-          <div class="table-row applications-row">
-            <span>DJ Showtime</span>
-            <span>DJ Application</span>
-            <span>djshowtime@example.com</span>
-            <span><span class="badge warning">Reviewing</span></span>
-            <span>Today</span>
-            <span class="row-actions">
-              <button>View</button>
-              <button>Approve</button>
-              <button>Decline</button>
-            </span>
-          </div>
-
-          <div class="table-row applications-row">
-            <span>Soul Rhythm Band</span>
-            <span>Band Application</span>
-            <span>booking@example.com</span>
-            <span><span class="badge">New</span></span>
-            <span>This Week</span>
-            <span class="row-actions">
-              <button>View</button>
-              <button>Add Note</button>
-            </span>
-          </div>
-
-          <div class="table-row applications-row">
-            <span>Chef T’s Plates</span>
-            <span>Vendor Application</span>
-            <span>vendor@example.com</span>
-            <span><span class="badge live">Approved</span></span>
-            <span>Last Week</span>
-            <span class="row-actions">
-              <button>View</button>
-              <button>Book</button>
-            </span>
           </div>
         </div>
       </section>
@@ -672,49 +202,50 @@
           <div>
             <p class="eyebrow">Reports</p>
             <h3>Reports & Exports</h3>
-            <p>Download event, sales, member, inquiry, and application reports.</p>
+            <p>Download event, sales, member, inquiry, and contact log reports.</p>
           </div>
         </div>
 
         <div class="report-grid">
           <div class="report-card">
             <h4>Ticket Sales Report</h4>
-            <p>Online tickets, door sales, refunds, and comps.</p>
-            <button>Export CSV</button>
+            <p>Online tickets, ticket sales, refunds, comps, and revenue by event.</p>
+            <button class="js-export-report" type="button" data-report-type="ticket-sales">Export CSV</button>
           </div>
 
           <div class="report-card">
             <h4>Check-In Report</h4>
             <p>Checked-in guests, remaining guests, VIP arrivals, and no-shows.</p>
-            <button>Download Report</button>
+            <button class="js-export-report" type="button" data-report-type="check-in">Download Report</button>
           </div>
 
           <div class="report-card">
             <h4>VIP Report</h4>
-            <p>VIP tables, guest counts, notes, and arrival status.</p>
-            <button>Export CSV</button>
+            <p>VIP tables, guest counts, notes, reserved sections, and status.</p>
+            <button class="js-export-report" type="button" data-report-type="vip">Export CSV</button>
           </div>
 
           <div class="report-card">
             <h4>Members Report</h4>
-            <p>VIP members, general members, and newsletter signups.</p>
-            <button>Export CSV</button>
+            <p>VIP Email List, Jukebox Circle Originals, and Jukebox Circle members.</p>
+            <button class="js-export-report" type="button" data-report-type="members">Export CSV</button>
           </div>
 
           <div class="report-card">
-            <h4>Applications Report</h4>
-            <p>DJ, band, vendor, and performer applications.</p>
-            <button>Export CSV</button>
+            <h4>Contact Log Report</h4>
+            <p>Talent contacts, vendor contacts, performers, DJs, bands, and partners.</p>
+            <button class="js-export-report" type="button" data-report-type="contacts">Export CSV</button>
           </div>
 
           <div class="report-card">
             <h4>Inquiry Report</h4>
-            <p>General inquiries, private event requests, and lead statuses.</p>
-            <button>Export CSV</button>
+            <p>General inquiries, private event requests, VIP interest, and lead statuses.</p>
+            <button class="js-export-report" type="button" data-report-type="inquiries">Export CSV</button>
           </div>
         </div>
       </section>
-            <section class="section-panel" id="settings">
+
+      <section class="section-panel" id="settings">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Settings</p>
@@ -759,7 +290,7 @@
             <label>
               DJ / Band / Vendor Forms
               <select>
-                <option>Applications</option>
+                <option>Contacts</option>
                 <option>Messages & Leads</option>
               </select>
             </label>
@@ -811,7 +342,2089 @@
           </div>
         </div>
       </section>
+      <div class="event-modal-overlay" id="searchResultsModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Dashboard Search</p>
+              <h3 id="searchResultsTitle">Search Results</h3>
+              <p>Preview results from events, guests, members, messages, contacts, and reports.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="searchResultsClose">Close</button>
+          </div>
+
+          <div class="search-results-list" id="searchResultsList">
+            <div class="empty-state">
+              <h4>Search the dashboard</h4>
+              <p>Type a keyword like Quiet Storm, Monica, VIP, vendor, ticket, or member.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
+    <script>
+    const eventModalOverlay = document.getElementById("eventModalOverlay");
+    const eventModalClose = document.getElementById("eventModalClose");
+    const eventModalTitle = document.getElementById("eventModalTitle");
+    const eventModalButtons = document.querySelectorAll(".js-open-event");
+    const eventModalContents = document.querySelectorAll(".event-modal-content");
+
+    eventModalButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-event-target");
+        const eventName = button.getAttribute("data-event-name");
+
+        eventModalContents.forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          eventModalTitle.textContent = eventName;
+          eventModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    eventModalClose.addEventListener("click", () => {
+      eventModalOverlay.classList.remove("active");
+    });
+
+    eventModalOverlay.addEventListener("click", (event) => {
+      if (event.target === eventModalOverlay) {
+        eventModalOverlay.classList.remove("active");
+      }
+    });
+        const checkinModalOverlay = document.getElementById("checkinModalOverlay");
+    const checkinModalClose = document.getElementById("checkinModalClose");
+    const checkinModalTitle = document.getElementById("checkinModalTitle");
+    const checkinButtons = document.querySelectorAll(".js-open-checkin");
+    const checkinModalContents = document.querySelectorAll(".checkin-modal-content");
+
+    checkinButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-checkin-target");
+        const eventName = button.getAttribute("data-checkin-name");
+
+        checkinModalContents.forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          checkinModalTitle.textContent = eventName;
+          checkinModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    checkinModalClose.addEventListener("click", () => {
+      checkinModalOverlay.classList.remove("active");
+    });
+
+    checkinModalOverlay.addEventListener("click", (event) => {
+      if (event.target === checkinModalOverlay) {
+        checkinModalOverlay.classList.remove("active");
+      }
+    });
+        const guestListModalOverlay = document.getElementById("guestListModalOverlay");
+    const guestListModalClose = document.getElementById("guestListModalClose");
+    const guestListModalTitle = document.getElementById("guestListModalTitle");
+    const guestListButtons = document.querySelectorAll(".js-open-guest-list");
+    const guestListModalContents = document.querySelectorAll(".guest-list-modal-content");
+
+    guestListButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-guest-target");
+        const eventName = button.getAttribute("data-guest-event-name");
+
+        guestListModalContents.forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          guestListModalTitle.textContent = eventName + " Guest List";
+          guestListModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    guestListModalClose.addEventListener("click", () => {
+      guestListModalOverlay.classList.remove("active");
+    });
+
+    guestListModalOverlay.addEventListener("click", (event) => {
+      if (event.target === guestListModalOverlay) {
+        guestListModalOverlay.classList.remove("active");
+      }
+    });
+        function updateCheckinGuestCard(card, newCheckedInCount) {
+      const totalGuests = Number(card.getAttribute("data-total-guests"));
+      const safeCount = Math.max(0, Math.min(newCheckedInCount, totalGuests));
+
+      card.setAttribute("data-checked-in", safeCount);
+
+      const checkedCount = card.querySelector(".checked-count");
+      const totalCount = card.querySelector(".total-count");
+
+      if (checkedCount) {
+        checkedCount.textContent = safeCount;
+      }
+
+      if (totalCount) {
+        totalCount.textContent = totalGuests;
+      }
+
+      if (safeCount >= totalGuests) {
+        card.classList.add("fully-checked-in");
+      } else {
+        card.classList.remove("fully-checked-in");
+      }
+    }
+
+    document.querySelectorAll(".checkin-guest").forEach((card) => {
+      const checkInOneButton = card.querySelector(".js-checkin-one");
+      const checkInAllButton = card.querySelector(".js-checkin-all");
+      const undoButton = card.querySelector(".js-checkin-undo");
+
+      checkInOneButton.addEventListener("click", () => {
+        const currentCount = Number(card.getAttribute("data-checked-in"));
+        updateCheckinGuestCard(card, currentCount + 1);
+      });
+
+      checkInAllButton.addEventListener("click", () => {
+        const totalGuests = Number(card.getAttribute("data-total-guests"));
+        updateCheckinGuestCard(card, totalGuests);
+      });
+
+      undoButton.addEventListener("click", () => {
+        const currentCount = Number(card.getAttribute("data-checked-in"));
+        updateCheckinGuestCard(card, currentCount - 1);
+      });
+    });
+        const vipViewModalOverlay = document.getElementById("vipViewModalOverlay");
+    const vipViewModalClose = document.getElementById("vipViewModalClose");
+    const vipViewModalTitle = document.getElementById("vipViewModalTitle");
+    const vipViewButtons = document.querySelectorAll(".js-open-vip-view");
+    const vipViewContents = document.querySelectorAll(".vip-view-content");
+
+    vipViewButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-vip-target");
+        const vipName = button.getAttribute("data-vip-name");
+
+        vipViewContents.forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          vipViewModalTitle.textContent = vipName + " VIP Details";
+          vipViewModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    vipViewModalClose.addEventListener("click", () => {
+      vipViewModalOverlay.classList.remove("active");
+    });
+
+    vipViewModalOverlay.addEventListener("click", (event) => {
+      if (event.target === vipViewModalOverlay) {
+        vipViewModalOverlay.classList.remove("active");
+      }
+    });
+
+    const vipNoteModalOverlay = document.getElementById("vipNoteModalOverlay");
+    const vipNoteModalClose = document.getElementById("vipNoteModalClose");
+    const vipNoteModalTitle = document.getElementById("vipNoteModalTitle");
+    const vipNoteModalSubtitle = document.getElementById("vipNoteModalSubtitle");
+    const vipNoteButtons = document.querySelectorAll(".js-open-vip-note");
+    const vipNoteText = document.getElementById("vipNoteText");
+    const vipNoteSave = document.getElementById("vipNoteSave");
+    const vipNotePreview = document.getElementById("vipNotePreview");
+
+    let activeVipNoteName = "";
+
+    vipNoteButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const vipName = button.getAttribute("data-vip-name");
+        const vipEvent = button.getAttribute("data-vip-event");
+
+        activeVipNoteName = vipName;
+        vipNoteModalTitle.textContent = "Add Note for " + vipName;
+        vipNoteModalSubtitle.textContent = "Event: " + vipEvent;
+        vipNoteText.value = "";
+        vipNoteModalOverlay.classList.add("active");
+      });
+    });
+
+    vipNoteSave.addEventListener("click", () => {
+      const note = vipNoteText.value.trim();
+
+      if (!note) {
+        vipNotePreview.textContent = "Please enter a note before saving.";
+        return;
+      }
+
+      vipNotePreview.textContent = activeVipNoteName + ": " + note;
+    });
+
+    vipNoteModalClose.addEventListener("click", () => {
+      vipNoteModalOverlay.classList.remove("active");
+    });
+
+    vipNoteModalOverlay.addEventListener("click", (event) => {
+      if (event.target === vipNoteModalOverlay) {
+        vipNoteModalOverlay.classList.remove("active");
+      }
+    });
+        const archivedMessagesModalOverlay = document.getElementById("archivedMessagesModalOverlay");
+    const archivedMessagesClose = document.getElementById("archivedMessagesClose");
+    const viewArchivedMessages = document.getElementById("viewArchivedMessages");
+    const archivedMessagesList = document.getElementById("archivedMessagesList");
+
+    document.querySelectorAll(".js-message-status").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest(".message-row");
+        const status = button.getAttribute("data-status");
+        const badge = row.querySelector(".message-status-badge");
+
+        if (badge) {
+          badge.textContent = status;
+          badge.classList.remove("warning", "live");
+
+          if (status === "New") {
+            badge.classList.add("warning");
+          }
+
+          if (status === "Replied") {
+            badge.classList.add("live");
+          }
+        }
+      });
+    });
+
+    document.querySelectorAll(".js-archive-message").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest(".message-row");
+
+        if (!row) return;
+
+        const emptyState = archivedMessagesList.querySelector(".empty-state");
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        const clonedRow = row.cloneNode(true);
+        const badge = clonedRow.querySelector(".message-status-badge");
+
+        if (badge) {
+          badge.textContent = "Archived";
+          badge.classList.remove("warning", "live");
+        }
+
+        const actions = clonedRow.querySelector(".row-actions");
+        if (actions) {
+          actions.innerHTML = "<button class='js-view-archived-message' type='button'>View</button>";
+        }
+
+        archivedMessagesList.appendChild(clonedRow);
+        row.remove();
+      });
+    });
+
+    viewArchivedMessages.addEventListener("click", () => {
+      archivedMessagesModalOverlay.classList.add("active");
+    });
+
+    archivedMessagesClose.addEventListener("click", () => {
+      archivedMessagesModalOverlay.classList.remove("active");
+    });
+
+    archivedMessagesModalOverlay.addEventListener("click", (event) => {
+      if (event.target === archivedMessagesModalOverlay) {
+        archivedMessagesModalOverlay.classList.remove("active");
+      }
+    });
+    const viewAllMessages = document.getElementById("viewAllMessages");
+    const allMessagesModalOverlay = document.getElementById("allMessagesModalOverlay");
+    const allMessagesClose = document.getElementById("allMessagesClose");
+    const allMessagesList = document.getElementById("allMessagesList");
+
+    const messageDetailModalOverlay = document.getElementById("messageDetailModalOverlay");
+    const messageDetailClose = document.getElementById("messageDetailClose");
+    const messageDetailTitle = document.getElementById("messageDetailTitle");
+    const messageDetailSubtitle = document.getElementById("messageDetailSubtitle");
+    const messageDetailBody = document.getElementById("messageDetailBody");
+
+    function openMessageDetailFromRow(row) {
+      if (!row) return;
+
+      const columns = row.querySelectorAll(":scope > span");
+
+      const name = columns[0]?.textContent.trim() || "Website Inquiry";
+      const type = columns[1]?.textContent.trim() || "Message";
+      const message = columns[2]?.textContent.trim() || "No message available.";
+      const status = columns[3]?.textContent.trim() || "New";
+      const date = columns[4]?.textContent.trim() || "";
+
+      messageDetailTitle.textContent = name;
+      messageDetailSubtitle.textContent = type + " • " + status + " • " + date;
+      messageDetailBody.textContent = message;
+      messageDetailModalOverlay.classList.add("active");
+    }
+
+    if (viewAllMessages) {
+      viewAllMessages.addEventListener("click", () => {
+        allMessagesList.innerHTML = "";
+
+        const activeRows = document.querySelectorAll("#messages-leads .message-row");
+
+        if (!activeRows.length) {
+          allMessagesList.innerHTML = `
+            <div class="empty-state">
+              <h4>No active messages</h4>
+              <p>Active website inquiries will appear here.</p>
+            </div>
+          `;
+        }
+
+        activeRows.forEach((row) => {
+          const clonedRow = row.cloneNode(true);
+          const actions = clonedRow.querySelector(".row-actions");
+
+          if (actions) {
+            actions.innerHTML = "<button class='js-view-message-detail' type='button'>View</button>";
+          }
+
+          allMessagesList.appendChild(clonedRow);
+        });
+
+        allMessagesModalOverlay.classList.add("active");
+      });
+    }
+
+    if (allMessagesClose) {
+      allMessagesClose.addEventListener("click", () => {
+        allMessagesModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (allMessagesModalOverlay) {
+      allMessagesModalOverlay.addEventListener("click", (event) => {
+        if (event.target === allMessagesModalOverlay) {
+          allMessagesModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    document.addEventListener("click", (event) => {
+      if (
+        event.target.classList.contains("js-view-message-detail") ||
+        event.target.classList.contains("js-view-archived-message")
+      ) {
+        const row = event.target.closest(".message-row");
+        openMessageDetailFromRow(row);
+      }
+    });
+
+    if (messageDetailClose) {
+      messageDetailClose.addEventListener("click", () => {
+        messageDetailModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (messageDetailModalOverlay) {
+      messageDetailModalOverlay.addEventListener("click", (event) => {
+        if (event.target === messageDetailModalOverlay) {
+          messageDetailModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    const addExpenseButton = document.getElementById("addExpenseButton");
+    const expenseModalOverlay = document.getElementById("expenseModalOverlay");
+    const expenseModalClose = document.getElementById("expenseModalClose");
+    const expenseSave = document.getElementById("expenseSave");
+    const expenseEvent = document.getElementById("expenseEvent");
+    const expenseCategory = document.getElementById("expenseCategory");
+    const expenseAmount = document.getElementById("expenseAmount");
+    const expenseNotes = document.getElementById("expenseNotes");
+    const expenseSavedList = document.getElementById("expenseSavedList");
+    const expenseTotal = document.getElementById("expenseTotal");
+    const netProfitTotal = document.getElementById("netProfitTotal");
+
+    function moneyToNumber(value) {
+      return Number(String(value).replace(/[$,]/g, "")) || 0;
+    }
+
+    function formatMoney(value) {
+      return "$" + Number(value).toLocaleString(undefined, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+      });
+    }
+
+    if (addExpenseButton) {
+      addExpenseButton.addEventListener("click", () => {
+        expenseModalOverlay.classList.add("active");
+      });
+    }
+
+    if (expenseModalClose) {
+      expenseModalClose.addEventListener("click", () => {
+        expenseModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (expenseModalOverlay) {
+      expenseModalOverlay.addEventListener("click", (event) => {
+        if (event.target === expenseModalOverlay) {
+          expenseModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    if (expenseSave) {
+      expenseSave.addEventListener("click", () => {
+        const eventName = expenseEvent.value;
+        const category = expenseCategory.value;
+        const amount = Number(expenseAmount.value || 0);
+        const notes = expenseNotes.value.trim();
+
+        if (!eventName || eventName === "Select Event") {
+          alert("Please select an event.");
+          return;
+        }
+
+        if (!category || category === "Select Category") {
+          alert("Please select an expense category.");
+          return;
+        }
+
+        if (!amount || amount <= 0) {
+          alert("Please enter an expense amount.");
+          return;
+        }
+
+        const emptyText = expenseSavedList.querySelector(".muted-preview");
+        if (emptyText) {
+          emptyText.remove();
+        }
+
+        const expenseRow = document.createElement("div");
+        expenseRow.className = "expense-preview-row";
+        expenseRow.innerHTML = `
+          <div>
+            <strong>${eventName}</strong>
+            <span>${category}${notes ? " • " + notes : ""}</span>
+          </div>
+          <strong>${formatMoney(amount)}</strong>
+        `;
+
+        expenseSavedList.appendChild(expenseRow);
+
+        const currentExpenses = moneyToNumber(expenseTotal.textContent);
+        const currentNetProfit = moneyToNumber(netProfitTotal.textContent);
+
+        expenseTotal.textContent = formatMoney(currentExpenses + amount);
+        netProfitTotal.textContent = formatMoney(currentNetProfit - amount);
+
+        expenseAmount.value = "";
+        expenseNotes.value = "";
+      });
+    }
+
+    const memberLists = {
+      "vip-email": {
+        title: "VIP Email List",
+        subtitle: "People who signed up for VIP updates, event announcements, and early access.",
+        fileName: "vip-email-list.csv",
+        rows: [
+          ["Danielle Carter", "danielle@example.com", "VIP Email List", "Subscribed", "Today"],
+          ["Marcus Lee", "marcus@example.com", "VIP Email List", "Subscribed", "Yesterday"]
+        ]
+      },
+      "originals": {
+        title: "Jukebox Circle Originals",
+        subtitle: "Founding or early members who are part of the original Jukebox Circle group.",
+        fileName: "jukebox-circle-originals.csv",
+        rows: [
+          ["Renee Thompson", "renee@example.com", "Jukebox Circle Originals", "Active", "This Month"],
+          ["Anthony Green", "anthony@example.com", "Jukebox Circle Originals", "New", "Today"]
+        ]
+      },
+      "circle": {
+        title: "Jukebox Circle",
+        subtitle: "General Jukebox Circle members who signed up for membership access, updates, or perks.",
+        fileName: "jukebox-circle.csv",
+        rows: [
+          ["Nicole Harris", "nicole@example.com", "Jukebox Circle", "New", "Today"],
+          ["Chris Williams", "chris@example.com", "Jukebox Circle", "Active", "This Month"]
+        ]
+      }
+    };
+
+    memberLists.all = {
+      title: "All Members",
+      subtitle: "Combined export of VIP Email List, Jukebox Circle Originals, and Jukebox Circle.",
+      fileName: "all-members.csv",
+      rows: [
+        ...memberLists["vip-email"].rows,
+        ...memberLists.originals.rows,
+        ...memberLists.circle.rows
+      ]
+    };
+
+    const memberListModalOverlay = document.getElementById("memberListModalOverlay");
+    const memberListModalClose = document.getElementById("memberListModalClose");
+    const memberListModalTitle = document.getElementById("memberListModalTitle");
+    const memberListModalSubtitle = document.getElementById("memberListModalSubtitle");
+    const memberListModalBody = document.getElementById("memberListModalBody");
+
+    function renderMemberList(listKey) {
+      const list = memberLists[listKey];
+
+      if (!list) return;
+
+      memberListModalTitle.textContent = list.title;
+      memberListModalSubtitle.textContent = list.subtitle;
+
+      memberListModalBody.innerHTML = list.rows.map((row) => `
+        <div class="table-row member-list-row">
+          <span>${row[0]}</span>
+          <span>${row[1]}</span>
+          <span>${row[2]}</span>
+          <span><span class="badge ${row[3] === "Active" || row[3] === "Subscribed" ? "live" : "warning"}">${row[3]}</span></span>
+          <span>${row[4]}</span>
+        </div>
+      `).join("");
+
+      memberListModalOverlay.classList.add("active");
+    }
+
+    document.querySelectorAll(".js-view-member-list").forEach((button) => {
+      button.addEventListener("click", () => {
+        renderMemberList(button.getAttribute("data-member-list"));
+      });
+    });
+
+    if (memberListModalClose) {
+      memberListModalClose.addEventListener("click", () => {
+        memberListModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (memberListModalOverlay) {
+      memberListModalOverlay.addEventListener("click", (event) => {
+        if (event.target === memberListModalOverlay) {
+          memberListModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    function downloadMemberCsv(listKey) {
+      const list = memberLists[listKey];
+
+      if (!list) return;
+
+      const header = ["Name", "Email", "List", "Status", "Signup Date"];
+      const csvRows = [header, ...list.rows]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csvRows], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = list.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.querySelectorAll(".js-export-members").forEach((button) => {
+      button.addEventListener("click", () => {
+        downloadMemberCsv(button.getAttribute("data-member-list"));
+      });
+    });
+
+    const applicationDetailModalOverlay = document.getElementById("applicationDetailModalOverlay");
+    const applicationDetailClose = document.getElementById("applicationDetailClose");
+    const applicationDetailTitle = document.getElementById("applicationDetailTitle");
+    const applicationDetailSubtitle = document.getElementById("applicationDetailSubtitle");
+    const applicationDetailBody = document.getElementById("applicationDetailBody");
+
+    const applicationLogModalOverlay = document.getElementById("applicationLogModalOverlay");
+    const applicationLogClose = document.getElementById("applicationLogClose");
+    const viewApplicationLog = document.getElementById("viewApplicationLog");
+    const applicationLogList = document.getElementById("applicationLogList");
+
+    function openApplicationDetails(row) {
+      if (!row) return;
+
+      const columns = row.querySelectorAll(":scope > span");
+      const name = columns[0]?.textContent.trim() || "Contact";
+      const category = columns[1]?.textContent.trim() || "Application";
+      const email = columns[2]?.textContent.trim() || "No email listed";
+      const status = columns[3]?.textContent.trim() || "Saved";
+      const date = columns[4]?.textContent.trim() || "";
+
+      applicationDetailTitle.textContent = name;
+      applicationDetailSubtitle.textContent = category + " • " + status + " • " + date;
+      applicationDetailBody.innerHTML = `
+        <strong>Email:</strong> ${email}<br><br>
+        <strong>Best use:</strong> Save this contact as a reference when booking entertainment, vendors, or event partners.<br><br>
+        <strong>Preview note:</strong> In the live version, this can include phone number, social links, music/vendor type, availability, attachments, and internal notes.
+      `;
+      applicationDetailModalOverlay.classList.add("active");
+    }
+
+    document.querySelectorAll(".js-view-application").forEach((button) => {
+      button.addEventListener("click", () => {
+        openApplicationDetails(button.closest(".application-log-row"));
+      });
+    });
+
+    document.querySelectorAll(".js-delete-application").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest(".application-log-row");
+        if (!row) return;
+
+        const name = row.getAttribute("data-applicant-name") || "this contact";
+        const confirmed = confirm("Delete " + name + " from this preview contact log?");
+
+        if (confirmed) {
+          row.remove();
+        }
+      });
+    });
+
+    if (viewApplicationLog) {
+      viewApplicationLog.addEventListener("click", () => {
+        applicationLogList.innerHTML = "";
+
+        const activeRows = document.querySelectorAll("#applications .application-log-row");
+
+        if (!activeRows.length) {
+          applicationLogList.innerHTML = `
+            <div class="empty-state">
+              <h4>No contacts in the log</h4>
+              <p>Application and vendor contacts will appear here.</p>
+            </div>
+          `;
+        }
+
+        activeRows.forEach((row) => {
+          const clonedRow = row.cloneNode(true);
+          const actions = clonedRow.querySelector(".row-actions");
+
+          if (actions) {
+            actions.innerHTML = "<button class='js-view-application-log-detail' type='button'>View</button>";
+          }
+
+          applicationLogList.appendChild(clonedRow);
+        });
+
+        applicationLogModalOverlay.classList.add("active");
+      });
+    }
+
+    document.addEventListener("click", (event) => {
+      if (event.target.classList.contains("js-view-application-log-detail")) {
+        openApplicationDetails(event.target.closest(".application-log-row"));
+      }
+    });
+
+    if (applicationDetailClose) {
+      applicationDetailClose.addEventListener("click", () => {
+        applicationDetailModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (applicationDetailModalOverlay) {
+      applicationDetailModalOverlay.addEventListener("click", (event) => {
+        if (event.target === applicationDetailModalOverlay) {
+          applicationDetailModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    if (applicationLogClose) {
+      applicationLogClose.addEventListener("click", () => {
+        applicationLogModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (applicationLogModalOverlay) {
+      applicationLogModalOverlay.addEventListener("click", (event) => {
+        if (event.target === applicationLogModalOverlay) {
+          applicationLogModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    const reportExports = {
+      "ticket-sales": {
+        fileName: "ticket-sales-report.csv",
+        rows: [
+          ["Event", "Ticket Type", "Quantity", "Revenue", "Source"],
+          ["Quiet Storm Live", "General Admission", "1", "12.00", "Online"],
+          ["Juneteenth Celebration", "General Admission", "0", "0.00", "Eventbrite"]
+        ]
+      },
+      "check-in": {
+        fileName: "check-in-report.csv",
+        rows: [
+          ["Event", "Guest", "Ticket Type", "Total Guests", "Checked In"],
+          ["Quiet Storm Live", "Monica Johnson", "VIP Table", "6", "2"],
+          ["Quiet Storm Live", "Terrance Brown", "General Admission", "2", "0"]
+        ]
+      },
+      "vip": {
+        fileName: "vip-report.csv",
+        rows: [
+          ["Event", "VIP Name", "Package", "Guests Included", "Status", "Notes"],
+          ["Quiet Storm Live", "Monica Johnson", "VIP Table", "6", "Arrived", "Birthday section near stage"],
+          ["Quiet Storm Live", "Chris Williams", "Birthday VIP", "8", "Reserved", "Waiting on final guest names"]
+        ]
+      },
+      "members": {
+        fileName: "members-report.csv",
+        rows: [
+          ["Name", "Email", "List", "Status", "Signup Date"],
+          ["Danielle Carter", "danielle@example.com", "VIP Email List", "Subscribed", "Today"],
+          ["Renee Thompson", "renee@example.com", "Jukebox Circle Originals", "Active", "This Month"],
+          ["Nicole Harris", "nicole@example.com", "Jukebox Circle", "New", "Today"]
+        ]
+      },
+      "contacts": {
+        fileName: "contact-log-report.csv",
+        rows: [
+          ["Name", "Category", "Email", "Contact Type", "Status"],
+          ["DJ Showtime", "DJ", "djshowtime@example.com", "Talent", "New"],
+          ["Soul Rhythm Band", "Band", "booking@example.com", "Talent", "Saved"],
+          ["Chef T's Plates", "Food Vendor", "vendor@example.com", "Vendor", "Preferred"]
+        ]
+      },
+      "inquiries": {
+        fileName: "inquiry-report.csv",
+        rows: [
+          ["Name", "Type", "Message", "Status", "Date"],
+          ["Danielle Carter", "VIP Member", "Interested in VIP membership options.", "New", "Today"],
+          ["Marcus Lee", "Private Event", "Asked about booking a birthday celebration.", "Replied", "Yesterday"]
+        ]
+      }
+    };
+
+    function downloadReportCsv(reportType) {
+      const report = reportExports[reportType];
+
+      if (!report) {
+        alert("This report is not available yet.");
+        return;
+      }
+
+      const csv = report.rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = report.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.querySelectorAll(".js-export-report").forEach((button) => {
+      button.addEventListener("click", () => {
+        downloadReportCsv(button.getAttribute("data-report-type"));
+      });
+    });
+
+    function copyMemberEmails(listKey, button) {
+      const list = memberLists?.[listKey];
+
+      if (!list || !list.rows || !list.rows.length) {
+        alert("No emails found for this list yet.");
+        return;
+      }
+
+      const emails = list.rows
+        .map((row) => row[1])
+        .filter(Boolean)
+        .join(", ");
+
+      if (!emails) {
+        alert("No emails found for this list yet.");
+        return;
+      }
+
+      navigator.clipboard.writeText(emails).then(() => {
+        const originalText = button.textContent;
+        button.textContent = "Copied!";
+        button.classList.add("copied-button");
+
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove("copied-button");
+        }, 1600);
+      }).catch(() => {
+        const textArea = document.createElement("textarea");
+        textArea.value = emails;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+
+        const originalText = button.textContent;
+        button.textContent = "Copied!";
+        button.classList.add("copied-button");
+
+        setTimeout(() => {
+          button.textContent = originalText;
+          button.classList.remove("copied-button");
+        }, 1600);
+      });
+    }
+
+    document.querySelectorAll(".js-copy-member-emails").forEach((button) => {
+      button.addEventListener("click", () => {
+        copyMemberEmails(button.getAttribute("data-member-list"), button);
+      });
+    });
+const addNewEventButton = document.getElementById("addNewEventButton");
+    const addEventModalOverlay = document.getElementById("addEventModalOverlay");
+    const addEventModalClose = document.getElementById("addEventModalClose");
+    const saveNewEventButton = document.getElementById("saveNewEventButton");
+    const newEventName = document.getElementById("newEventName");
+    const newEventDate = document.getElementById("newEventDate");
+    const newEventTickets = document.getElementById("newEventTickets");
+    const newEventRevenue = document.getElementById("newEventRevenue");
+    const upcomingEventList = document.getElementById("upcomingEventList");
+    const eventManagementTable = document.getElementById("eventManagementTable");
+
+    function formatEventMoney(value) {
+      return "$" + Number(value || 0).toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    }
+
+    if (addNewEventButton) {
+      addNewEventButton.addEventListener("click", () => {
+        addEventModalOverlay.classList.add("active");
+      });
+    }
+
+    if (addEventModalClose) {
+      addEventModalClose.addEventListener("click", () => {
+        addEventModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (addEventModalOverlay) {
+      addEventModalOverlay.addEventListener("click", (event) => {
+        if (event.target === addEventModalOverlay) {
+          addEventModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    if (saveNewEventButton) {
+      saveNewEventButton.addEventListener("click", () => {
+        const eventName = newEventName.value.trim();
+        const eventDate = newEventDate.value.trim() || "Upcoming";
+        const tickets = Number(newEventTickets.value || 0);
+        const revenue = Number(newEventRevenue.value || 0);
+
+        if (!eventName) {
+          alert("Please enter an event name.");
+          return;
+        }
+
+        if (upcomingEventList) {
+          const eventCard = document.createElement("div");
+          eventCard.className = "upcoming-event-card";
+          eventCard.innerHTML = `
+            <div class="upcoming-event-top">
+              <div>
+                <h4>${eventName}</h4>
+                <p>${tickets} tickets sold</p>
+              </div>
+              <span class="badge">Upcoming</span>
+            </div>
+
+            <div class="event-progress">
+              <div>
+                <p>Event Revenue</p>
+                <h4>${formatEventMoney(revenue)}</h4>
+              </div>
+              <div class="progress-bar">
+                <span style="width: ${tickets > 0 ? 40 : 12}%;"></span>
+              </div>
+            </div>
+          `;
+
+          upcomingEventList.appendChild(eventCard);
+        }
+
+        if (eventManagementTable) {
+          const eventRow = document.createElement("div");
+          eventRow.className = "table-row";
+          eventRow.innerHTML = `
+            <span>${eventName}</span>
+            <span>${eventDate}</span>
+            <span><span class="badge">Upcoming</span></span>
+            <span>${tickets} sold</span>
+            <span>${formatEventMoney(revenue)}</span>
+            <span class="row-actions">
+              <button type="button">Open</button>
+              <button type="button">Guest List</button>
+            </span>
+          `;
+
+          eventManagementTable.appendChild(eventRow);
+        }
+
+        const eventSelects = document.querySelectorAll("#expenseEvent, form.form-grid select:first-child");
+        eventSelects.forEach((select) => {
+          const option = document.createElement("option");
+          option.textContent = eventName;
+          select.appendChild(option);
+        });
+
+        newEventName.value = "";
+        newEventDate.value = "";
+        newEventTickets.value = "";
+        newEventRevenue.value = "";
+        addEventModalOverlay.classList.remove("active");
+      });
+    }
+
+    const addVipPackageButton = document.getElementById("addVipPackageButton");
+    const addVipPackageModalOverlay = document.getElementById("addVipPackageModalOverlay");
+    const addVipPackageModalClose = document.getElementById("addVipPackageModalClose");
+    const saveVipPackageButton = document.getElementById("saveVipPackageButton");
+
+    const vipPackageEvent = document.getElementById("vipPackageEvent");
+    const vipPackageName = document.getElementById("vipPackageName");
+    const vipPackageType = document.getElementById("vipPackageType");
+    const vipPackageGuests = document.getElementById("vipPackageGuests");
+    const vipPackageStatus = document.getElementById("vipPackageStatus");
+    const vipPackageNotes = document.getElementById("vipPackageNotes");
+
+    function makeVipSlug(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)/g, "");
+    }
+
+    function getVipBadgeClass(status) {
+      if (status === "Arrived" || status === "Paid") return "live";
+      if (status === "Reserved" || status === "Pending") return "warning";
+      return "";
+    }
+
+    if (addVipPackageButton) {
+      addVipPackageButton.addEventListener("click", () => {
+        addVipPackageModalOverlay.classList.add("active");
+      });
+    }
+
+    if (addVipPackageModalClose) {
+      addVipPackageModalClose.addEventListener("click", () => {
+        addVipPackageModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (addVipPackageModalOverlay) {
+      addVipPackageModalOverlay.addEventListener("click", (event) => {
+        if (event.target === addVipPackageModalOverlay) {
+          addVipPackageModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    if (saveVipPackageButton) {
+      saveVipPackageButton.addEventListener("click", () => {
+        const eventName = vipPackageEvent.value;
+        const vipName = vipPackageName.value.trim();
+        const packageType = vipPackageType.value;
+        const guests = Number(vipPackageGuests.value || 0);
+        const status = vipPackageStatus.value;
+        const notes = vipPackageNotes.value.trim() || "No notes added";
+
+        if (!eventName || eventName === "Select Event") {
+          alert("Please select an event.");
+          return;
+        }
+
+        if (!vipName) {
+          alert("Please enter the VIP name.");
+          return;
+        }
+
+        if (!packageType || packageType === "Select Package") {
+          alert("Please select a package type.");
+          return;
+        }
+
+        if (!guests || guests <= 0) {
+          alert("Please enter guests included.");
+          return;
+        }
+
+        const matchingTable = Array.from(document.querySelectorAll(".vip-table-card")).find((table) => {
+          return table.getAttribute("data-vip-event") === eventName;
+        });
+
+        if (!matchingTable) {
+          alert("Could not find the VIP section for that event.");
+          return;
+        }
+
+        const emptyState = matchingTable.querySelector(".vip-empty-state");
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        const vipSlug = "vip-view-" + makeVipSlug(vipName) + "-" + Date.now();
+        const row = document.createElement("div");
+        row.className = "table-row vip-row";
+        row.innerHTML = `
+          <span>${vipName}</span>
+          <span>${packageType}</span>
+          <span>${guests} guests</span>
+          <span><span class="badge ${getVipBadgeClass(status)}">${status}</span></span>
+          <span>${notes}</span>
+          <span class="row-actions">
+            <button class="js-open-vip-note" type="button" data-vip-name="${vipName}" data-vip-event="${eventName}">Add Note</button>
+            <button class="js-open-vip-view" type="button" data-vip-target="${vipSlug}" data-vip-name="${vipName}">View</button>
+          </span>
+        `;
+
+        matchingTable.appendChild(row);
+
+        const vipViewModal = document.querySelector("#vipViewModalOverlay .event-modal");
+        if (vipViewModal) {
+          const viewContent = document.createElement("div");
+          viewContent.className = "vip-view-content";
+          viewContent.id = vipSlug;
+          viewContent.innerHTML = `
+            <div class="event-detail-stats">
+              <div>
+                <p>VIP Name</p>
+                <strong>${vipName}</strong>
+                <span>Primary guest</span>
+              </div>
+
+              <div>
+                <p>Package</p>
+                <strong>${packageType}</strong>
+                <span>Reserved package</span>
+              </div>
+
+              <div>
+                <p>Guests Included</p>
+                <strong>${guests}</strong>
+                <span>Total included</span>
+              </div>
+
+              <div>
+                <p>Status</p>
+                <strong>${status}</strong>
+                <span>Current VIP status</span>
+              </div>
+            </div>
+
+            <div class="event-detail-panel">
+              <h5>VIP Notes</h5>
+              <div class="breakdown-row">
+                <span>${notes}</span>
+                <strong>Current Note</strong>
+              </div>
+            </div>
+          `;
+
+          vipViewModal.appendChild(viewContent);
+        }
+
+        if (typeof bindVipPreviewButtons === "function") {
+          bindVipPreviewButtons();
+        }
+
+        vipPackageName.value = "";
+        vipPackageType.value = "Select Package";
+        vipPackageGuests.value = "";
+        vipPackageStatus.value = "Reserved";
+        vipPackageNotes.value = "";
+        addVipPackageModalOverlay.classList.remove("active");
+      });
+    }
+
+    function bindVipPreviewButtons() {
+      document.querySelectorAll(".js-open-vip-view").forEach((button) => {
+        if (button.dataset.bound === "true") return;
+        button.dataset.bound = "true";
+
+        button.addEventListener("click", () => {
+          const targetId = button.getAttribute("data-vip-target");
+          const vipName = button.getAttribute("data-vip-name");
+
+          document.querySelectorAll(".vip-view-content").forEach((content) => {
+            content.classList.remove("active");
+          });
+
+          const targetContent = document.getElementById(targetId);
+
+          if (targetContent) {
+            targetContent.classList.add("active");
+            vipViewModalTitle.textContent = vipName + " VIP Details";
+            vipViewModalOverlay.classList.add("active");
+          }
+        });
+      });
+
+      document.querySelectorAll(".js-open-vip-note").forEach((button) => {
+        if (button.dataset.bound === "true") return;
+        button.dataset.bound = "true";
+
+        button.addEventListener("click", () => {
+          const vipName = button.getAttribute("data-vip-name");
+          const vipEvent = button.getAttribute("data-vip-event");
+
+          activeVipNoteName = vipName;
+          vipNoteModalTitle.textContent = "Add Note for " + vipName;
+          vipNoteModalSubtitle.textContent = "Event: " + vipEvent;
+          vipNoteText.value = "";
+          vipNoteModalOverlay.classList.add("active");
+        });
+      });
+    }
+
+    bindVipPreviewButtons();
+
+    const addMemberModalOverlay = document.getElementById("addMemberModalOverlay");
+    const addMemberModalClose = document.getElementById("addMemberModalClose");
+    const addMemberModalTitle = document.getElementById("addMemberModalTitle");
+    const addMemberModalSubtitle = document.getElementById("addMemberModalSubtitle");
+    const manualMemberName = document.getElementById("manualMemberName");
+    const manualMemberEmail = document.getElementById("manualMemberEmail");
+    const manualMemberStatus = document.getElementById("manualMemberStatus");
+    const saveManualMemberButton = document.getElementById("saveManualMemberButton");
+
+    let activeMemberListKey = "";
+
+    function getMemberListLabel(listKey) {
+      if (listKey === "vip-email") return "VIP Email List";
+      if (listKey === "originals") return "Jukebox Circle Originals";
+      if (listKey === "circle") return "Jukebox Circle";
+      return "Member List";
+    }
+
+    function getDefaultStatusForList(listKey) {
+      if (listKey === "vip-email") return "Subscribed";
+      if (listKey === "originals") return "Active";
+      if (listKey === "circle") return "New";
+      return "New";
+    }
+
+    document.querySelectorAll(".js-add-member").forEach((button) => {
+      button.addEventListener("click", () => {
+        activeMemberListKey = button.getAttribute("data-member-list");
+        const listLabel = getMemberListLabel(activeMemberListKey);
+
+        addMemberModalTitle.textContent = "Add to " + listLabel;
+        addMemberModalSubtitle.textContent = "Manually add someone to the " + listLabel + ".";
+        manualMemberName.value = "";
+        manualMemberEmail.value = "";
+        manualMemberStatus.value = getDefaultStatusForList(activeMemberListKey);
+
+        addMemberModalOverlay.classList.add("active");
+      });
+    });
+
+    if (addMemberModalClose) {
+      addMemberModalClose.addEventListener("click", () => {
+        addMemberModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (addMemberModalOverlay) {
+      addMemberModalOverlay.addEventListener("click", (event) => {
+        if (event.target === addMemberModalOverlay) {
+          addMemberModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    if (saveManualMemberButton) {
+      saveManualMemberButton.addEventListener("click", () => {
+        const name = manualMemberName.value.trim();
+        const email = manualMemberEmail.value.trim();
+        const status = manualMemberStatus.value;
+        const listLabel = getMemberListLabel(activeMemberListKey);
+
+        if (!name) {
+          alert("Please enter a name.");
+          return;
+        }
+
+        if (!email) {
+          alert("Please enter an email.");
+          return;
+        }
+
+        if (!memberLists[activeMemberListKey]) {
+          alert("Could not find that member list.");
+          return;
+        }
+
+        memberLists[activeMemberListKey].rows.push([
+          name,
+          email,
+          listLabel,
+          status,
+          "Manual Entry"
+        ]);
+
+        memberLists.all.rows.push([
+          name,
+          email,
+          listLabel,
+          status,
+          "Manual Entry"
+        ]);
+
+        const matchingCard = document.querySelector(`.js-add-member[data-member-list="${activeMemberListKey}"]`)?.closest(".member-overview-card");
+        const miniList = matchingCard?.querySelector(".mini-list");
+
+        if (miniList) {
+          const item = document.createElement("div");
+          item.innerHTML = `
+            <strong>${name}</strong>
+            <p>${email}</p>
+          `;
+          miniList.appendChild(item);
+        }
+
+        addMemberModalOverlay.classList.remove("active");
+      });
+    }
+
+    const deleteMemberModalOverlay = document.getElementById("deleteMemberModalOverlay");
+    const deleteMemberModalClose = document.getElementById("deleteMemberModalClose");
+    const deleteMemberModalTitle = document.getElementById("deleteMemberModalTitle");
+    const deleteMemberModalSubtitle = document.getElementById("deleteMemberModalSubtitle");
+    const deleteMemberList = document.getElementById("deleteMemberList");
+
+    function refreshAllMemberList() {
+      if (!memberLists || !memberLists.all) return;
+
+      memberLists.all.rows = [
+        ...memberLists["vip-email"].rows,
+        ...memberLists.originals.rows,
+        ...memberLists.circle.rows
+      ];
+    }
+
+    function removeMemberFromCard(listKey, email) {
+      const card = document.querySelector(`.js-add-member[data-member-list="${listKey}"]`)?.closest(".member-overview-card");
+      const miniItems = card?.querySelectorAll(".mini-list > div") || [];
+
+      miniItems.forEach((item) => {
+        const text = item.textContent || "";
+        if (text.includes(email)) {
+          item.remove();
+        }
+      });
+    }
+
+    function renderDeleteMemberList(listKey) {
+      const list = memberLists?.[listKey];
+
+      if (!list) return;
+
+      deleteMemberModalTitle.textContent = "Delete from " + getMemberListLabel(listKey);
+      deleteMemberModalSubtitle.textContent = "Choose a person to remove from " + getMemberListLabel(listKey) + ".";
+      deleteMemberList.innerHTML = "";
+
+      if (!list.rows.length) {
+        deleteMemberList.innerHTML = `
+          <div class="empty-state">
+            <h4>No members found</h4>
+            <p>This list does not have anyone to delete yet.</p>
+          </div>
+        `;
+        return;
+      }
+
+      list.rows.forEach((row, index) => {
+        const item = document.createElement("div");
+        item.className = "delete-member-row";
+        item.innerHTML = `
+          <div>
+            <strong>${row[0]}</strong>
+            <span>${row[1]}</span>
+          </div>
+          <button class="delete-button" type="button">Delete</button>
+        `;
+
+        item.querySelector("button").addEventListener("click", () => {
+          const confirmed = confirm("Delete " + row[0] + " from " + getMemberListLabel(listKey) + "?");
+
+          if (!confirmed) return;
+
+          const email = row[1];
+
+          memberLists[listKey].rows.splice(index, 1);
+          refreshAllMemberList();
+          removeMemberFromCard(listKey, email);
+          renderDeleteMemberList(listKey);
+        });
+
+        deleteMemberList.appendChild(item);
+      });
+    }
+
+    document.querySelectorAll(".js-delete-member-list-item").forEach((button) => {
+      button.addEventListener("click", () => {
+        const listKey = button.getAttribute("data-member-list");
+        renderDeleteMemberList(listKey);
+        deleteMemberModalOverlay.classList.add("active");
+      });
+    });
+
+    if (deleteMemberModalClose) {
+      deleteMemberModalClose.addEventListener("click", () => {
+        deleteMemberModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (deleteMemberModalOverlay) {
+      deleteMemberModalOverlay.addEventListener("click", (event) => {
+        if (event.target === deleteMemberModalOverlay) {
+          deleteMemberModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    const createEventTopButton = document.getElementById("createEventTopButton");
+    const dashboardSearch = document.getElementById("dashboardSearch");
+    const searchResultsModalOverlay = document.getElementById("searchResultsModalOverlay");
+    const searchResultsClose = document.getElementById("searchResultsClose");
+    const searchResultsTitle = document.getElementById("searchResultsTitle");
+    const searchResultsList = document.getElementById("searchResultsList");
+
+    if (createEventTopButton) {
+      createEventTopButton.addEventListener("click", () => {
+        if (addEventModalOverlay) {
+          addEventModalOverlay.classList.add("active");
+        }
+      });
+    }
+
+    const dashboardSearchItems = [
+      {
+        title: "Quiet Storm Live",
+        type: "Event",
+        description: "Upcoming event with ticket and revenue tracking.",
+        target: "#events"
+      },
+      {
+        title: "Juneteenth Celebration",
+        type: "Event",
+        description: "Upcoming event listed in event management.",
+        target: "#events"
+      },
+      {
+        title: "Monica Johnson",
+        type: "VIP / Guest",
+        description: "VIP Table with 6 guests included.",
+        target: "#vip"
+      },
+      {
+        title: "Terrance Brown",
+        type: "Guest",
+        description: "General Admission ticket holder.",
+        target: "#check-in"
+      },
+      {
+        title: "Danielle Carter",
+        type: "Message / VIP Email List",
+        description: "Interested in VIP membership options.",
+        target: "#messages-leads"
+      },
+      {
+        title: "Renee Thompson",
+        type: "Jukebox Circle Originals",
+        description: "Original member currently active.",
+        target: "#members"
+      },
+      {
+        title: "Nicole Harris",
+        type: "Jukebox Circle",
+        description: "General Jukebox Circle member.",
+        target: "#members"
+      },
+      {
+        title: "DJ Showtime",
+        type: "Talent Contact",
+        description: "DJ contact saved in the contact log.",
+        target: "#applications"
+      },
+      {
+        title: "Chef T’s Plates",
+        type: "Vendor Contact",
+        description: "Food vendor saved in the contact log.",
+        target: "#applications"
+      },
+      {
+        title: "Battle of the DJs",
+        type: "Past Event",
+        description: "Completed event in Past Events Revenue.",
+        target: "#past-events-revenue"
+      }
+    ];
+
+    function renderSearchResults(query) {
+      const cleanQuery = query.trim().toLowerCase();
+
+      if (!cleanQuery) {
+        searchResultsList.innerHTML = `
+          <div class="empty-state">
+            <h4>Search the dashboard</h4>
+            <p>Type a keyword like Quiet Storm, Monica, VIP, vendor, ticket, or member.</p>
+          </div>
+        `;
+        return;
+      }
+
+      const matches = dashboardSearchItems.filter((item) => {
+        return (
+          item.title.toLowerCase().includes(cleanQuery) ||
+          item.type.toLowerCase().includes(cleanQuery) ||
+          item.description.toLowerCase().includes(cleanQuery)
+        );
+      });
+
+      searchResultsTitle.textContent = `Search Results for "${query}"`;
+
+      if (!matches.length) {
+        searchResultsList.innerHTML = `
+          <div class="empty-state">
+            <h4>No results found</h4>
+            <p>No preview results matched "${query}".</p>
+          </div>
+        `;
+        return;
+      }
+
+      searchResultsList.innerHTML = matches.map((item) => `
+        <a class="search-result-item" href="${item.target}">
+          <div>
+            <strong>${item.title}</strong>
+            <span>${item.type}</span>
+            <p>${item.description}</p>
+          </div>
+          <em>Go</em>
+        </a>
+      `).join("");
+
+      document.querySelectorAll(".search-result-item").forEach((item) => {
+        item.addEventListener("click", () => {
+          searchResultsModalOverlay.classList.remove("active");
+        });
+      });
+    }
+
+    if (dashboardSearch) {
+      dashboardSearch.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          renderSearchResults(dashboardSearch.value);
+          searchResultsModalOverlay.classList.add("active");
+        }
+      });
+    }
+
+    if (searchResultsClose) {
+      searchResultsClose.addEventListener("click", () => {
+        searchResultsModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (searchResultsModalOverlay) {
+      searchResultsModalOverlay.addEventListener("click", (event) => {
+        if (event.target === searchResultsModalOverlay) {
+          searchResultsModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    const eventNoteModalOverlay = document.getElementById("eventNoteModalOverlay");
+    const eventNoteModalClose = document.getElementById("eventNoteModalClose");
+    const eventNoteModalTitle = document.getElementById("eventNoteModalTitle");
+    const eventNoteText = document.getElementById("eventNoteText");
+    const eventNoteSave = document.getElementById("eventNoteSave");
+    const eventNotePreview = document.getElementById("eventNotePreview");
+
+    document.querySelectorAll(".js-event-action-guest-list").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-guest-target");
+        const eventName = button.getAttribute("data-guest-event-name");
+
+        eventModalOverlay.classList.remove("active");
+
+        guestListModalContents.forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          guestListModalTitle.textContent = eventName + " Guest List";
+          guestListModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    document.querySelectorAll(".js-event-action-checkin").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-checkin-target");
+        const eventName = button.getAttribute("data-checkin-name");
+
+        eventModalOverlay.classList.remove("active");
+
+        checkinModalContents.forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          checkinModalTitle.textContent = eventName;
+          checkinModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    document.querySelectorAll(".js-event-action-scroll").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-scroll-target");
+        const targetSection = document.getElementById(targetId);
+
+        eventModalOverlay.classList.remove("active");
+
+        if (targetSection) {
+          targetSection.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }
+      });
+    });
+
+    document.querySelectorAll(".js-event-action-notes").forEach((button) => {
+      button.addEventListener("click", () => {
+        const eventName = button.getAttribute("data-event-name");
+
+        eventModalOverlay.classList.remove("active");
+
+        eventNoteModalTitle.textContent = eventName + " Notes";
+        eventNoteText.value = "";
+        eventNoteModalOverlay.classList.add("active");
+      });
+    });
+
+    if (eventNoteSave) {
+      eventNoteSave.addEventListener("click", () => {
+        const note = eventNoteText.value.trim();
+
+        if (!note) {
+          eventNotePreview.textContent = "Please enter a note before saving.";
+          return;
+        }
+
+        eventNotePreview.textContent = eventNoteModalTitle.textContent + ": " + note;
+      });
+    }
+
+    if (eventNoteModalClose) {
+      eventNoteModalClose.addEventListener("click", () => {
+        eventNoteModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (eventNoteModalOverlay) {
+      eventNoteModalOverlay.addEventListener("click", (event) => {
+        if (event.target === eventNoteModalOverlay) {
+          eventNoteModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    document.querySelectorAll(".js-back-to-event").forEach((button) => {
+      button.addEventListener("click", () => {
+        const overlaysToClose = [
+          guestListModalOverlay,
+          checkinModalOverlay,
+          eventNoteModalOverlay
+        ];
+
+        overlaysToClose.forEach((overlay) => {
+          if (overlay) {
+            overlay.classList.remove("active");
+          }
+        });
+
+        if (eventModalOverlay) {
+          eventModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    const vipListModalOverlay = document.getElementById("vipListModalOverlay");
+    const vipListModalClose = document.getElementById("vipListModalClose");
+    const vipListModalTitle = document.getElementById("vipListModalTitle");
+    const vipListModalContents = document.querySelectorAll(".vip-list-modal-content");
+
+    document.querySelectorAll(".js-event-action-vip-list").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.getAttribute("data-vip-target");
+        const eventName = button.getAttribute("data-vip-event-name");
+
+        if (eventModalOverlay) {
+          eventModalOverlay.classList.remove("active");
+        }
+
+        vipListModalContents.forEach((content) => {
+          content.classList.remove("active");
+        });
+
+        const targetContent = document.getElementById(targetId);
+
+        if (targetContent) {
+          targetContent.classList.add("active");
+          vipListModalTitle.textContent = eventName + " VIP List";
+          vipListModalOverlay.classList.add("active");
+        }
+      });
+    });
+
+    if (vipListModalClose) {
+      vipListModalClose.addEventListener("click", () => {
+        vipListModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (vipListModalOverlay) {
+      vipListModalOverlay.addEventListener("click", (event) => {
+        if (event.target === vipListModalOverlay) {
+          vipListModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    const guestUploadModalOverlay = document.getElementById("guestUploadModalOverlay");
+    const guestUploadModalClose = document.getElementById("guestUploadModalClose");
+    const guestUploadModalTitle = document.getElementById("guestUploadModalTitle");
+    const manualGuestEntries = document.getElementById("manualGuestEntries");
+    const saveManualGuestsButton = document.getElementById("saveManualGuestsButton");
+
+    let activeGuestListContentId = "";
+    let activeGuestListEventName = "";
+
+    document.querySelectorAll(".js-open-guest-list, .js-event-action-guest-list").forEach((button) => {
+      button.addEventListener("click", () => {
+        activeGuestListContentId = button.getAttribute("data-guest-target") || "";
+        activeGuestListEventName = button.getAttribute("data-guest-event-name") || "Event";
+      });
+    });
+
+    document.querySelectorAll(".js-open-guest-upload").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (!activeGuestListContentId) {
+          const activeGuestList = document.querySelector(".guest-list-modal-content.active");
+          activeGuestListContentId = activeGuestList ? activeGuestList.id : "";
+        }
+
+        guestUploadModalTitle.textContent = "Add Guests to " + (activeGuestListEventName || "Event");
+        manualGuestEntries.value = "";
+        guestListModalOverlay.classList.remove("active");
+        guestUploadModalOverlay.classList.add("active");
+      });
+    });
+
+    if (guestUploadModalClose) {
+      guestUploadModalClose.addEventListener("click", () => {
+        guestUploadModalOverlay.classList.remove("active");
+        guestListModalOverlay.classList.add("active");
+      });
+    }
+
+    if (guestUploadModalOverlay) {
+      guestUploadModalOverlay.addEventListener("click", (event) => {
+        if (event.target === guestUploadModalOverlay) {
+          guestUploadModalOverlay.classList.remove("active");
+          guestListModalOverlay.classList.add("active");
+        }
+      });
+    }
+
+    function parseGuestLine(line) {
+      const parts = line.split(",").map((part) => part.trim());
+
+      return {
+        name: parts[0] || "Unnamed Guest",
+        email: parts[1] || "No email",
+        phone: parts[2] || "No phone",
+        ticketType: parts[3] || "General Admission",
+        quantity: parts[4] || "1",
+        source: parts[5] || "Manual"
+      };
+    }
+
+    if (saveManualGuestsButton) {
+      saveManualGuestsButton.addEventListener("click", () => {
+        const activeContent = document.getElementById(activeGuestListContentId);
+
+        if (!activeContent) {
+          alert("Could not find the active guest list.");
+          return;
+        }
+
+        const table = activeContent.querySelector(".guest-list-table");
+        const emptyState = activeContent.querySelector(".empty-state");
+        const entries = manualGuestEntries.value
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+
+        if (!entries.length) {
+          alert("Please add at least one guest.");
+          return;
+        }
+
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        entries.forEach((line) => {
+          const guest = parseGuestLine(line);
+          const row = document.createElement("div");
+          row.className = "table-row guest-list-row";
+          row.innerHTML = `
+            <span>${guest.name}</span>
+            <span>${guest.email}</span>
+            <span>${guest.phone}</span>
+            <span>${guest.ticketType}</span>
+            <span>${guest.quantity}</span>
+            <span>${guest.source}</span>
+          `;
+
+          table.appendChild(row);
+        });
+
+        guestUploadModalOverlay.classList.remove("active");
+        guestListModalOverlay.classList.add("active");
+      });
+    }
+
+    document.querySelectorAll(".js-delete-message").forEach((button) => {
+      button.addEventListener("click", () => {
+        const row = button.closest(".message-row");
+
+        if (!row) return;
+
+        const name = row.getAttribute("data-message-name") || "this message";
+        const confirmed = confirm("Delete " + name + " from Website Inquiries?");
+
+        if (confirmed) {
+          row.remove();
+        }
+      });
+    });
+
+    const exportEventRevenueButton = document.getElementById("exportEventRevenueButton");
+
+    function downloadEventRevenueEverything() {
+      const rows = [
+        ["Section", "Label", "Value", "Notes"],
+
+        ["Revenue Summary", "Gross Revenue", "$4,250", "Online + ticket sales"],
+        ["Revenue Summary", "Expenses", document.getElementById("expenseTotal")?.textContent || "$800", "Staff, DJ, supplies"],
+        ["Revenue Summary", "Net Profit", document.getElementById("netProfitTotal")?.textContent || "$3,450", "After expenses"],
+        ["Revenue Summary", "Comps", "12", "Guest list / promo"],
+
+        ["Payment Breakdown", "Online Tickets", "$2,900", "Online ticket revenue"],
+        ["Payment Breakdown", "Cash", "$620", "Cash ticket sales"],
+        ["Payment Breakdown", "Card", "$410", "Card ticket sales"],
+        ["Payment Breakdown", "Cash App / Zelle", "$320", "Digital direct payments"],
+
+        ["Ticket Type Revenue", "General Admission", "$1,875", "GA tickets"],
+        ["Ticket Type Revenue", "VIP Tables", "$1,800", "VIP ticket sales"],
+        ["Ticket Type Revenue", "Ticket Sales / Door Sales", "$830", "Manual sales"],
+        ["Ticket Type Revenue", "Refunds", "-$255", "Refunded amount"],
+
+        ["Past Events Revenue", "Battle of the DJs Tickets Sold", "192", "Completed event"],
+        ["Past Events Revenue", "Battle of the DJs Revenue", "$4,503.15", "Completed event revenue"],
+        ["Past Events Revenue", "Battle of the DJs Expenses", "$800.00", "Completed event expenses"],
+        ["Past Events Revenue", "Battle of the DJs Net Profit", "$3,703.15", "Completed event profit"]
+      ];
+
+      const savedExpenseRows = document.querySelectorAll(".expense-preview-row");
+
+      savedExpenseRows.forEach((row) => {
+        const description = row.querySelector("div")?.textContent.trim().replace(/\s+/g, " ") || "Added Expense";
+        const amount = row.querySelector(":scope > strong")?.textContent.trim() || "";
+        rows.push(["Added Expenses", description, amount, "Added during preview"]);
+      });
+
+      const csv = rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "event-revenue-everything.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    if (exportEventRevenueButton) {
+      exportEventRevenueButton.addEventListener("click", downloadEventRevenueEverything);
+    }
+</script>
+
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const memberExportData = {
+      "vip-email": {
+        fileName: "vip-email-list.csv",
+        rows: [
+          ["Name", "Email", "List", "Status", "Signup Date"],
+          ["Danielle Carter", "danielle@example.com", "VIP Email List", "Subscribed", "Today"],
+          ["Marcus Lee", "marcus@example.com", "VIP Email List", "Subscribed", "Yesterday"]
+        ]
+      },
+      "originals": {
+        fileName: "jukebox-circle-originals.csv",
+        rows: [
+          ["Name", "Email", "List", "Status", "Signup Date"],
+          ["Renee Thompson", "renee@example.com", "Jukebox Circle Originals", "Active", "This Month"],
+          ["Anthony Green", "anthony@example.com", "Jukebox Circle Originals", "New", "Today"]
+        ]
+      },
+      "circle": {
+        fileName: "jukebox-circle.csv",
+        rows: [
+          ["Name", "Email", "List", "Status", "Signup Date"],
+          ["Nicole Harris", "nicole@example.com", "Jukebox Circle", "New", "Today"],
+          ["Chris Williams", "chris@example.com", "Jukebox Circle", "Active", "This Month"]
+        ]
+      }
+    };
+
+    memberExportData.all = {
+      fileName: "all-members.csv",
+      rows: [
+        ["Name", "Email", "List", "Status", "Signup Date"],
+        ...memberExportData["vip-email"].rows.slice(1),
+        ...memberExportData.originals.rows.slice(1),
+        ...memberExportData.circle.rows.slice(1)
+      ]
+    };
+
+    function downloadMemberList(listKey) {
+      const data = memberExportData[listKey];
+
+      if (!data) {
+        alert("No export data found for this list yet.");
+        return;
+      }
+
+      const csv = data.rows
+        .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = data.fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
+    document.querySelectorAll(".js-export-members").forEach((button) => {
+      button.addEventListener("click", () => {
+        downloadMemberList(button.getAttribute("data-member-list"));
+      });
+    });
+  });
+</script>
+
+  <a href="#top" class="back-to-top" aria-label="Back to top">↑</a>
+
+
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const manualUploadGuestsButton = document.getElementById("manualUploadGuestsButton");
+    const guestUploadModalOverlay = document.getElementById("guestUploadModalOverlay");
+    const guestUploadModalTitle = document.getElementById("guestUploadModalTitle");
+    const guestListModalOverlay = document.getElementById("guestListModalOverlay");
+
+    const manualGuestName = document.getElementById("manualGuestName");
+    const manualGuestEmail = document.getElementById("manualGuestEmail");
+    const manualGuestPhone = document.getElementById("manualGuestPhone");
+    const manualGuestTicketType = document.getElementById("manualGuestTicketType");
+    const manualGuestQuantity = document.getElementById("manualGuestQuantity");
+    const manualGuestSource = document.getElementById("manualGuestSource");
+    const saveManualGuestsButton = document.getElementById("saveManualGuestsButton");
+    const guestUploadModalClose = document.getElementById("guestUploadModalClose");
+
+    function getActiveGuestListContent() {
+      return document.querySelector(".guest-list-modal-content.active");
+    }
+
+    function resetGuestFields() {
+      if (manualGuestName) manualGuestName.value = "";
+      if (manualGuestEmail) manualGuestEmail.value = "";
+      if (manualGuestPhone) manualGuestPhone.value = "";
+      if (manualGuestTicketType) manualGuestTicketType.value = "General Admission";
+      if (manualGuestQuantity) manualGuestQuantity.value = "1";
+      if (manualGuestSource) manualGuestSource.value = "Manual";
+    }
+
+    if (manualUploadGuestsButton) {
+      manualUploadGuestsButton.addEventListener("click", () => {
+        const activeGuestList = getActiveGuestListContent();
+
+        if (!activeGuestList) {
+          alert("Open a guest list first, then click Manual Upload.");
+          return;
+        }
+
+        if (guestUploadModalTitle) {
+          guestUploadModalTitle.textContent = "Add Guest";
+        }
+
+        resetGuestFields();
+
+        if (guestListModalOverlay) {
+          guestListModalOverlay.classList.remove("active");
+        }
+
+        if (guestUploadModalOverlay) {
+          guestUploadModalOverlay.classList.add("active");
+        }
+      });
+    }
+
+    if (guestUploadModalClose) {
+      guestUploadModalClose.addEventListener("click", () => {
+        if (guestUploadModalOverlay) {
+          guestUploadModalOverlay.classList.remove("active");
+        }
+
+        if (guestListModalOverlay) {
+          guestListModalOverlay.classList.add("active");
+        }
+      });
+    }
+
+    if (saveManualGuestsButton) {
+      saveManualGuestsButton.addEventListener("click", () => {
+        const activeGuestList = getActiveGuestListContent();
+
+        if (!activeGuestList) {
+          alert("Could not find the active guest list.");
+          return;
+        }
+
+        const table = activeGuestList.querySelector(".guest-list-table");
+        const emptyState = activeGuestList.querySelector(".empty-state");
+
+        if (!table) {
+          alert("Could not find the guest list table.");
+          return;
+        }
+
+        const name = manualGuestName?.value.trim() || "";
+        const email = manualGuestEmail?.value.trim() || "No email";
+        const phone = manualGuestPhone?.value.trim() || "No phone";
+        const ticketType = manualGuestTicketType?.value || "General Admission";
+        const quantity = manualGuestQuantity?.value || "1";
+        const source = manualGuestSource?.value || "Manual";
+
+        if (!name) {
+          alert("Please enter the guest name.");
+          return;
+        }
+
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        const row = document.createElement("div");
+        row.className = "table-row guest-list-row";
+        row.innerHTML = `
+          <span>${name}</span>
+          <span>${email}</span>
+          <span>${phone}</span>
+          <span>${ticketType}</span>
+          <span>${quantity}</span>
+          <span>${source}</span>
+        `;
+
+        table.appendChild(row);
+
+        resetGuestFields();
+
+        if (guestUploadModalOverlay) {
+          guestUploadModalOverlay.classList.remove("active");
+        }
+
+        if (guestListModalOverlay) {
+          guestListModalOverlay.classList.add("active");
+        }
+      });
+    }
+  });
+</script>
+
+
+
 </body>
 </html>
