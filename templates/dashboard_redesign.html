@@ -83,13 +83,42 @@
         </div>
 
         <div class="stat-card">
+          <p>Ticket Sales Revenue</p>
+          <h3>${{ "%.2f"|format(metrics.ticket_revenue) }}</h3>
+          <span>Tickets only</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Jukebox Circle Originals</p>
+          <h3>12</h3>
+          <span>Original members</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Jukebox Circle</p>
+          <h3>8</h3>
+          <span>General members</span>
+        </div>
+
+        <div class="stat-card">
+          <p>VIP Email List</p>
+          <h3>31</h3>
+          <span>Email subscribers</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Membership Revenue</p>
+          <h3>${{ "%.2f"|format(metrics.membership_revenue) }}</h3>
+          <span>Memberships only</span>
+        </div>
+
+        <div class="stat-card total-revenue-highlight">
           <p>Total Revenue</p>
           <h3>${{ "%.2f"|format(metrics.total_revenue) }}</h3>
           <span>Tickets + memberships</span>
         </div>
       </section>
-
-      <section class="dashboard-grid">
+<section class="dashboard-grid">
         <div class="panel large-panel">
           <div class="panel-header">
             <div>

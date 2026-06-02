@@ -2400,3 +2400,30 @@ button[data-action="delete"]:hover {
   margin-top: 0 !important;
 }
 
+
+/* Highlight Total Revenue KPI */
+.total-revenue-highlight {
+  background:
+    radial-gradient(circle at top right, rgba(214, 168, 79, 0.28), transparent 38%),
+    linear-gradient(135deg, rgba(214, 168, 79, 0.22), rgba(255, 255, 255, 0.04)),
+    var(--panel) !important;
+  border-color: rgba(214, 168, 79, 0.45) !important;
+  box-shadow:
+    0 24px 80px rgba(214, 168, 79, 0.12),
+    0 20px 70px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+.total-revenue-highlight p {
+  color: var(--gold) !important;
+}
+
+.total-revenue-highlight h3 {
+  color: #fff7df !important;
+  text-shadow: 0 0 22px rgba(214, 168, 79, 0.25);
+}
+
+.total-revenue-highlight span {
+  color: rgba(255, 247, 223, 0.82) !important;
+}
+
