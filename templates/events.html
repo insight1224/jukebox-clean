@@ -89,6 +89,39 @@
     {% endfor %}
 </div>
 
+<!-- VOTING SECTION -->
+<div class="vinyl-section">
+
+    <h2>🎧 Vote for the Next Vibe</h2>
+
+    <div class="vinyl-row">
+
+        {% for v in event_votes %}
+
+        <div class="vinyl-card">
+
+            <!-- RECORD -->
+            <div class="record">
+                <div class="label">{{ v[0] }}</div>
+            </div>
+
+            <!-- VOTES -->
+            <p class="vote-count">{{ v[1] }} votes</p>
+
+            <!-- VOTE BUTTON -->
+            <form method="POST" action="/vote-event">
+                <input type="hidden" name="event_name" value="{{ v[0]|trim }}">
+                <button type="submit" class="vote-btn">Vote</button>
+            </form>
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</div>
+
 <!-- EVENT REQUEST -->
 <div class="interest-box">
 

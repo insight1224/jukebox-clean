@@ -80,7 +80,10 @@
       </section>
 
       <section class="section card-block">
-        <h3 class="section-title">Logs &amp; Applications</h3>
+        <div class="logs-head">
+          <h3 class="section-title">Logs &amp; Applications</h3>
+          <button class="gold-btn" type="button" id="openDashboardMassEmail">Mass Email</button>
+        </div>
         <div class="app-log-buttons">
           <a class="app-log-btn" href="/checkin">Check-In Logs</a>
           <a class="app-log-btn" href="/admin/leads?type=dj%20application">DJ / Band Applications</a>
@@ -134,6 +137,107 @@
         </div>
       </section>
     </main>
+
+    <div id="dashboardMassEmailModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="dashboardMassEmailTitle">
+      <div class="modal-card">
+        <h3 id="dashboardMassEmailTitle">Mass Email</h3>
+        <label for="dashboardMassType">Audience</label>
+        <select id="dashboardMassType">
+          <option value="vip">VIP Signup</option>
+          <option value="membership">Membership Signup</option>
+        </select>
+        <label for="dashboardMassSubject">Subject</label>
+        <input id="dashboardMassSubject" type="text" placeholder="Email subject">
+        <label for="dashboardMassBody">Message</label>
+        <textarea id="dashboardMassBody" rows="6" placeholder="Write your message..."></textarea>
+        <label for="dashboardMassRecipients">Recipients</label>
+        <textarea id="dashboardMassRecipients" rows="4" readonly></textarea>
+        <p id="dashboardMassStatus"></p>
+        <div class="modal-actions">
+          <button type="button" class="ghost" id="dashboardMassClose">Close</button>
+          <button type="button" class="gold-btn" id="dashboardMassOpenGmail">Open in Gmail</button>
+          <button type="button" class="gold-btn" id="dashboardMassCopy">Copy Emails</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      window.DASHBOARD_RECIPIENTS = {
+        vip: {{ (vip_recipients | default([], true)) | tojson }},
+        membership: {{ (membership_recipients | default([], true)) | tojson }}
+      };
+    </script>
+    <script>
+      (function () {
+        const modal = document.getElementById('dashboardMassEmailModal');
+        const openBtn = document.getElementById('openDashboardMassEmail');
+        const closeBtn = document.getElementById('dashboardMassClose');
+        const typeInput = document.getElementById('dashboardMassType');
+        const subjectInput = document.getElementById('dashboardMassSubject');
+        const bodyInput = document.getElementById('dashboardMassBody');
+        const recipientsInput = document.getElementById('dashboardMassRecipients');
+        const openGmailBtn = document.getElementById('dashboardMassOpenGmail');
+        const copyBtn = document.getElementById('dashboardMassCopy');
+        const status = document.getElementById('dashboardMassStatus');
+        const recipientsByType = window.DASHBOARD_RECIPIENTS || { vip: [], membership: [] };
+
+        function selectedRecipients() {
+          const key = (typeInput?.value || 'vip').toLowerCase();
+          return (recipientsByType[key] || []);
+        }
+
+        function refreshRecipients() {
+          if (!recipientsInput) return;
+          const list = selectedRecipients();
+          recipientsInput.value = list.join(', ');
+          if (status) status.textContent = `Recipients: ${list.length}`;
+        }
+
+        if (!modal || !openBtn || !closeBtn) return;
+        openBtn.addEventListener('click', function () {
+          modal.classList.remove('hidden');
+          refreshRecipients();
+        });
+        closeBtn.addEventListener('click', function () {
+          modal.classList.add('hidden');
+        });
+        modal.addEventListener('click', function (event) {
+          if (event.target === modal) modal.classList.add('hidden');
+        });
+        typeInput?.addEventListener('change', refreshRecipients);
+
+        openGmailBtn?.addEventListener('click', function () {
+          const recipients = selectedRecipients();
+          if (!recipients.length) {
+            alert('No active recipients found for this audience.');
+            return;
+          }
+          const subject = (subjectInput?.value || '').trim();
+          const body = (bodyInput?.value || '').trim();
+          const gmailUrl =
+            'https://mail.google.com/mail/?view=cm&fs=1&tf=1'
+            + '&authuser=' + encodeURIComponent('thejukeboxloungenc@gmail.com')
+            + '&bcc=' + encodeURIComponent(recipients.join(','))
+            + '&su=' + encodeURIComponent(subject)
+            + '&body=' + encodeURIComponent(body);
+          window.open(gmailUrl, '_blank');
+        });
+
+        copyBtn?.addEventListener('click', async function () {
+          const recipients = selectedRecipients();
+          if (!recipients.length) {
+            alert('No active recipients found for this audience.');
+            return;
+          }
+          try {
+            await navigator.clipboard.writeText(recipients.join(', '));
+            if (status) status.textContent = 'Recipient emails copied.';
+          } catch (err) {
+            if (status) status.textContent = 'Copy failed. You can copy from the recipients box.';
+          }
+        });
+      })();
+    </script>
     <script>
       setTimeout(function () {
         window.location.reload();
