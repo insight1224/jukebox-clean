@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Gallery | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='gallery.css') }}">
+
+<section class="gallery-hero">
+  <div class="gallery-hero-inner">
+    <p class="gallery-kicker">The Jukebox Lounge NC</p>
+    <h1>Event Gallery</h1>
+    <p>Relive the moments, memories, music, and grown-folk energy from each Jukebox Lounge NC experience.</p>
+  </div>
+</section>
+
+<section class="gallery-section">
+  <div class="gallery-panel">
+    <h2>Featured Events</h2>
+    
+    <div class="event-gallery-grid">
+
+      <article class="event-gallery-card" data-category="rnb">
+        <div class="event-gallery-thumb">
+          <img src="{{ url_for('static', filename='images/flyer-part1.jpg') }}" alt="Quiet Storm Live flyer">
+        </div>
+        <div class="event-gallery-info">
+          <h3>Battle of the DJs</h3>
+          <p>DJ Event Experience</p>
+          <span>Gallery Coming Soon</span>
+        </div>
+      </article>
+
+      <article class="event-gallery-card" data-category="dj">
+        <div class="event-gallery-thumb">
+          <img src="{{ url_for('static', filename='images/flyer-part2.jpg') }}" alt="Battle of the DJs flyer">
+        </div>
+        <div class="event-gallery-info">
+          <h3>Quiet Storm Live</h3>
+          <p>Live R&B Experience</p>
+          <span>Gallery Coming Soon</span>
+        </div>
+      </article>
+
+      <article class="event-gallery-card" data-category="community rnb">
+        <div class="event-gallery-thumb">
+          <img src="{{ url_for('static', filename='images/flyer-juneteenth-finale.png') }}" alt="Grown and Sexy Melanin flyer">
+        </div>
+        <div class="event-gallery-info">
+          <h3>Grown & Sexy: Melanin</h3>
+          <p>Juneteenth Weekend Celebration</p>
+          <span>Gallery Coming Soon</span>
+        </div>
+      </article>
+
+    </div>
+  </div>
+</section>
+
+
+{% endblock %}

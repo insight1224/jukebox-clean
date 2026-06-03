@@ -463,3 +463,368 @@ nav a {
         font-size: 14px;
     }
 }
+
+.originals-section {
+  background: radial-gradient(circle at top, rgba(212,175,55,0.14), transparent 45%), #080504;
+  color: #fff;
+}
+
+.section-kicker {
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.originals-intro {
+  color: #eadfc7;
+  max-width: 720px;
+  margin-bottom: 28px;
+}
+
+.originals-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 18px;
+  max-width: 950px;
+}
+
+.original-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(212,175,55,0.08));
+  border: 1px solid rgba(212,175,55,0.26);
+  box-shadow: 0 16px 34px rgba(0,0,0,0.28);
+}
+
+.original-number {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #d4af37;
+  color: #140b04;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.original-card h3 {
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 1.15rem;
+}
+
+.original-card p {
+  margin: 0;
+  color: #d4af37;
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 800;
+}
+
+@media (max-width: 760px) {
+  .originals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.originals-section .container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.originals-grid {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.about-owner-section {
+  padding: 80px 20px;
+  background: radial-gradient(circle at top, rgba(212,175,55,0.16), transparent 45%), #080504;
+  color: #fff;
+}
+
+.about-owner-wrap {
+  max-width: 1150px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 50px;
+  align-items: center;
+}
+
+.about-owner-photo img {
+  width: 100%;
+  border-radius: 28px;
+  border: 1px solid rgba(212,175,55,0.35);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.45);
+}
+
+.about-owner-content h1 {
+  color: #f5d76e;
+  font-size: clamp(2.4rem, 5vw, 4rem);
+  margin-bottom: 22px;
+}
+
+.about-owner-content p {
+  color: #eadfc7;
+  line-height: 1.8;
+  margin-bottom: 18px;
+}
+
+.about-owner-content h2 {
+  color: #d4af37;
+  margin: 28px 0 16px;
+  font-size: 2rem;
+}
+
+@media (max-width: 900px) {
+  .about-owner-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .about-owner-photo {
+    max-width: 420px;
+    margin: 0 auto;
+  }
+}
+
+.about-team-section {
+  padding-top: 20px;
+}
+
+.about-team-wrap {
+  grid-template-columns: 1fr 380px;
+}
+
+.about-photo-placeholder {
+  min-height: 460px;
+  border-radius: 28px;
+  border: 1px solid rgba(212,175,55,0.35);
+  background:
+    linear-gradient(135deg, rgba(212,175,55,0.16), rgba(255,255,255,0.04)),
+    #130c07;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+  text-align: center;
+}
+
+.about-photo-placeholder span {
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 900;
+}
+
+.about-photo-placeholder p {
+  margin-top: 10px;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .about-team-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.team-heading {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.team-heading-outside {
+  max-width: 1150px;
+  margin: 0 auto 25px;
+  text-align: center;
+}
+
+.team-heading-outside h1 {
+  color: #f5d76e;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+}
+
+.about-page {
+  padding: 80px 20px;
+  background: radial-gradient(circle at top, rgba(212,175,55,0.16), transparent 42%), #080504;
+  color: #fff;
+}
+
+.about-intro {
+  max-width: 900px;
+  margin: 0 auto 55px;
+  text-align: center;
+}
+
+.about-intro h1 {
+  color: #f5d76e;
+  font-size: clamp(2.5rem, 6vw, 4.6rem);
+  margin-bottom: 20px;
+}
+
+.about-intro p {
+  color: #eadfc7;
+  line-height: 1.8;
+}
+
+.about-team-grid {
+  max-width: 1150px;
+  margin: 0 auto;
+  display: grid;
+  gap: 35px;
+}
+
+.about-profile-card {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 36px;
+  align-items: center;
+  padding: 34px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.055), rgba(212,175,55,0.07));
+  border: 1px solid rgba(212,175,55,0.28);
+  box-shadow: 0 24px 55px rgba(0,0,0,0.35);
+}
+
+.about-profile-card img {
+  width: 100%;
+  height: 440px;
+  object-fit: cover;
+  border-radius: 22px;
+  border: 1px solid rgba(212,175,55,0.32);
+}
+
+.about-profile-card h2 {
+  color: #f5d76e;
+  font-size: 2.3rem;
+  margin: 8px 0 18px;
+}
+
+.about-profile-card p {
+  color: #eadfc7;
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+
+.about-closing {
+  max-width: 850px;
+  margin: 60px auto 0;
+  text-align: center;
+}
+
+.about-closing h2 {
+  color: #d4af37;
+  font-size: clamp(2rem, 5vw, 3rem);
+}
+
+.about-closing p {
+  color: #eadfc7;
+  font-size: 1.1rem;
+}
+
+@media (max-width: 850px) {
+  .about-profile-card {
+    grid-template-columns: 1fr;
+  }
+
+  .about-profile-card img {
+    height: auto;
+    max-height: 520px;
+  }
+}
+
+/* FUNKY ABOUT PAGE LAYOUT */
+.about-team-grid {
+  gap: 70px;
+}
+
+.about-profile-card {
+  position: relative;
+  overflow: visible;
+}
+
+.about-profile-card:nth-child(1) {
+  transform: rotate(-1deg);
+}
+
+.about-profile-card:nth-child(2) {
+  grid-template-columns: 1fr 360px;
+  transform: rotate(1deg);
+  margin-top: -20px;
+}
+
+.about-profile-card:nth-child(2) img {
+  order: 2;
+}
+
+.about-profile-card:nth-child(2) > div {
+  order: 1;
+}
+
+.about-profile-card::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border: 1px solid rgba(212,175,55,0.18);
+  border-radius: 34px;
+  z-index: -1;
+}
+
+.about-profile-card:nth-child(1)::after {
+  content: "FOUNDER";
+  position: absolute;
+  top: -18px;
+  right: 35px;
+  background: #d4af37;
+  color: #140b04;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.about-profile-card:nth-child(2)::after {
+  content: "BRAND + OPS";
+  position: absolute;
+  top: -18px;
+  left: 35px;
+  background: #d4af37;
+  color: #140b04;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.about-closing {
+  margin-top: 85px;
+  padding: 35px;
+  border-radius: 28px;
+  border: 1px solid rgba(212,175,55,0.25);
+  background: rgba(255,255,255,0.04);
+}
+
+@media (max-width: 850px) {
+  .about-profile-card,
+  .about-profile-card:nth-child(2) {
+    grid-template-columns: 1fr;
+    transform: none;
+  }
+
+  .about-profile-card:nth-child(2) img,
+  .about-profile-card:nth-child(2) > div {
+    order: initial;
+  }
+}

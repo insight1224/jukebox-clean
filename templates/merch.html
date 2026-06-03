@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Merch Coming Soon | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='merch.css') }}">
+
+<section class="merch-hero merch-coming-soon">
+  <div class="merch-wrap">
+    <p class="merch-kicker">The Jukebox Lounge NC</p>
+    <h1>Merch Coming Soon</h1>
+    <p>Preview upcoming pieces from our official merch collection.</p>
+  </div>
+</section>
+
+<section class="merch-grid-shell">
+  <div class="merch-wrap">
+    <div class="merch-grid">
+      {% set preview_items = [
+        ("merch-black-durham.png", "The Jukebox Lounge NC Tee"),
+        ("merch-charcoal-vinyl.png", "The Jukebox Lounge NC Tee"),
+        ("merch-olive-bull-city-1.png", "NC Born. Bull City Made Tee"),
+        ("merch-olive-bull-city-2.png", "NC Born. Bull City Made Tee"),
+        ("merch-olive-good-vibes.png", "The Jukebox Lounge NC Tee"),
+        ("merch-olive-jukebox-never-old.png", "Jukebox Lounge NC Tee")
+      ] %}
+
+      {% for image, name in preview_items %}
+      <article class="merch-card">
+        <img src="{{ url_for('static', filename='images/' ~ image) }}" alt="{{ name }}">
+        <div class="merch-card-body">
+          <h2>{{ name }}</h2>
+          <p class="merch-price">Coming Soon</p>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+{% endblock %}

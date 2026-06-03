@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="membership-page-wrap">
 <link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='membership.css') }}">
 
@@ -34,4 +35,37 @@
   Secure checkout powered by Square
 </p>
 </section>
+
+<section class="section originals-section">
+  <div class="container">
+    <p class="section-kicker">Legacy Members</p>
+    <h2>The Jukebox Circle Originals</h2>
+    <p class="originals-intro">
+      Honoring the members whose support, contributions, and belief in the vision helped build the foundation of The Jukebox Lounge NC.
+    </p>
+
+    <div class="originals-grid">
+      {% set originals = [
+        "Original Member 1",
+        "Original Member 2",
+        "Original Member 3",
+        "Original Member 4",
+        "Original Member 5",
+        "Original Member 6",
+        "Original Member 7"
+      ] %}
+
+      {% for name in originals %}
+      <div class="original-card">
+        <span class="original-number">{{ "%02d"|format(loop.index) }}</span>
+        <div>
+          <h3>{{ name }}</h3>
+          <p>Jukebox Circle Original</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+</div>
 {% endblock %}

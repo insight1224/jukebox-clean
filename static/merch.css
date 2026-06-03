@@ -1,0 +1,138 @@
+.merch-wrap {
+  width: min(1200px, 92%);
+  margin: 0 auto;
+}
+
+.merch-hero {
+  padding: 44px 0 24px;
+  background: linear-gradient(180deg, #0a0a0a 0%, #131313 100%);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+.merch-hero h1 {
+  margin: 0 0 10px;
+  color: #d4af37;
+  font-size: clamp(1.8rem, 2.7vw, 2.5rem);
+  letter-spacing: 0;
+}
+
+.merch-hero p {
+  margin: 0;
+  color: #e7e7e7;
+  max-width: 720px;
+}
+
+.merch-grid-shell {
+  background: #0e0e0e;
+  padding: 28px 0 52px;
+}
+
+.merch-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.merch-card {
+  background: #151515;
+  border: 1px solid rgba(212, 175, 55, 0.32);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.merch-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: #fff;
+}
+
+.merch-card-body {
+  padding: 14px 14px 16px;
+}
+
+.merch-card h2 {
+  margin: 0;
+  color: #f4f4f4;
+  font-size: 1.1rem;
+}
+
+.merch-color {
+  margin: 6px 0 10px;
+  color: #d4af37;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.merch-price {
+  margin: 0 0 10px;
+  color: #f8f8f8;
+  font-weight: 700;
+}
+
+.merch-card ul {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  color: #d8d8d8;
+  line-height: 1.5;
+}
+
+.merch-btn {
+  display: inline-block;
+  text-decoration: none;
+  background: #d4af37;
+  color: #101010;
+  font-weight: 700;
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+
+.merch-btn:hover {
+  filter: brightness(1.03);
+}
+
+.merch-checkout-form {
+  display: grid;
+  gap: 8px;
+}
+
+.merch-form-row {
+  display: grid;
+  gap: 4px;
+}
+
+.merch-form-row label {
+  color: #d4af37;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.merch-form-row select,
+.merch-form-row input {
+  width: 100%;
+  box-sizing: border-box;
+  background: #0d0d0d;
+  color: #f3f3f3;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 6px;
+  padding: 9px 10px;
+}
+
+@media (max-width: 980px) {
+  .merch-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .merch-hero {
+    padding-top: 28px;
+  }
+
+  .merch-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}

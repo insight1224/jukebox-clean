@@ -2696,6 +2696,27 @@ def membership():
     return render_template("membership.html")
 
 # -------------------------
+# DONATION PAGE
+# -------------------------
+@app.route("/donate")
+def donate():
+    return render_template("donate.html")
+
+# -------------------------
+# ABOUT PAGE
+# -------------------------
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+# -------------------------
+# GALLERY PAGE
+# -------------------------
+@app.route("/gallery")
+def gallery():
+    return render_template("gallery.html")
+
+# -------------------------
 # MERCH PAGE
 # -------------------------
 @app.route("/merch")
