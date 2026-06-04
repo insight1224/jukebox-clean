@@ -552,7 +552,7 @@ init_db()   # ✅ AFTER function exists
 # EMAIL CONFIG
 # -------------------------
 SQUARE_SIGNATURE_KEY = os.getenv("SQUARE_SIGNATURE_KEY", "")
-SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOUK_URL", "")
+SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOOK_URL", "")
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "").strip()
 SQUARE_ENV = os.getenv("SQUARE_ENV", "sandbox").strip()
 if SQUARE_ENV == "sandbox":
@@ -578,8 +578,15 @@ WEB_TICKET_TYPES = {
 SQUARE_TO_DB_MAP = {
     "Battle - Early Bird General": "Early Bird",
     "Battle - General": "General Admission",
+    "Battle - Door": "General Admission",
+    "Battle of the DJs - General Admissions": "General Admission",
+    "Battle of the DJs - Early Bird": "Early Bird",
+    "Battle of the DJs": "Early Bird",
+    "Juneteenth Celebration - Early Bird": "Early Bird",
     "Battle - VIP": "VIP Section",
     "Battle - VIP DJ Section": "DJ VIP Section",
+    "Battle Custom VIP": "Custom VIP",
+    "Birthday VIP": "Custom VIP",
     "The Jukebox Circle Membership": "Jukebox Circle Membership",
 }
 
@@ -596,6 +603,7 @@ CANONICAL_TICKET_TYPES = {
     "General Admission",
     "VIP Section",
     "DJ VIP Section",
+    "Custom VIP",
 }
 
 TICKET_CAPACITY = {
@@ -1389,6 +1397,16 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
             if not ticket_name:
                 continue
             quantity = parse_line_item_quantity(item)
+            total_money = ((item or {}).get("total_money", {}) or {}).get("amount")
+            base_money = ((item or {}).get("base_price_money", {}) or {}).get("amount")
+            try:
+                unit_amount_cents = int(total_money) // max(1, quantity)
+            except Exception:
+                try:
+                    unit_amount_cents = int(base_money)
+                except Exception:
+                    unit_amount_cents = int(amount_cents or 0) // max(1, quantity)
+
             print(f"Creating {quantity} tickets for payment {payment_id}")
             for _ in range(quantity):
                 ticket_id = generate_ticket(payment_id, next_index)
@@ -1417,7 +1435,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                             full_name,
                             buyer_email.lower(),
                             ticket_name,
-                            int(amount_cents or 0),
+                            int(unit_amount_cents or 0),
                             ticket_id,
                             payment_ref,
                             checkin_url,
@@ -1434,12 +1452,13 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
             print(f"[ticket-create] insert success ticket_ids={created_ticket_ids}")
             return created_ticket_ids
 
-    ticket_name = parse_ticket_from_note(payment.get("note")) or map_ticket_from_amount(amount_cents)
+    ticket_name = parse_ticket_from_note(payment.get("note")) or unnamed_square_door_ticket_name(payment, amount_cents) or map_ticket_from_amount(amount_cents)
     print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name} event_name={event_name}")
     if not ticket_name:
         print("[ticket-create] skip insert: missing ticket mapping")
         return []
     quantity = extract_quantity_from_payment(payment)
+    unit_amount_cents = int(amount_cents or 0) // max(1, quantity)
     print(f"Creating {quantity} tickets for payment {payment_id}")
     created = []
     for i in range(quantity):
@@ -1465,7 +1484,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                     full_name,
                     buyer_email.lower(),
                     ticket_name,
-                    int(amount_cents or 0),
+                    int(unit_amount_cents or 0),
                     ticket_id,
                     f"{payment_id}:{i}",
                     checkin_url,
@@ -1609,11 +1628,28 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
 def classify_square_payment(payment, amount_cents, note_blob):
     if int(amount_cents or 0) == 100:
         return "ignored_test", None
+
     if is_membership_payment_from_payment(payment, amount_cents, note_blob):
         return "membership", None
+
+    # Prefer Square order line item names over amount-only guessing.
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+    for item in line_items:
+        ticket_name = line_item_ticket_name(item)
+        if ticket_name:
+            return "ticket", ticket_name
+
+    # Manual Square door sales sometimes have no item name.
+    ticket_name = unnamed_square_door_ticket_name(payment, amount_cents)
+    if ticket_name:
+        return "ticket", ticket_name
+
+    # Fallback for older/simple payments where item names are not available.
     ticket_name = map_ticket_from_amount(amount_cents)
     if ticket_name:
         return "ticket", ticket_name
+
     return "unmatched", None
 
 
@@ -1621,26 +1657,44 @@ def square_list_payments(limit=100):
     if not SQUARE_ACCESS_TOKEN:
         return []
 
-    endpoint = f"{square_base_url()}/v2/payments?sort_order=DESC&limit={max(1, min(limit, 100))}"
-    req = urlrequest.Request(
-        endpoint,
-        headers={
-            "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
-            "Square-Version": "2024-11-20",
-            "Content-Type": "application/json",
-        },
-        method="GET",
-    )
+    target_limit = max(1, int(limit or 100))
+    per_page = min(target_limit, 100)
+    payments = []
+    cursor = None
 
-    try:
-        with urlrequest.urlopen(req, timeout=20) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-            return payload.get("payments", []) or []
-    except urlerror.HTTPError as exc:
-        print("Square list payments HTTP error:", exc.code)
-    except Exception as exc:
-        print("Square list payments error:", exc)
-    return []
+    while len(payments) < target_limit:
+        params = f"sort_order=DESC&limit={per_page}"
+        if cursor:
+            params += f"&cursor={urllib.parse.quote(cursor)}"
+
+        endpoint = f"{square_base_url()}/v2/payments?{params}"
+        req = urlrequest.Request(
+            endpoint,
+            headers={
+                "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+                "Square-Version": "2024-11-20",
+                "Content-Type": "application/json",
+            },
+            method="GET",
+        )
+
+        try:
+            with urlrequest.urlopen(req, timeout=20) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+                page_payments = payload.get("payments", []) or []
+                payments.extend(page_payments)
+                cursor = payload.get("cursor")
+
+                if not cursor or not page_payments:
+                    break
+        except urlerror.HTTPError as exc:
+            print("Square list payments HTTP error:", exc.code)
+            break
+        except Exception as exc:
+            print("Square list payments error:", exc)
+            break
+
+    return payments[:target_limit]
 
 
 def square_retrieve_order(order_id):
@@ -1735,6 +1789,36 @@ def parse_ticket_from_note(note):
     return None
 
 
+def unnamed_square_door_quantity(payment, amount_cents):
+    """
+    Manual Square door sales sometimes have no item name.
+    Treat unnamed $20/$40 completed card payments as door General Admission tickets.
+    """
+    amount = int(amount_cents or 0)
+    if amount not in (2000, 4000):
+        return 0
+
+    if (payment.get("source_type") or "").upper() != "CARD":
+        return 0
+
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+    if not line_items:
+        return 0
+
+    has_named_item = any(((item or {}).get("name") or "").strip() for item in line_items)
+    if has_named_item:
+        return 0
+
+    return max(1, amount // 2000)
+
+
+def unnamed_square_door_ticket_name(payment, amount_cents):
+    if unnamed_square_door_quantity(payment, amount_cents):
+        return "General Admission"
+    return None
+
+
 def extract_quantity_from_payment(payment):
     # 1) Direct quantity field (if upstream provided)
     raw = (payment or {}).get("quantity", None)
@@ -1743,6 +1827,11 @@ def extract_quantity_from_payment(payment):
             return max(1, int(str(raw)))
         except Exception:
             pass
+
+    amount_cents = int(((payment or {}).get("amount_money", {}) or {}).get("amount") or 0)
+    unnamed_door_qty = unnamed_square_door_quantity(payment or {}, amount_cents)
+    if unnamed_door_qty:
+        return unnamed_door_qty
 
     # 2) Sum Square order line item quantities when available
     order = square_retrieve_order((payment or {}).get("order_id", ""))
@@ -1798,6 +1887,10 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
             counts["duplicates"] += 1
             continue
 
+        status = (payment.get("status") or "").strip().upper()
+        if status != "COMPLETED":
+            continue
+
         amount_cents = int(payment.get("amount_money", {}).get("amount") or 0)
         note_blob = " ".join(
             str(part).strip().lower()
@@ -1844,7 +1937,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
             counts["processed"] += 1
             counts["tickets"] += 1 if (ticket_hit or ticket_created) else 0
             counts["memberships"] += 1 if membership_hit else 0
-            if include_diagnostics and len(counts["details"]) < 40:
+            if include_diagnostics and len(counts["details"]) < 120:
                 counts["details"].append(
                     {
                         "payment_id": payment_id,
@@ -1857,7 +1950,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
                 )
         else:
             counts["unmatched"] += 1
-            if include_diagnostics and len(counts["details"]) < 40:
+            if include_diagnostics and len(counts["details"]) < 120:
                 counts["details"].append(
                     {
                         "payment_id": payment_id,
@@ -1960,6 +2053,172 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
 ]
 
 
+
+@app.route("/dashboard")
+@requires_auth
+def dashboard():
+    return admin_dashboard_redesign()
+
+
+def get_live_dashboard_data():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    def one(query, params=(), default=0):
+        cur.execute(query, params)
+        row = cur.fetchone()
+        if not row:
+            return default
+        value = row[0]
+        return value if value is not None else default
+
+    vip_signups = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'VIP Signup'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    membership_signups = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Membership Signup'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    active_memberships = int(one("""
+        SELECT COUNT(*)
+        FROM memberships
+        WHERE LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(amount, 0) > 0
+    """))
+
+    contact_messages = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Contact Message'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    vendor_applications = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Vendor Application'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    dj_applications = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'DJ Application'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    total_tickets_sold = int(one("""
+        SELECT COUNT(*)
+        FROM event_tickets
+    """))
+
+    vip_tickets = int(one("""
+        SELECT COUNT(*)
+        FROM event_tickets
+        WHERE LOWER(ticket_type) LIKE '%vip%'
+    """))
+
+    single_tickets = max(total_tickets_sold - vip_tickets, 0)
+
+    checked_in = int(one("""
+        SELECT COUNT(*)
+        FROM event_tickets
+        WHERE COALESCE(checked_in, 0) = 1
+           OR LOWER(COALESCE(status, '')) IN ('checked_in', 'checked in', 'used')
+    """))
+
+    ticket_revenue = float(one("""
+        SELECT SUM(COALESCE(amount_cents, 0)) / 100.0
+        FROM event_tickets
+    """, default=0.0))
+
+    membership_revenue = float(one("""
+        SELECT SUM(COALESCE(amount, 0))
+        FROM memberships
+    """, default=0.0))
+
+    square_logged_revenue = float(one("""
+        SELECT SUM(COALESCE(amount_cents, 0)) / 100.0
+        FROM square_payment_log
+    """, default=0.0))
+
+    tips_other_revenue = 77.95
+    total_revenue = ticket_revenue + membership_revenue
+    square_total_collected = total_revenue + tips_other_revenue
+
+    cur.execute("""
+        SELECT COALESCE(event_name, 'Unknown') AS event_name,
+               ticket_type,
+               COUNT(*) AS quantity,
+               SUM(COALESCE(amount_cents, 0)) / 100.0 AS revenue
+        FROM event_tickets
+        GROUP BY COALESCE(event_name, 'Unknown'), ticket_type
+        ORDER BY event_name, ticket_type
+    """)
+    event_rows = cur.fetchall()
+
+    events_map = {}
+    for row in event_rows:
+        event_name = row["event_name"]
+        events_map.setdefault(event_name, {
+            "name": event_name,
+            "tickets": [],
+            "total_tickets_sold": 0,
+            "total_revenue": 0.0,
+        })
+        ticket = {
+            "name": row["ticket_type"],
+            "quantity": int(row["quantity"] or 0),
+            "price": 0,
+            "revenue": float(row["revenue"] or 0),
+        }
+        events_map[event_name]["tickets"].append(ticket)
+        events_map[event_name]["total_tickets_sold"] += ticket["quantity"]
+        events_map[event_name]["total_revenue"] += ticket["revenue"]
+
+    events = list(events_map.values())
+
+    conn.close()
+
+    metrics = {
+        "single_tickets": single_tickets,
+        "total_tickets_sold": total_tickets_sold,
+        "vip_tickets": vip_tickets,
+        "estimated_attendance": total_tickets_sold,
+        "checked_in": checked_in,
+        "ticket_revenue": ticket_revenue,
+        "active_memberships": active_memberships,
+        "membership_signups": membership_signups,
+        "membership_revenue": membership_revenue,
+        "tips_other_revenue": tips_other_revenue,
+        "total_revenue": total_revenue,
+        "square_total_collected": square_total_collected,
+        "square_logged_revenue": square_logged_revenue,
+        "vip_signups": vip_signups,
+        "contact_messages": contact_messages,
+        "vendor_applications": vendor_applications,
+        "dj_applications": dj_applications,
+    }
+
+    dashboard_preview_summary = {
+        "upcoming_events_count": len(events),
+        "door_sales_count": 0,
+        "door_sales_total": 0,
+        "door_sales_cash": 0,
+        "door_sales_square": 0,
+    }
+
+    return metrics, events, dashboard_preview_summary
+
+
 # -------------------------
 # HOME
 # -------------------------
@@ -1967,9 +2226,9 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
 def home():
     return render_template("index.html")
 
-@app.route("/dashboard")
+@app.route("/dashboard-old")
 @requires_auth
-def dashboard():
+def dashboard_old():
     single_tickets = 187
     vip_tickets = 6
     total_tickets_sold = single_tickets + vip_tickets
@@ -2712,9 +2971,40 @@ def about():
 # -------------------------
 # GALLERY PAGE
 # -------------------------
+
+@app.route("/gallery/battle-of-the-djs")
+def gallery_battle_of_the_djs():
+    gallery_dir = os.path.join(app.static_folder, "images", "battle-of-the-djs-gallery")
+    images = []
+    if os.path.isdir(gallery_dir):
+        images = sorted([
+            f"images/battle-of-the-djs-gallery/{name}"
+            for name in os.listdir(gallery_dir)
+            if name.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+        ])
+
+    video_dir = os.path.join(app.static_folder, "images", "battle of the djs")
+    videos = []
+    if os.path.isdir(video_dir):
+        videos = sorted([
+            f"images/battle of the djs/{name}"
+            for name in os.listdir(video_dir)
+            if name.lower().endswith((".mov", ".mp4", ".webm"))
+        ])
+
+    return render_template("gallery_event.html", title="Battle of the DJs", subtitle="DJ Event Experience", images=images, videos=videos)
+
 @app.route("/gallery")
 def gallery():
     return render_template("gallery.html")
+
+
+# -------------------------
+# SPONSORS PAGE
+# -------------------------
+@app.route("/sponsors")
+def sponsors():
+    return render_template("sponsors.html")
 
 # -------------------------
 # MERCH PAGE
@@ -4435,84 +4725,9 @@ def qr(ticket_id):
 @app.route("/admin/dashboard-redesign")
 @requires_auth
 def admin_dashboard_redesign():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
-
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": estimated_attendance,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
-
-    events = [
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-        {
-            "name": "Juneteenth Celebration",
-            "tickets": [
-                {"name": "General Admission", "quantity": 0, "price": 0},
-                {"name": "VIP Section", "quantity": 0, "price": 0},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    preview_tickets_sold = max(total_tickets_sold - vip_tickets, 0)
-
-    dashboard_preview_summary = {
-        "upcoming_events_count": len(events),
-        "door_sales_count": sum(
-            ticket.get("quantity", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_total": sum(
-            ticket.get("revenue", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_cash": sum(
-            ticket.get("cash_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_square": sum(
-            ticket.get("square_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-    }
-
+    preview_tickets_sold = metrics.get("single_tickets", 0)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 

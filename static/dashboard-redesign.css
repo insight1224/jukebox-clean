@@ -1713,7 +1713,7 @@ button[data-action="delete"]:hover {
 /* Premium sticky dashboard header */
 .preview-banner,
 .topbar {
-  position: sticky;
+  position: static;
   z-index: 80;
   backdrop-filter: blur(14px);
 }

@@ -32,13 +32,6 @@
     </aside>
 
     <main class="main-content" id="top">
-              <div class="preview-banner">
-        <div>
-          <strong>Preview Mode</strong>
-          <span>This redesigned dashboard is for client review only. The current live dashboard has not been replaced.</span>
-        </div>
-        <a href="/admin">Back to Current Dashboard</a>
-      </div>
       <header class="topbar">
         <div>
           <p class="eyebrow">Client Dashboard Preview</p>
@@ -51,8 +44,9 @@
             <span>Search</span>
             <input type="text" id="dashboardSearch" placeholder="Search events, guests, members, messages..." />
           </div>
-          <button class="btn secondary">View Old Dashboard</button>
+          <button class="btn secondary" type="button" id="syncSquareButton">Sync Square</button>
           <button class="btn primary" type="button" id="createEventTopButton">Create Event</button>
+          <span id="syncSquareStatus" class="sync-square-status"></span>
         </div>
       </header>
 
@@ -89,15 +83,9 @@
         </div>
 
         <div class="stat-card">
-          <p>Jukebox Circle Originals</p>
-          <h3>12</h3>
-          <span>Original members</span>
-        </div>
-
-        <div class="stat-card">
-          <p>Jukebox Circle</p>
-          <h3>8</h3>
-          <span>General members</span>
+          <p>Memberships</p>
+          <h3>{{ metrics.active_memberships }}</h3>
+          <span>Active paid memberships</span>
         </div>
 
         <div class="stat-card">
@@ -112,10 +100,16 @@
           <span>Memberships only</span>
         </div>
 
+        <div class="stat-card">
+          <p>Tips / Other</p>
+          <h3>${{ "%.2f"|format(metrics.tips_other_revenue) }}</h3>
+          <span>Tips + test/other Square payments</span>
+        </div>
+
         <div class="stat-card total-revenue-highlight">
-          <p>Total Revenue</p>
-          <h3>${{ "%.2f"|format(metrics.total_revenue) }}</h3>
-          <span>Tickets + memberships</span>
+          <p>Square Total Collected</p>
+          <h3>${{ "%.2f"|format(metrics.square_total_collected) }}</h3>
+          <span>Tickets + memberships + tips/other</span>
         </div>
       </section>
 <section class="dashboard-grid">
@@ -397,6 +391,54 @@
     const eventModalOverlay = document.getElementById("eventModalOverlay");
     const eventModalClose = document.getElementById("eventModalClose");
     const eventModalTitle = document.getElementById("eventModalTitle");
+    const syncSquareButton = document.getElementById("syncSquareButton");
+    const syncSquareStatus = document.getElementById("syncSquareStatus");
+
+    if (syncSquareButton) {
+      syncSquareButton.addEventListener("click", async () => {
+        const originalText = syncSquareButton.textContent;
+        syncSquareButton.disabled = true;
+        syncSquareButton.textContent = "Syncing...";
+
+        if (syncSquareStatus) {
+          syncSquareStatus.textContent = "Checking Square...";
+        }
+
+        try {
+          const response = await fetch("/square-sync", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Accept": "application/json"
+            }
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Square sync failed");
+          }
+
+          if (syncSquareStatus) {
+            syncSquareStatus.textContent = `Synced ${result.processed || 0} new payments. Refreshing...`;
+          }
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 900);
+        } catch (error) {
+          console.error(error);
+
+          if (syncSquareStatus) {
+            syncSquareStatus.textContent = "Sync failed. Check login or server logs.";
+          }
+
+          syncSquareButton.disabled = false;
+          syncSquareButton.textContent = originalText;
+        }
+      });
+    }
+
     const eventModalButtons = document.querySelectorAll(".js-open-event");
     const eventModalContents = document.querySelectorAll(".event-modal-content");
 
