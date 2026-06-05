@@ -56,25 +56,25 @@
       <section class="stats-grid">
         <div class="stat-card">
           <p>VIP Email List</p>
-          <h3>31</h3>
-          <span>Email subscribers</span>
+          <h3>{{ member_stats.vip_email_count }}</h3>
+          <span>Email subscribers, not revenue</span>
         </div>
 
         <div class="stat-card">
           <p>Original Members</p>
-          <h3>12</h3>
-          <span>Jukebox Circle Originals</span>
+          <h3>{{ member_stats.originals_count }}</h3>
+          <span>Original members</span>
         </div>
 
         <div class="stat-card">
           <p>Jukebox Circle</p>
-          <h3>8</h3>
-          <span>General members</span>
+          <h3>{{ member_stats.regular_count }}</h3>
+          <span>Regular members</span>
         </div>
 
         <div class="stat-card">
           <p>Monthly Revenue</p>
-          <h3>$200</h3>
+          <h3>${{ "%.2f"|format(member_stats.monthly_revenue) }}</h3>
           <span>Estimated membership revenue</span>
         </div>
       </section>
@@ -98,7 +98,7 @@
               <span class="badge warning">31 Total</span>
             </div>
 
-            <p>People who signed up to receive VIP updates, event announcements, and early access information.</p>
+            <p>People who signed up to receive VIP updates, event announcements, and early access information. This list is separate from paid memberships.</p>
 
             <div class="mini-list">
               <div>
@@ -127,7 +127,7 @@
                 <p class="eyebrow">Original Members</p>
                 <h4>Jukebox Circle Originals</h4>
               </div>
-              <span class="badge live">12 Active</span>
+              <span class="badge live">{{ member_stats.originals_count }} Active</span>
             </div>
 
             <p>Founding or early members who are part of the original Jukebox Circle group.</p>

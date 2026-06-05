@@ -44,9 +44,15 @@
             <span>Search</span>
             <input type="text" id="dashboardSearch" placeholder="Search events, guests, members, messages..." />
           </div>
-          <button class="btn secondary" type="button" id="syncSquareButton">Sync Square</button>
-          <button class="btn primary" type="button" id="createEventTopButton">Create Event</button>
+
+          <div class="topbar-button-row">
+            <button class="btn secondary" type="button" id="syncSquareButton">Sync Square</button>
+            <button class="btn secondary" type="button" id="syncEventbriteButton">Sync Eventbrite</button>
+            <button class="btn primary" type="button" id="createEventTopButton">Create Event</button>
+          </div>
+
           <span id="syncSquareStatus" class="sync-square-status"></span>
+          <span id="syncEventbriteStatus" class="sync-square-status"></span>
         </div>
       </header>
 
@@ -71,9 +77,9 @@
         </div>
 
         <div class="stat-card">
-          <p>Estimated Attendance</p>
-          <h3>{{ metrics.estimated_attendance }}</h3>
-          <span>Based on ticket totals</span>
+          <p>Total Tickets Sold</p>
+          <h3>{{ metrics.total_tickets_sold }}</h3>
+          <span>All tickets sold</span>
         </div>
 
         <div class="stat-card">
@@ -83,15 +89,15 @@
         </div>
 
         <div class="stat-card">
-          <p>Memberships</p>
-          <h3>{{ metrics.active_memberships }}</h3>
-          <span>Active paid memberships</span>
-        </div>
-
-        <div class="stat-card">
           <p>VIP Email List</p>
           <h3>31</h3>
           <span>Email subscribers</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Memberships</p>
+          <h3>{{ metrics.active_memberships }}</h3>
+          <span>Active paid memberships</span>
         </div>
 
         <div class="stat-card">
@@ -107,9 +113,9 @@
         </div>
 
         <div class="stat-card total-revenue-highlight">
-          <p>Square Total Collected</p>
+          <p>Total Collected</p>
           <h3>${{ "%.2f"|format(metrics.square_total_collected) }}</h3>
-          <span>Tickets + memberships + tips/other</span>
+          <span>Square + Eventbrite tickets, memberships, tips/other</span>
         </div>
       </section>
 <section class="dashboard-grid">
@@ -177,7 +183,7 @@
           <div class="panel">
             <div class="panel-header">
               <h3>Members</h3>
-              <span class="badge">12 New</span>
+              <span class="badge">{{ metrics.active_memberships }} Active</span>
             </div>
 
             <div class="mini-list">
@@ -186,12 +192,12 @@
                 <p>31 people signed up for VIP updates and announcements.</p>
               </div>
               <div>
-                <strong>Jukebox Circle Originals</strong>
-                <p>12 founding or early members currently active.</p>
+                <strong>Memberships</strong>
+                <p>{{ metrics.active_memberships }} active paid Jukebox Circle memberships.</p>
               </div>
               <div>
-                <strong>Jukebox Circle</strong>
-                <p>8 new Jukebox Circle members and ongoing membership activity.</p>
+                <strong>Membership Revenue</strong>
+                <p>${{ "%.2f"|format(metrics.membership_revenue) }} collected from memberships.</p>
               </div>
             </div>
           </div>
@@ -435,6 +441,54 @@
 
           syncSquareButton.disabled = false;
           syncSquareButton.textContent = originalText;
+        }
+      });
+    }
+
+    const syncEventbriteButton = document.getElementById("syncEventbriteButton");
+    const syncEventbriteStatus = document.getElementById("syncEventbriteStatus");
+
+    if (syncEventbriteButton) {
+      syncEventbriteButton.addEventListener("click", async () => {
+        const originalText = syncEventbriteButton.textContent;
+        syncEventbriteButton.disabled = true;
+        syncEventbriteButton.textContent = "Syncing...";
+
+        if (syncEventbriteStatus) {
+          syncEventbriteStatus.textContent = "Checking Eventbrite...";
+        }
+
+        try {
+          const response = await fetch("/eventbrite-sync", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Accept": "application/json"
+            }
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Eventbrite sync failed");
+          }
+
+          if (syncEventbriteStatus) {
+            syncEventbriteStatus.textContent = `Synced ${result.processed || 0} tickets. Refreshing...`;
+          }
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 900);
+        } catch (error) {
+          console.error(error);
+
+          if (syncEventbriteStatus) {
+            syncEventbriteStatus.textContent = "Sync failed. Check login or server logs.";
+          }
+
+          syncEventbriteButton.disabled = false;
+          syncEventbriteButton.textContent = originalText;
         }
       });
     }
