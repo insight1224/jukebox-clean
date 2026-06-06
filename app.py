@@ -317,6 +317,30 @@ def init_db():
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS event_expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        notes TEXT,
+        payment_method TEXT DEFAULT 'Other',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS event_cash_revenue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT NOT NULL,
+        category TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        notes TEXT,
+        quantity INTEGER DEFAULT 0,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS business_revenue (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         category TEXT NOT NULL,
