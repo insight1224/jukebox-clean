@@ -248,6 +248,18 @@ def init_db():
         status TEXT DEFAULT 'Active'
     )
     """)
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS membership_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        email TEXT,
+        amount_cents INTEGER DEFAULT 0,
+        payment_id TEXT UNIQUE,
+        source TEXT DEFAULT 'square',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     ensure_column("memberships", "name", "TEXT")
     ensure_column("memberships", "payment_id", "TEXT")
     ensure_column("memberships", "source", "TEXT DEFAULT 'square'")
