@@ -2493,7 +2493,7 @@ def get_live_dashboard_data():
     """, default=0.0))
 
     membership_revenue = float(one("""
-        SELECT COALESCE(SUM(amount), 0)
+        SELECT COALESCE(SUM(amount_cents), 0) / 100.0
         FROM membership_payments
         WHERE COALESCE(amount, 0) > 0
     """, default=0.0))
