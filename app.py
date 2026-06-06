@@ -5,6 +5,7 @@ import hmac
 import io
 import json
 import os
+import time
 import secrets
 import sqlite3
 import smtplib
@@ -316,6 +317,29 @@ def init_db():
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS business_revenue (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        notes TEXT,
+        revenue_date TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS business_expenses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        category TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        notes TEXT,
+        expense_date TEXT,
+        payment_method TEXT DEFAULT 'Other',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS event_tickets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -334,6 +358,64 @@ def init_db():
     ensure_column("event_tickets", "ticket_email_sent_at", "TEXT")
     ensure_column("event_tickets", "event_name", "TEXT")
     ensure_column("event_tickets", "checked_in", "INTEGER DEFAULT 0")
+    ensure_column("event_tickets", "checked_in_count", "INTEGER DEFAULT 0")
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        event_date TEXT NOT NULL,
+        status TEXT NOT NULL DEFAULT 'Upcoming',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS event_ticket_rules (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT NOT NULL,
+        ticket_type TEXT NOT NULL,
+        guests_per_ticket INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS event_square_mappings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT NOT NULL,
+        square_item_name TEXT NOT NULL,
+        ticket_type TEXT NOT NULL,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS eventbrite_event_mappings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        event_name TEXT NOT NULL,
+        eventbrite_event_id TEXT,
+        eventbrite_event_name TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS contact_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_lead_id INTEGER,
+        category TEXT NOT NULL,
+        name TEXT,
+        email TEXT,
+        phone TEXT,
+        contact_type TEXT,
+        details TEXT,
+        status TEXT DEFAULT 'New',
+        notes TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS webhook_logs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -552,7 +634,7 @@ init_db()   # ✅ AFTER function exists
 # EMAIL CONFIG
 # -------------------------
 SQUARE_SIGNATURE_KEY = os.getenv("SQUARE_SIGNATURE_KEY", "")
-SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOUK_URL", "")
+SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOOK_URL", "")
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "").strip()
 SQUARE_ENV = os.getenv("SQUARE_ENV", "sandbox").strip()
 if SQUARE_ENV == "sandbox":
@@ -567,6 +649,10 @@ SQUARE_SKIP_WEBHOOK_SIGNATURE = os.getenv("SQUARE_SKIP_WEBHOOK_SIGNATURE", "0") 
 IS_PRODUCTION = os.getenv("FLASK_ENV", "").lower() == "production"
 MEMBERSHIP_AMOUNT_CENTS = int(os.getenv("SQUARE_MEMBERSHIP_AMOUNT_CENTS", "0") or "0")
 SQUARE_SYNC_LIMIT = int(os.getenv("SQUARE_SYNC_LIMIT", "100") or "100")
+EVENTBRITE_PRIVATE_TOKEN = os.getenv("EVENTBRITE_PRIVATE_TOKEN", "").strip()
+EVENTBRITE_ORGANIZATION_ID = os.getenv("EVENTBRITE_ORGANIZATION_ID", "").strip()
+EVENTBRITE_SYNC_LIMIT = int(os.getenv("EVENTBRITE_SYNC_LIMIT", "300") or "300")
+EVENTBRITE_BASE_URL = "https://www.eventbriteapi.com/v3"
 
 WEB_TICKET_TYPES = {
     "early_bird": {"label": "Early Bird", "amount_cents": 1300},
@@ -578,8 +664,15 @@ WEB_TICKET_TYPES = {
 SQUARE_TO_DB_MAP = {
     "Battle - Early Bird General": "Early Bird",
     "Battle - General": "General Admission",
+    "Battle - Door": "General Admission",
+    "Battle of the DJs - General Admissions": "General Admission",
+    "Battle of the DJs - Early Bird": "Early Bird",
+    "Battle of the DJs": "Early Bird",
+    "Juneteenth Celebration - Early Bird": "Early Bird",
     "Battle - VIP": "VIP Section",
     "Battle - VIP DJ Section": "DJ VIP Section",
+    "Battle Custom VIP": "Custom VIP",
+    "Birthday VIP": "Custom VIP",
     "The Jukebox Circle Membership": "Jukebox Circle Membership",
 }
 
@@ -596,6 +689,7 @@ CANONICAL_TICKET_TYPES = {
     "General Admission",
     "VIP Section",
     "DJ VIP Section",
+    "Custom VIP",
 }
 
 TICKET_CAPACITY = {
@@ -1385,10 +1479,30 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     if line_items:
         next_index = 0
         for item in line_items:
-            ticket_name = line_item_ticket_name(item)
+            mapping = square_mapping_for_line_item(cursor, item, payment)
+            line_event_name = event_name
+
+            if mapping:
+                ticket_name = (mapping.get("ticket_type") or "").strip()
+                line_event_name = normalize_event_name(mapping.get("event_name") or event_name)
+                print(f"[ticket-create] mapped by Square setup: {mapping}")
+            else:
+                ticket_name = line_item_ticket_name(item)
+
             if not ticket_name:
                 continue
+
             quantity = parse_line_item_quantity(item)
+            total_money = ((item or {}).get("total_money", {}) or {}).get("amount")
+            base_money = ((item or {}).get("base_price_money", {}) or {}).get("amount")
+            try:
+                unit_amount_cents = int(total_money) // max(1, quantity)
+            except Exception:
+                try:
+                    unit_amount_cents = int(base_money)
+                except Exception:
+                    unit_amount_cents = int(amount_cents or 0) // max(1, quantity)
+
             print(f"Creating {quantity} tickets for payment {payment_id}")
             for _ in range(quantity):
                 ticket_id = generate_ticket(payment_id, next_index)
@@ -1417,12 +1531,12 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                             full_name,
                             buyer_email.lower(),
                             ticket_name,
-                            int(amount_cents or 0),
+                            int(unit_amount_cents or 0),
                             ticket_id,
                             payment_ref,
                             checkin_url,
                             qr_url,
-                            event_name,
+                            line_event_name,
                         ),
                     )
                     created_ticket_ids.append(ticket_id)
@@ -1434,12 +1548,21 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
             print(f"[ticket-create] insert success ticket_ids={created_ticket_ids}")
             return created_ticket_ids
 
-    ticket_name = parse_ticket_from_note(payment.get("note")) or map_ticket_from_amount(amount_cents)
+    payment_mapping = square_mapping_for_payment(cursor, payment)
+
+    if payment_mapping:
+        event_name = normalize_event_name(payment_mapping.get("event_name") or event_name)
+        ticket_name = (payment_mapping.get("ticket_type") or "").strip()
+        print(f"[ticket-create] mapped payment by Square setup: {payment_mapping}")
+    else:
+        ticket_name = parse_ticket_from_note(payment.get("note")) or unnamed_square_door_ticket_name(payment, amount_cents) or map_ticket_from_amount(amount_cents)
+
     print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name} event_name={event_name}")
     if not ticket_name:
         print("[ticket-create] skip insert: missing ticket mapping")
         return []
     quantity = extract_quantity_from_payment(payment)
+    unit_amount_cents = int(amount_cents or 0) // max(1, quantity)
     print(f"Creating {quantity} tickets for payment {payment_id}")
     created = []
     for i in range(quantity):
@@ -1465,7 +1588,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                     full_name,
                     buyer_email.lower(),
                     ticket_name,
-                    int(amount_cents or 0),
+                    int(unit_amount_cents or 0),
                     ticket_id,
                     f"{payment_id}:{i}",
                     checkin_url,
@@ -1590,30 +1713,132 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
 
     payment_id = (payment.get("id") or "").strip()
     amount_dollars = round((int(amount_cents or 0) / 100.0), 2)
+    clean_email = (email or "").strip().lower()
+
     name = (
         payment.get("billing_address", {}).get("first_name")
         or payment.get("shipping_address", {}).get("first_name")
         or "Member"
     )
 
+    paid_at = (
+        payment.get("created_at")
+        or payment.get("updated_at")
+        or ""
+    )
+
+    if not clean_email:
+        clean_email = f"unknown-{payment_id}@square-payment.local" if payment_id else "unknown@square-payment.local"
+
+    # Find an existing active membership by email.
+    # A monthly renewal should update this row, not create a second member.
     cursor.execute(
         """
-        INSERT OR IGNORE INTO memberships (name, email, amount, status, payment_id, source)
-        VALUES (?, ?, ?, 'Active', ?, 'square')
+        SELECT id, name, membership_group, started_at
+        FROM memberships
+        WHERE LOWER(COALESCE(email, '')) = ?
+          AND LOWER(COALESCE(status, '')) = 'active'
+        ORDER BY id
+        LIMIT 1
         """,
-        (name, email, amount_dollars, payment_id),
+        (clean_email,),
     )
-    return cursor.rowcount > 0
+    existing_member = cursor.fetchone()
+
+    if existing_member:
+        membership_id = existing_member[0]
+        existing_name = (existing_member[1] or "").strip()
+
+        if existing_name and existing_name.lower() != "member":
+            final_name = existing_name
+        else:
+            final_name = name
+
+        cursor.execute(
+            """
+            UPDATE memberships
+            SET name = ?,
+                amount = ?,
+                status = 'Active',
+                payment_id = ?,
+                source = 'square',
+                last_payment_at = COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP),
+                started_at = COALESCE(started_at, COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP))
+            WHERE id = ?
+            """,
+            (final_name, amount_dollars, payment_id, paid_at, paid_at, membership_id),
+        )
+    else:
+        cursor.execute(
+            """
+            INSERT INTO memberships (
+                name,
+                email,
+                amount,
+                status,
+                payment_id,
+                source,
+                membership_group,
+                started_at,
+                last_payment_at
+            )
+            VALUES (?, ?, ?, 'Active', ?, 'square', 'Circle', COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP), COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP))
+            """,
+            (name, clean_email, amount_dollars, payment_id, paid_at, paid_at),
+        )
+        membership_id = cursor.lastrowid
+
+    # Save the payment separately for revenue history.
+    # This preserves recurring monthly payments without duplicating the member.
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO membership_payments (
+            membership_id,
+            name,
+            email,
+            amount,
+            payment_id,
+            source,
+            paid_at
+        )
+        VALUES (?, ?, ?, ?, ?, 'square', COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP))
+        """,
+        (membership_id, name, clean_email, amount_dollars, payment_id, paid_at),
+    )
+
+    return True
 
 
-def classify_square_payment(payment, amount_cents, note_blob):
+
+def classify_square_payment(cursor, payment, amount_cents, note_blob):
     if int(amount_cents or 0) == 100:
         return "ignored_test", None
+
     if is_membership_payment_from_payment(payment, amount_cents, note_blob):
         return "membership", None
+
+    mapped_payment = square_mapping_for_payment(cursor, payment)
+    if mapped_payment:
+        return "ticket", mapped_payment.get("ticket_type")
+
+    # Prefer Square order line item names over amount-only guessing.
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+    for item in line_items:
+        ticket_name = line_item_ticket_name(item)
+        if ticket_name:
+            return "ticket", ticket_name
+
+    # Manual Square door sales sometimes have no item name.
+    ticket_name = unnamed_square_door_ticket_name(payment, amount_cents)
+    if ticket_name:
+        return "ticket", ticket_name
+
+    # Fallback for older/simple payments where item names are not available.
     ticket_name = map_ticket_from_amount(amount_cents)
     if ticket_name:
         return "ticket", ticket_name
+
     return "unmatched", None
 
 
@@ -1621,26 +1846,44 @@ def square_list_payments(limit=100):
     if not SQUARE_ACCESS_TOKEN:
         return []
 
-    endpoint = f"{square_base_url()}/v2/payments?sort_order=DESC&limit={max(1, min(limit, 100))}"
-    req = urlrequest.Request(
-        endpoint,
-        headers={
-            "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
-            "Square-Version": "2024-11-20",
-            "Content-Type": "application/json",
-        },
-        method="GET",
-    )
+    target_limit = max(1, int(limit or 100))
+    per_page = min(target_limit, 100)
+    payments = []
+    cursor = None
 
-    try:
-        with urlrequest.urlopen(req, timeout=20) as resp:
-            payload = json.loads(resp.read().decode("utf-8"))
-            return payload.get("payments", []) or []
-    except urlerror.HTTPError as exc:
-        print("Square list payments HTTP error:", exc.code)
-    except Exception as exc:
-        print("Square list payments error:", exc)
-    return []
+    while len(payments) < target_limit:
+        params = f"sort_order=DESC&limit={per_page}"
+        if cursor:
+            params += f"&cursor={urllib.parse.quote(cursor)}"
+
+        endpoint = f"{square_base_url()}/v2/payments?{params}"
+        req = urlrequest.Request(
+            endpoint,
+            headers={
+                "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+                "Square-Version": "2024-11-20",
+                "Content-Type": "application/json",
+            },
+            method="GET",
+        )
+
+        try:
+            with urlrequest.urlopen(req, timeout=20) as resp:
+                payload = json.loads(resp.read().decode("utf-8"))
+                page_payments = payload.get("payments", []) or []
+                payments.extend(page_payments)
+                cursor = payload.get("cursor")
+
+                if not cursor or not page_payments:
+                    break
+        except urlerror.HTTPError as exc:
+            print("Square list payments HTTP error:", exc.code)
+            break
+        except Exception as exc:
+            print("Square list payments error:", exc)
+            break
+
+    return payments[:target_limit]
 
 
 def square_retrieve_order(order_id):
@@ -1709,6 +1952,115 @@ def line_item_ticket_name(item):
     return None
 
 
+def square_mapping_candidates_for_line_item(item, payment=None):
+    payment = payment or {}
+    item = item or {}
+
+    candidates = [
+        item.get("name"),
+        item.get("variation_name"),
+        item.get("catalog_object_id"),
+        item.get("variation_catalog_object_id"),
+        item.get("uid"),
+        payment.get("reference_id"),
+        payment.get("note"),
+        payment.get("receipt_number"),
+    ]
+
+    variation = item.get("variation") or {}
+    if isinstance(variation, dict):
+        candidates.extend([
+            variation.get("name"),
+            variation.get("id"),
+            variation.get("catalog_object_id"),
+        ])
+
+    return {
+        str(value).strip().lower()
+        for value in candidates
+        if value is not None and str(value).strip()
+    }
+
+
+def square_mapping_for_line_item(cursor, item, payment=None):
+    candidates = square_mapping_candidates_for_line_item(item, payment)
+
+    if not candidates:
+        return None
+
+    cursor.execute("""
+        SELECT event_name, square_item_name, ticket_type
+        FROM event_square_mappings
+    """)
+    mappings = cursor.fetchall()
+
+    for mapping in mappings:
+        try:
+            mapped_identifier = (mapping["square_item_name"] or "").strip().lower()
+            event_name = mapping["event_name"]
+            ticket_type = mapping["ticket_type"]
+        except Exception:
+            mapped_identifier = (mapping[1] or "").strip().lower()
+            event_name = mapping[0]
+            ticket_type = mapping[2]
+
+        if mapped_identifier and mapped_identifier in candidates:
+            return {
+                "event_name": event_name,
+                "ticket_type": ticket_type,
+                "matched_identifier": mapped_identifier,
+            }
+
+    return None
+
+
+def square_mapping_for_payment(cursor, payment):
+    payment = payment or {}
+
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+
+    for item in line_items:
+        mapping = square_mapping_for_line_item(cursor, item, payment)
+        if mapping:
+            return mapping
+
+    payment_candidates = {
+        str(value).strip().lower()
+        for value in [
+            payment.get("reference_id"),
+            payment.get("note"),
+            payment.get("receipt_number"),
+        ]
+        if value is not None and str(value).strip()
+    }
+
+    if payment_candidates:
+        cursor.execute("""
+            SELECT event_name, square_item_name, ticket_type
+            FROM event_square_mappings
+        """)
+
+        for mapping in cursor.fetchall():
+            try:
+                mapped_identifier = (mapping["square_item_name"] or "").strip().lower()
+                event_name = mapping["event_name"]
+                ticket_type = mapping["ticket_type"]
+            except Exception:
+                mapped_identifier = (mapping[1] or "").strip().lower()
+                event_name = mapping[0]
+                ticket_type = mapping[2]
+
+            if mapped_identifier and mapped_identifier in payment_candidates:
+                return {
+                    "event_name": event_name,
+                    "ticket_type": ticket_type,
+                    "matched_identifier": mapped_identifier,
+                }
+
+    return None
+
+
 def parse_qty_from_note(note):
     raw = str(note or "")
     if "qty:" not in raw:
@@ -1735,6 +2087,36 @@ def parse_ticket_from_note(note):
     return None
 
 
+def unnamed_square_door_quantity(payment, amount_cents):
+    """
+    Manual Square door sales sometimes have no item name.
+    Treat unnamed $20/$40 completed card payments as door General Admission tickets.
+    """
+    amount = int(amount_cents or 0)
+    if amount not in (2000, 4000):
+        return 0
+
+    if (payment.get("source_type") or "").upper() != "CARD":
+        return 0
+
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+    if not line_items:
+        return 0
+
+    has_named_item = any(((item or {}).get("name") or "").strip() for item in line_items)
+    if has_named_item:
+        return 0
+
+    return max(1, amount // 2000)
+
+
+def unnamed_square_door_ticket_name(payment, amount_cents):
+    if unnamed_square_door_quantity(payment, amount_cents):
+        return "General Admission"
+    return None
+
+
 def extract_quantity_from_payment(payment):
     # 1) Direct quantity field (if upstream provided)
     raw = (payment or {}).get("quantity", None)
@@ -1743,6 +2125,11 @@ def extract_quantity_from_payment(payment):
             return max(1, int(str(raw)))
         except Exception:
             pass
+
+    amount_cents = int(((payment or {}).get("amount_money", {}) or {}).get("amount") or 0)
+    unnamed_door_qty = unnamed_square_door_quantity(payment or {}, amount_cents)
+    if unnamed_door_qty:
+        return unnamed_door_qty
 
     # 2) Sum Square order line item quantities when available
     order = square_retrieve_order((payment or {}).get("order_id", ""))
@@ -1798,6 +2185,10 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
             counts["duplicates"] += 1
             continue
 
+        status = (payment.get("status") or "").strip().upper()
+        if status != "COMPLETED":
+            continue
+
         amount_cents = int(payment.get("amount_money", {}).get("amount") or 0)
         note_blob = " ".join(
             str(part).strip().lower()
@@ -1810,7 +2201,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
         )
         email = (payment.get("buyer_email_address") or "").strip()
 
-        kind, ticket_name = classify_square_payment(payment, amount_cents, note_blob)
+        kind, ticket_name = classify_square_payment(cursor, payment, amount_cents, note_blob)
         ticket_hit = False
         membership_hit = False
         ticket_created = False
@@ -1844,7 +2235,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
             counts["processed"] += 1
             counts["tickets"] += 1 if (ticket_hit or ticket_created) else 0
             counts["memberships"] += 1 if membership_hit else 0
-            if include_diagnostics and len(counts["details"]) < 40:
+            if include_diagnostics and len(counts["details"]) < 120:
                 counts["details"].append(
                     {
                         "payment_id": payment_id,
@@ -1857,7 +2248,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
                 )
         else:
             counts["unmatched"] += 1
-            if include_diagnostics and len(counts["details"]) < 40:
+            if include_diagnostics and len(counts["details"]) < 120:
                 counts["details"].append(
                     {
                         "payment_id": payment_id,
@@ -1960,6 +2351,544 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
 ]
 
 
+
+@app.route("/dashboard")
+@requires_auth
+def dashboard():
+    return admin_dashboard_redesign()
+
+
+def get_live_dashboard_data():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    def one(query, params=(), default=0):
+        cur.execute(query, params)
+        row = cur.fetchone()
+        if not row:
+            return default
+        value = row[0]
+        return value if value is not None else default
+
+    vip_signups = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'VIP Signup'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    membership_signups = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Membership Signup'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    active_memberships = int(one("""
+        SELECT COUNT(*)
+        FROM memberships
+        WHERE LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(amount, 0) > 0
+    """))
+
+    contact_messages = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Contact Message'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    vendor_applications = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Vendor Application'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    dj_applications = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'DJ Application'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    total_tickets_sold = int(one("""
+        SELECT COUNT(*)
+        FROM event_tickets
+    """))
+
+    vip_tickets = int(one("""
+        SELECT COUNT(*)
+        FROM event_tickets
+        WHERE LOWER(ticket_type) LIKE '%vip%'
+    """))
+
+    single_tickets = max(total_tickets_sold - vip_tickets, 0)
+
+    estimated_attendance = int(one("""
+        SELECT SUM(
+            COALESCE(etr.guests_per_ticket, 1)
+        )
+        FROM event_tickets et
+        LEFT JOIN event_ticket_rules etr
+          ON LOWER(TRIM(et.event_name)) = LOWER(TRIM(etr.event_name))
+         AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
+    """, default=0))
+
+    checked_in = int(one("""
+        SELECT SUM(
+            CASE
+                WHEN COALESCE(et.checked_in, 0) = 1
+                  OR LOWER(COALESCE(et.status, '')) IN ('checked_in', 'checked in', 'used')
+                THEN COALESCE(etr.guests_per_ticket, 1)
+                ELSE 0
+            END
+        )
+        FROM event_tickets et
+        LEFT JOIN event_ticket_rules etr
+          ON LOWER(TRIM(et.event_name)) = LOWER(TRIM(etr.event_name))
+         AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
+    """, default=0))
+
+    ticket_revenue = float(one("""
+        SELECT SUM(COALESCE(amount_cents, 0)) / 100.0
+        FROM event_tickets
+    """, default=0.0))
+
+    membership_revenue = float(one("""
+        SELECT COALESCE(SUM(amount), 0)
+        FROM membership_payments
+        WHERE COALESCE(amount, 0) > 0
+    """, default=0.0))
+
+    square_logged_revenue = float(one("""
+        SELECT SUM(COALESCE(amount_cents, 0)) / 100.0
+        FROM square_payment_log
+    """, default=0.0))
+
+    tips_other_revenue = 77.95
+    total_revenue = ticket_revenue + membership_revenue
+    square_total_collected = total_revenue + tips_other_revenue
+
+    cur.execute("""
+        SELECT COALESCE(et.event_name, 'Unknown') AS event_name,
+               et.ticket_type,
+               COUNT(*) AS quantity,
+               SUM(COALESCE(et.amount_cents, 0)) / 100.0 AS revenue,
+               SUM(COALESCE(etr.guests_per_ticket, 1)) AS estimated_attendance
+        FROM event_tickets et
+        LEFT JOIN event_ticket_rules etr
+          ON LOWER(TRIM(et.event_name)) = LOWER(TRIM(etr.event_name))
+         AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
+        GROUP BY COALESCE(et.event_name, 'Unknown'), et.ticket_type
+        ORDER BY event_name, et.ticket_type
+    """)
+    event_rows = cur.fetchall()
+
+    cur.execute("""
+        SELECT name, event_date, status
+        FROM events
+        ORDER BY event_date
+    """)
+    event_setup_rows = [dict(row) for row in cur.fetchall()]
+
+    events_map = {}
+    for row in event_rows:
+        event_name = row["event_name"]
+        events_map.setdefault(event_name, {
+            "name": event_name,
+            "tickets": [],
+            "total_tickets_sold": 0,
+            "estimated_attendance": 0,
+            "total_revenue": 0.0,
+        })
+        ticket = {
+            "name": row["ticket_type"],
+            "quantity": int(row["quantity"] or 0),
+            "estimated_attendance": int(row["estimated_attendance"] or row["quantity"] or 0),
+            "price": 0,
+            "revenue": float(row["revenue"] or 0),
+        }
+        events_map[event_name]["tickets"].append(ticket)
+        events_map[event_name]["total_tickets_sold"] += ticket["quantity"]
+        events_map[event_name]["estimated_attendance"] += ticket["estimated_attendance"]
+        events_map[event_name]["total_revenue"] += ticket["revenue"]
+
+    cur.execute("""
+        SELECT COALESCE(event_name, 'Unknown') AS event_name,
+               CASE
+                 WHEN payment_id LIKE 'eventbrite:%' THEN 'Eventbrite'
+                 WHEN LOWER(COALESCE(ticket_type, '')) = 'general admission'
+                      AND COALESCE(amount_cents, 0) = 2000
+                      AND COALESCE(event_name, '') = 'Battle of the DJs'
+                   THEN 'Door - Square'
+                 ELSE COALESCE(ticket_type, 'Ticket') || ' - Square'
+               END AS source_name,
+               COUNT(*) AS quantity,
+               SUM(COALESCE(amount_cents, 0)) / 100.0 AS revenue
+        FROM event_tickets
+        GROUP BY COALESCE(event_name, 'Unknown'), source_name
+        ORDER BY event_name, source_name
+    """)
+    source_rows = cur.fetchall()
+
+    for row in source_rows:
+        event_name = row["event_name"]
+        if event_name not in events_map:
+            continue
+
+        events_map[event_name].setdefault("revenue_sources", [])
+        events_map[event_name]["revenue_sources"].append({
+            "name": row["source_name"],
+            "quantity": int(row["quantity"] or 0),
+            "revenue": float(row["revenue"] or 0),
+        })
+
+    for event in events_map.values():
+        event.setdefault("revenue_sources", [])
+
+    # Merge ticket rules with 0 sold into the live event map.
+    # This makes Edit Setup ticket types appear even before sales come in.
+    cur.execute("""
+        SELECT event_name, ticket_type, guests_per_ticket
+        FROM event_ticket_rules
+        ORDER BY event_name, ticket_type
+    """)
+    setup_ticket_rules = cur.fetchall()
+
+    for rule in setup_ticket_rules:
+        rule_event_name = (rule["event_name"] or "").strip()
+        rule_ticket_type = (rule["ticket_type"] or "General Admission").strip()
+
+        if not rule_event_name or not rule_ticket_type:
+            continue
+
+        event_record = events_map.setdefault(rule_event_name, {
+            "name": rule_event_name,
+            "tickets": [],
+            "total_tickets_sold": 0,
+            "estimated_attendance": 0,
+            "total_revenue": 0.0,
+        })
+
+        existing_ticket_names = {
+            (ticket.get("name") or "").strip().lower()
+            for ticket in event_record.get("tickets", [])
+        }
+
+        if rule_ticket_type.lower() not in existing_ticket_names:
+            event_record["tickets"].append({
+                "name": rule_ticket_type,
+                "quantity": 0,
+                "estimated_attendance": 0,
+                "price": 0,
+                "revenue": 0.0,
+                "guests_per_ticket": int(rule["guests_per_ticket"] or 1),
+            })
+
+    for setup_event in event_setup_rows:
+        setup_name = (setup_event.get("name") or "").strip()
+
+        if not setup_name:
+            continue
+
+        setup_status = (setup_event.get("status") or "Upcoming").strip()
+        setup_date = (setup_event.get("event_date") or "").strip()
+
+        event_record = events_map.setdefault(setup_name, {
+            "name": setup_name,
+            "tickets": [],
+            "total_tickets_sold": 0,
+            "estimated_attendance": 0,
+            "total_revenue": 0.0,
+        })
+
+        event_record["date"] = setup_date or event_record.get("date") or "Upcoming"
+        event_record["status_label"] = setup_status or event_record.get("status_label") or "Upcoming"
+
+        if setup_status.lower() == "completed":
+            event_record["badge_class"] = "success"
+        elif setup_status.lower() in ("live", "active"):
+            event_record["badge_class"] = "live"
+        else:
+            event_record["badge_class"] = "warning"
+
+    events = list(events_map.values())
+
+    conn.close()
+
+    metrics = {
+        "single_tickets": single_tickets,
+        "total_tickets_sold": total_tickets_sold,
+        "vip_tickets": vip_tickets,
+        "estimated_attendance": estimated_attendance,
+        "checked_in": checked_in,
+        "ticket_revenue": ticket_revenue,
+        "active_memberships": active_memberships,
+        "membership_signups": membership_signups,
+        "membership_revenue": membership_revenue,
+        "tips_other_revenue": tips_other_revenue,
+        "total_revenue": total_revenue,
+        "square_total_collected": square_total_collected,
+        "square_logged_revenue": square_logged_revenue,
+        "vip_signups": vip_signups,
+        "contact_messages": contact_messages,
+        "vendor_applications": vendor_applications,
+        "dj_applications": dj_applications,
+    }
+
+    dashboard_preview_summary = {
+        "upcoming_events_count": len(events),
+        "door_sales_count": 0,
+        "door_sales_total": 0,
+        "door_sales_cash": 0,
+        "door_sales_square": 0,
+    }
+
+    return metrics, events, dashboard_preview_summary
+
+
+
+# -------------------------
+# EVENTBRITE SYNC
+# -------------------------
+def eventbrite_get(path):
+    if not EVENTBRITE_PRIVATE_TOKEN:
+        return {}
+
+    req = urlrequest.Request(
+        f"{EVENTBRITE_BASE_URL}{path}",
+        headers={
+            "Authorization": f"Bearer {EVENTBRITE_PRIVATE_TOKEN}",
+            "Content-Type": "application/json",
+        },
+        method="GET",
+    )
+
+    try:
+        with urlrequest.urlopen(req, timeout=20) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urlerror.HTTPError as exc:
+        print("Eventbrite HTTP error:", exc.code)
+        try:
+            print(exc.read().decode("utf-8"))
+        except Exception:
+            pass
+    except Exception as exc:
+        print("Eventbrite error:", exc)
+
+    return {}
+
+
+def normalize_eventbrite_event_name(name):
+    raw = (name or "").strip().lower()
+
+    if "battle of the djs" in raw:
+        return "Battle of the DJs"
+    if "quiet storm" in raw:
+        return "Quiet Storm"
+    if "juneteenth" in raw:
+        return "Juneteenth Celebration"
+
+    return (name or "Eventbrite Event").strip()
+
+
+def normalize_eventbrite_ticket_type(name):
+    raw = (name or "").strip().lower()
+
+    if "vip" in raw:
+        return "VIP Section"
+    if "early" in raw:
+        return "Early Bird"
+    if "general" in raw or "admission" in raw:
+        return "General Admission"
+    if "door" in raw:
+        return "General Admission"
+
+    return (name or "General Admission").strip()
+
+
+def eventbrite_list_events(limit=300):
+    if not EVENTBRITE_PRIVATE_TOKEN or not EVENTBRITE_ORGANIZATION_ID:
+        return []
+
+    events = []
+    page = 1
+
+    while len(events) < limit:
+        payload = eventbrite_get(
+            f"/organizations/{EVENTBRITE_ORGANIZATION_ID}/events/?order_by=start_desc&status=all&page={page}"
+        )
+
+        page_events = payload.get("events", []) or []
+        events.extend(page_events)
+
+        pagination = payload.get("pagination", {}) or {}
+        if not pagination.get("has_more_items"):
+            break
+
+        page += 1
+
+    return events[:limit]
+
+
+def eventbrite_list_attendees(event_id, limit=300):
+    attendees = []
+    page = 1
+
+    while len(attendees) < limit:
+        payload = eventbrite_get(f"/events/{event_id}/attendees/?page={page}")
+        page_attendees = payload.get("attendees", []) or []
+        attendees.extend(page_attendees)
+
+        pagination = payload.get("pagination", {}) or {}
+        if not pagination.get("has_more_items"):
+            break
+
+        page += 1
+
+    return attendees[:limit]
+
+
+def eventbrite_sync_attendees(dry_run=True, include_details=True):
+    events = eventbrite_list_events(limit=EVENTBRITE_SYNC_LIMIT)
+
+    summary = {
+        "events_seen": len(events),
+        "attendees_seen": 0,
+        "processed": 0,
+        "duplicates": 0,
+        "skipped": 0,
+        "tickets": 0,
+        "revenue": 0.0,
+        "details": [],
+    }
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    for event in events:
+        event_id = (event.get("id") or "").strip()
+        raw_event_name = ((event.get("name") or {}).get("text") or "").strip()
+        event_name = normalize_eventbrite_event_name(raw_event_name)
+
+        if not event_id:
+            continue
+
+        attendees = eventbrite_list_attendees(event_id, limit=EVENTBRITE_SYNC_LIMIT)
+
+        for attendee in attendees:
+            summary["attendees_seen"] += 1
+
+            attendee_id = (attendee.get("id") or "").strip()
+            attendee_status = (attendee.get("status") or "").strip().lower()
+
+            if not attendee_id:
+                summary["skipped"] += 1
+                continue
+
+            # Count active tickets only.
+            if attendee_status not in ("attending", "checked in"):
+                summary["skipped"] += 1
+                continue
+
+            payment_id = f"eventbrite:{attendee_id}"
+            ticket_id = f"EVENTBRITE_{attendee_id}"
+
+            cursor.execute("SELECT 1 FROM event_tickets WHERE payment_id = ? OR ticket_id = ?", (payment_id, ticket_id))
+            if cursor.fetchone():
+                summary["duplicates"] += 1
+                continue
+
+            ticket_type = normalize_eventbrite_ticket_type(attendee.get("ticket_class_name"))
+            profile = attendee.get("profile", {}) or {}
+            name = (profile.get("name") or attendee.get("name") or "Eventbrite Guest").strip()
+            email = (profile.get("email") or attendee.get("email") or "no-email@example.com").strip().lower()
+
+            costs = attendee.get("costs", {}) or {}
+            gross = costs.get("gross", {}) or {}
+            amount_cents = int(gross.get("value") or 0)
+
+            checked_in = 1 if attendee_status == "checked in" or attendee.get("checked_in") else 0
+            status = "checked_in" if checked_in else "not_checked_in"
+
+            checkin_url = f"{BASE_URL}/checkin/{ticket_id}"
+            qr_url = f"{BASE_URL}/qr/{ticket_id}"
+
+            if not dry_run:
+                cursor.execute(
+                    """
+                    INSERT INTO event_tickets (
+                        name, email, ticket_type, amount_cents, ticket_id, status,
+                        payment_id, checkin_url, qr_url, event_name, checked_in
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        name,
+                        email,
+                        ticket_type,
+                        amount_cents,
+                        ticket_id,
+                        status,
+                        payment_id,
+                        checkin_url,
+                        qr_url,
+                        event_name,
+                        checked_in,
+                    ),
+                )
+
+            summary["processed"] += 1
+            summary["tickets"] += 1
+            summary["revenue"] += amount_cents / 100.0
+
+            if include_details and len(summary["details"]) < 150:
+                summary["details"].append(
+                    {
+                        "event_id": event_id,
+                        "event_name": event_name,
+                        "attendee_id": attendee_id,
+                        "order_id": attendee.get("order_id"),
+                        "status": attendee.get("status"),
+                        "ticket_type": ticket_type,
+                        "name": name,
+                        "email": email,
+                        "amount_cents": amount_cents,
+                    }
+                )
+
+    if not dry_run:
+        conn.commit()
+
+    conn.close()
+    summary["revenue"] = round(summary["revenue"], 2)
+    return summary
+
+
+@app.route("/eventbrite-sync-report")
+@requires_auth
+def eventbrite_sync_report():
+    summary = eventbrite_sync_attendees(dry_run=True, include_details=True)
+    return {
+        "status": "ok",
+        "mode": "report",
+        **summary,
+    }, 200
+
+
+@app.route("/eventbrite-sync", methods=["POST"])
+@requires_auth
+def eventbrite_sync():
+    summary = eventbrite_sync_attendees(dry_run=False, include_details=True)
+    return {
+        "status": "ok",
+        "mode": "incremental",
+        **summary,
+    }, 200
+
+
+
 # -------------------------
 # HOME
 # -------------------------
@@ -1967,9 +2896,9 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
 def home():
     return render_template("index.html")
 
-@app.route("/dashboard")
+@app.route("/dashboard-old")
 @requires_auth
-def dashboard():
+def dashboard_old():
     single_tickets = 187
     vip_tickets = 6
     total_tickets_sold = single_tickets + vip_tickets
@@ -2065,6 +2994,27 @@ def dashboard():
         """
     )
     membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+
+    cursor.execute(
+        """
+        SELECT
+            SUM(CASE WHEN LOWER(COALESCE(category, '')) = 'talent' THEN 1 ELSE 0 END) AS talent_count,
+            SUM(CASE WHEN LOWER(COALESCE(category, '')) = 'vendor' THEN 1 ELSE 0 END) AS vendor_count,
+            COUNT(*) AS total_count
+        FROM contact_log
+        """
+    )
+    contact_log_counts = cursor.fetchone() or (0, 0, 0)
+
+    dashboard_overview = {
+        "active_messages": int(metrics.get("contact_messages", 0) or 0)
+            + int(metrics.get("vendor_applications", 0) or 0)
+            + int(metrics.get("dj_applications", 0) or 0),
+        "talent_contacts": int(contact_log_counts[0] or 0),
+        "vendor_contacts": int(contact_log_counts[1] or 0),
+        "total_contacts": int(contact_log_counts[2] or 0),
+    }
+
     conn.close()
 
     active_members = []
@@ -2080,7 +3030,11 @@ def dashboard():
     return render_template(
         "dashboard.html",
         metrics=metrics,
-        events=events,
+        events=upcoming_events,
+        past_events=past_events,
+        past_expenses_total=past_expenses_total,
+        past_revenue_total=past_revenue_total,
+        past_net_profit=past_net_profit,
         vip_members=vip_members,
         membership_log_members=membership_log_members,
         vip_count=len(vip_members),
@@ -2243,6 +3197,72 @@ def events():
 
 
 # -------------------------
+
+# PUBLIC FORM SPAM PROTECTION
+SPAM_KEYWORDS = (
+    "seo", "backlink", "backlinks", "rank higher", "google ranking",
+    "casino", "crypto", "bitcoin", "loan", "viagra", "cialis",
+    "adult traffic", "telegram", "whatsapp marketing", "forex",
+    "investment opportunity", "make money fast"
+)
+
+def is_valid_email_address(value):
+    value = (value or "").strip()
+    return bool(re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", value))
+
+def is_public_form_spam(required_fields=None, email_field="email"):
+    """
+    Shared protection for public website forms.
+    Returns True when a submission should be silently rejected.
+    """
+    required_fields = required_fields or []
+
+    # Honeypot: real visitors will not fill this out.
+    honeypot = (
+        request.form.get("website")
+        or request.form.get("company_website")
+        or request.form.get("business_website")
+        or ""
+    ).strip()
+    if honeypot:
+        print("[spam-block] honeypot filled")
+        return True
+
+    # Minimum time check: bots often submit instantly.
+    started_at = (request.form.get("form_started_at") or "").strip()
+    if started_at:
+        try:
+            elapsed = time.time() - float(started_at)
+            if elapsed < 3:
+                print(f"[spam-block] submitted too fast: {elapsed:.2f}s")
+                return True
+        except ValueError:
+            print("[spam-block] invalid form_started_at")
+            return True
+
+    # Backend required field validation.
+    for field in required_fields:
+        if not (request.form.get(field) or "").strip():
+            print(f"[spam-block] missing required field: {field}")
+            return True
+
+    # Backend email validation.
+    email = (request.form.get(email_field) or "").strip()
+    if email_field and email and not is_valid_email_address(email):
+        print("[spam-block] invalid email")
+        return True
+
+    # Spam keyword filter.
+    combined = " ".join(str(v or "") for v in request.form.values()).lower()
+    if any(word in combined for word in SPAM_KEYWORDS):
+        print("[spam-block] spam keyword detected")
+        return True
+
+    return False
+
+def blocked_form_redirect(default="/"):
+    return redirect(request.referrer or default)
+
 # CONTACT (FULLY WORKING)
 # -------------------------
 @app.route("/contact", methods=["GET", "POST"])
@@ -2696,6 +3716,58 @@ def membership():
     return render_template("membership.html")
 
 # -------------------------
+# DONATION PAGE
+# -------------------------
+@app.route("/donate")
+def donate():
+    return render_template("donate.html")
+
+# -------------------------
+# ABOUT PAGE
+# -------------------------
+@app.route("/about")
+def about():
+    return render_template("about.html")
+
+# -------------------------
+# GALLERY PAGE
+# -------------------------
+
+@app.route("/gallery/battle-of-the-djs")
+def gallery_battle_of_the_djs():
+    gallery_dir = os.path.join(app.static_folder, "images", "battle-of-the-djs-gallery")
+    images = []
+    if os.path.isdir(gallery_dir):
+        images = sorted([
+            f"images/battle-of-the-djs-gallery/{name}"
+            for name in os.listdir(gallery_dir)
+            if name.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
+        ])
+
+    video_dir = os.path.join(app.static_folder, "images", "battle of the djs")
+    videos = []
+    if os.path.isdir(video_dir):
+        videos = sorted([
+            f"images/battle of the djs/{name}"
+            for name in os.listdir(video_dir)
+            if name.lower().endswith((".mov", ".mp4", ".webm"))
+        ])
+
+    return render_template("gallery_event.html", title="Battle of the DJs", subtitle="DJ Event Experience", images=images, videos=videos)
+
+@app.route("/gallery")
+def gallery():
+    return render_template("gallery.html")
+
+
+# -------------------------
+# SPONSORS PAGE
+# -------------------------
+@app.route("/sponsors")
+def sponsors():
+    return render_template("sponsors.html")
+
+# -------------------------
 # MERCH PAGE
 # -------------------------
 @app.route("/merch")
@@ -2983,6 +4055,9 @@ def dj_signup():
 @app.route("/vendor-signup", methods=["GET", "POST"])
 def vendor_signup():
     if request.method == "POST":
+        if is_public_form_spam(required_fields=["name", "email"]):
+            return blocked_form_redirect("/vendor-signup")
+
         try:
             name = request.form.get("name")
             business = request.form.get("business")
@@ -3010,7 +4085,7 @@ def vendor_signup():
 
         return render_thank_you_safe(
             "APPLICATION RECEIVED",
-            "Your vendor application has been submitted successfully. Our team will review and reach out with next steps.",
+            "Thank you for submitting your vendor application. Our team will review your information and reach out if your services are a good fit for an upcoming Jukebox Lounge event.",
         )
 
     return render_template("vendor_signup.html")
@@ -3414,9 +4489,9 @@ def test_membership_webhook():
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT OR IGNORE INTO memberships (name, email, amount, status, payment_id, source)
-        VALUES (?, ?, ?, ?, ?, ?)
-    """, (name, email, amount, "Active", payment_id, "manual-test"))
+        INSERT OR IGNORE INTO memberships (name, email, amount, status, payment_id, source, membership_group)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (name, email, amount, "Active", payment_id, "manual-test", "Circle"))
 
     conn.commit()
     conn.close()
@@ -3478,6 +4553,149 @@ def delete_lead(id):
     conn.commit()
     conn.close()
     return redirect(request.referrer or "/admin/leads")
+
+
+@app.route("/api/messages/<int:lead_id>/status", methods=["POST"])
+@requires_auth
+def api_update_message_status(lead_id):
+    data = request.get_json(silent=True) or {}
+    new_status = (data.get("status") or "").strip()
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT type FROM leads WHERE id = ?", (lead_id,))
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return {"ok": False, "error": "Message not found."}, 404
+
+    lead_type = row["type"] or "Contact Message"
+    status_value = normalize_lead_status(lead_type, new_status)
+    archived = 1 if lead_is_archived_status(status_value) else 0
+    archived_at_expr = "CURRENT_TIMESTAMP" if archived == 1 else "NULL"
+
+    cursor.execute(
+        f"""
+        UPDATE leads
+        SET status = ?,
+            archived = ?,
+            archived_at = {archived_at_expr}
+        WHERE id = ?
+        """,
+        (status_value, archived, lead_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "id": lead_id,
+        "status": status_value,
+        "archived": archived,
+    }, 200
+
+
+@app.route("/api/messages/<int:lead_id>/delete", methods=["POST", "DELETE"])
+@requires_auth
+def api_delete_message(lead_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM leads WHERE id = ?", (lead_id,))
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return {"ok": False, "error": "Message not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "deleted_id": lead_id}, 200
+
+
+@app.route("/api/messages/<int:lead_id>/move-to-contact-log", methods=["POST"])
+@requires_auth
+def api_move_message_to_contact_log(lead_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, type, name, email, details, status, notes
+        FROM leads
+        WHERE id = ?
+        """,
+        (lead_id,),
+    )
+    lead = cursor.fetchone()
+
+    if not lead:
+        conn.close()
+        return {"ok": False, "error": "Message not found."}, 404
+
+    lead_type = lead["type"] or ""
+    if lead_category(lead_type) not in ("DJ Application", "Vendor Application"):
+        conn.close()
+        return {"ok": False, "error": "Only DJ and Vendor applications can move to Contact Log."}, 400
+
+    category = "Talent" if lead_category(lead_type) == "DJ Application" else "Vendor"
+    contact_type = "DJ / Band" if category == "Talent" else "Vendor"
+
+    cursor.execute(
+        """
+        INSERT INTO contact_log (
+            source_lead_id,
+            category,
+            name,
+            email,
+            phone,
+            contact_type,
+            details,
+            status,
+            notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            lead["id"],
+            category,
+            lead["name"] or "",
+            lead["email"] or "",
+            "",
+            contact_type,
+            lead["details"] or "",
+            "New",
+            lead["notes"] or "",
+        ),
+    )
+
+    cursor.execute(
+        """
+        UPDATE leads
+        SET status = 'Booked',
+            archived = 1,
+            archived_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (lead_id,),
+    )
+
+    conn.commit()
+    contact_id = cursor.lastrowid
+    conn.close()
+
+    return {
+        "ok": True,
+        "message": "Moved to Contact Log.",
+        "contact_id": contact_id,
+        "archived": 1,
+    }, 200
+
 
 
 @app.route("/admin/leads/mass-email", methods=["GET", "POST"])
@@ -4414,84 +5632,9 @@ def qr(ticket_id):
 @app.route("/admin/dashboard-redesign")
 @requires_auth
 def admin_dashboard_redesign():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
-
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": estimated_attendance,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
-
-    events = [
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-        {
-            "name": "Juneteenth Celebration",
-            "tickets": [
-                {"name": "General Admission", "quantity": 0, "price": 0},
-                {"name": "VIP Section", "quantity": 0, "price": 0},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    preview_tickets_sold = max(total_tickets_sold - vip_tickets, 0)
-
-    dashboard_preview_summary = {
-        "upcoming_events_count": len(events),
-        "door_sales_count": sum(
-            ticket.get("quantity", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_total": sum(
-            ticket.get("revenue", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_cash": sum(
-            ticket.get("cash_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_square": sum(
-            ticket.get("square_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-    }
-
+    preview_tickets_sold = metrics.get("single_tickets", 0)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -4530,6 +5673,26 @@ def admin_dashboard_redesign():
         """
     )
     membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+    cursor.execute(
+        """
+        SELECT
+            SUM(CASE WHEN LOWER(COALESCE(category, '')) = 'talent' THEN 1 ELSE 0 END) AS talent_count,
+            SUM(CASE WHEN LOWER(COALESCE(category, '')) = 'vendor' THEN 1 ELSE 0 END) AS vendor_count,
+            COUNT(*) AS total_count
+        FROM contact_log
+        """
+    )
+    contact_log_counts = cursor.fetchone() or (0, 0, 0)
+
+    dashboard_overview = {
+        "active_messages": int(metrics.get("contact_messages", 0) or 0)
+            + int(metrics.get("vendor_applications", 0) or 0)
+            + int(metrics.get("dj_applications", 0) or 0),
+        "talent_contacts": int(contact_log_counts[0] or 0),
+        "vendor_contacts": int(contact_log_counts[1] or 0),
+        "total_contacts": int(contact_log_counts[2] or 0),
+    }
+
     conn.close()
 
     active_members = []
@@ -4557,101 +5720,930 @@ def admin_dashboard_redesign():
         archived_suggestions=archived_suggestions,
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=False,
+        dashboard_overview=dashboard_overview,
+        square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
+    )
+
+
+
+@app.route("/api/business-revenue", methods=["POST"])
+@requires_auth
+def api_business_revenue():
+    data = request.get_json(silent=True) or request.form
+
+    category = (data.get("category") or "").strip()
+    notes = (data.get("notes") or "").strip()
+    revenue_date = (data.get("revenue_date") or "").strip()
+
+    try:
+        amount = float(data.get("amount") or 0)
+    except Exception:
+        amount = 0
+
+    if not category:
+        return {"status": "error", "error": "Category is required."}, 400
+
+    if amount <= 0:
+        return {"status": "error", "error": "Amount must be greater than 0."}, 400
+
+    amount_cents = int(round(amount * 100))
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO business_revenue (category, amount_cents, notes, revenue_date)
+        VALUES (?, ?, ?, ?)
+        """,
+        (category, amount_cents, notes, revenue_date),
+    )
+
+    revenue_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "ok",
+        "business_revenue": {
+            "id": revenue_id,
+            "category": category,
+            "amount": amount,
+            "notes": notes,
+            "revenue_date": revenue_date,
+        },
+    }, 200
+
+
+
+@app.route("/api/business-expenses", methods=["POST"])
+@requires_auth
+def api_business_expenses():
+    data = request.get_json(silent=True) or request.form
+
+    category = (data.get("category") or "").strip()
+    notes = (data.get("notes") or "").strip()
+    expense_date = (data.get("expense_date") or "").strip()
+    payment_method = (data.get("payment_method") or "Other").strip() or "Other"
+
+    try:
+        amount = float(data.get("amount") or 0)
+    except Exception:
+        amount = 0
+
+    if not category:
+        return {"status": "error", "error": "Category is required."}, 400
+
+    if amount <= 0:
+        return {"status": "error", "error": "Amount must be greater than 0."}, 400
+
+    amount_cents = int(round(amount * 100))
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO business_expenses (category, amount_cents, notes, expense_date, payment_method)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (category, amount_cents, notes, expense_date, payment_method),
+    )
+
+    expense_id = cur.lastrowid
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "ok",
+        "business_expense": {
+            "id": expense_id,
+            "category": category,
+            "amount": amount,
+            "notes": notes,
+            "expense_date": expense_date,
+            "payment_method": payment_method,
+        },
+    }, 200
+
+
+@app.route("/api/event-expenses", methods=["POST"])
+@requires_auth
+def api_event_expenses():
+    data = request.get_json(silent=True) or request.form
+
+    event_name = (data.get("event_name") or "").strip()
+    category = (data.get("category") or "").strip()
+    notes = (data.get("notes") or "").strip()
+    payment_method = (data.get("payment_method") or "Other").strip()
+
+    try:
+        amount = float(data.get("amount") or 0)
+    except (TypeError, ValueError):
+        amount = 0
+
+    try:
+        quantity = int(data.get("quantity") or 0)
+    except (TypeError, ValueError):
+        quantity = 0
+
+    amount_cents = int(round(amount * 100))
+
+    if not event_name:
+        return {"status": "error", "error": "Event is required."}, 400
+
+    if not category:
+        return {"status": "error", "error": "Category is required."}, 400
+
+    if amount_cents <= 0:
+        return {"status": "error", "error": "Amount must be greater than 0."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO event_expenses (event_name, category, amount_cents, notes, payment_method)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (event_name, category, amount_cents, notes, payment_method),
+    )
+
+    conn.commit()
+    expense_id = cur.lastrowid
+    conn.close()
+
+    return {
+        "status": "ok",
+        "expense": {
+            "id": expense_id,
+            "event_name": event_name,
+            "category": category,
+            "amount": amount_cents / 100.0,
+            "quantity": quantity,
+            "notes": notes,
+            "payment_method": payment_method,
+        },
+    }, 200
+
+
+@app.route("/api/event-expenses/<int:expense_id>", methods=["PUT", "POST"])
+@requires_auth
+def api_update_event_expense(expense_id):
+    data = request.get_json(silent=True) or request.form
+
+    event_name = (data.get("event_name") or "").strip()
+    category = (data.get("category") or "").strip()
+    notes = (data.get("notes") or "").strip()
+    payment_method = (data.get("payment_method") or "Other").strip()
+
+    try:
+        amount = float(data.get("amount") or 0)
+    except (TypeError, ValueError):
+        amount = 0
+
+    try:
+        quantity = int(data.get("quantity") or 0)
+    except (TypeError, ValueError):
+        quantity = 0
+
+    amount_cents = int(round(amount * 100))
+
+    if not event_name:
+        return {"status": "error", "error": "Event is required."}, 400
+
+    if not category:
+        return {"status": "error", "error": "Category is required."}, 400
+
+    if amount_cents <= 0:
+        return {"status": "error", "error": "Amount must be greater than 0."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE event_expenses
+        SET event_name = ?, category = ?, amount_cents = ?, notes = ?, payment_method = ?
+        WHERE id = ?
+        """,
+        (event_name, category, amount_cents, notes, payment_method, expense_id),
+    )
+
+    if cur.rowcount == 0:
+        conn.close()
+        return {"status": "error", "error": "Expense not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "ok",
+        "expense": {
+            "id": expense_id,
+            "event_name": event_name,
+            "category": category,
+            "amount": amount_cents / 100.0,
+            "quantity": quantity,
+            "notes": notes,
+            "payment_method": payment_method,
+        },
+    }, 200
+
+
+@app.route("/api/event-expenses/<int:expense_id>/delete", methods=["POST", "DELETE"])
+@requires_auth
+def api_delete_event_expense(expense_id):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("DELETE FROM event_expenses WHERE id = ?", (expense_id,))
+
+    if cur.rowcount == 0:
+        conn.close()
+        return {"status": "error", "error": "Expense not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "ok", "deleted_id": expense_id}, 200
+
+
+@app.route("/api/event-cash-revenue", methods=["POST"])
+@requires_auth
+def api_event_cash_revenue():
+    data = request.get_json(silent=True) or request.form
+
+    event_name = (data.get("event_name") or "").strip()
+    category = (data.get("category") or "Door Cash").strip()
+    notes = (data.get("notes") or "").strip()
+
+    try:
+        amount = float(data.get("amount") or 0)
+    except (TypeError, ValueError):
+        amount = 0
+
+    try:
+        quantity = int(data.get("quantity") or 0)
+    except (TypeError, ValueError):
+        quantity = 0
+
+    amount_cents = int(round(amount * 100))
+
+    if not event_name:
+        return {"status": "error", "error": "Event is required."}, 400
+
+    if amount_cents <= 0:
+        return {"status": "error", "error": "Amount must be greater than 0."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        INSERT INTO event_cash_revenue (event_name, category, amount_cents, notes, quantity)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (event_name, category, amount_cents, notes, quantity),
+    )
+
+    conn.commit()
+    cash_id = cur.lastrowid
+    conn.close()
+
+    return {
+        "status": "ok",
+        "cash_revenue": {
+            "id": cash_id,
+            "event_name": event_name,
+            "category": category,
+            "amount": amount_cents / 100.0,
+            "quantity": quantity,
+            "notes": notes,
+        },
+    }, 200
+
+
+@app.route("/api/event-cash-revenue/<int:cash_id>", methods=["PUT", "POST"])
+@requires_auth
+def api_update_event_cash_revenue(cash_id):
+    data = request.get_json(silent=True) or request.form
+
+    event_name = (data.get("event_name") or "").strip()
+    category = (data.get("category") or "Door Cash").strip()
+    notes = (data.get("notes") or "").strip()
+
+    try:
+        amount = float(data.get("amount") or 0)
+    except (TypeError, ValueError):
+        amount = 0
+
+    try:
+        quantity = int(data.get("quantity") or 0)
+    except (TypeError, ValueError):
+        quantity = 0
+
+    amount_cents = int(round(amount * 100))
+
+    if not event_name:
+        return {"status": "error", "error": "Event is required."}, 400
+
+    if amount_cents <= 0:
+        return {"status": "error", "error": "Amount must be greater than 0."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        UPDATE event_cash_revenue
+        SET event_name = ?, category = ?, amount_cents = ?, quantity = ?, notes = ?
+        WHERE id = ?
+        """,
+        (event_name, category, amount_cents, quantity, notes, cash_id),
+    )
+
+    if cur.rowcount == 0:
+        conn.close()
+        return {"status": "error", "error": "Cash revenue not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "ok",
+        "cash_revenue": {
+            "id": cash_id,
+            "event_name": event_name,
+            "category": category,
+            "quantity": quantity,
+            "amount": amount_cents / 100.0,
+            "notes": notes,
+        },
+    }, 200
+
+
+@app.route("/api/event-cash-revenue/<int:cash_id>/delete", methods=["POST", "DELETE"])
+@requires_auth
+def api_delete_event_cash_revenue(cash_id):
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("DELETE FROM event_cash_revenue WHERE id = ?", (cash_id,))
+
+    if cur.rowcount == 0:
+        conn.close()
+        return {"status": "error", "error": "Cash revenue not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {"status": "ok", "deleted_id": cash_id}, 200
+
+
+@app.route("/api/event-ticket-checkin", methods=["POST"])
+@requires_auth
+def api_event_ticket_checkin():
+    data = request.get_json(silent=True) or {}
+
+    ticket_ids = data.get("ticket_ids") or []
+    if isinstance(ticket_ids, str):
+        ticket_ids = [ticket_ids]
+
+    ticket_ids = [
+        str(ticket_id).strip()
+        for ticket_id in ticket_ids
+        if str(ticket_id or "").strip()
+    ]
+
+    try:
+        requested_checked_count = int(data.get("checked_in_count") or 0)
+    except (TypeError, ValueError):
+        requested_checked_count = 0
+
+    requested_checked_count = max(0, requested_checked_count)
+
+    if not ticket_ids:
+        return {"ok": False, "error": "Ticket ID is required."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    placeholders = ",".join(["?"] * len(ticket_ids))
+    cur.execute(
+        f"""
+        SELECT et.ticket_id,
+               et.event_name,
+               et.ticket_type,
+               COALESCE(etr.guests_per_ticket, 1) AS guests_per_ticket
+        FROM event_tickets et
+        LEFT JOIN event_ticket_rules etr
+          ON LOWER(TRIM(et.event_name)) = LOWER(TRIM(etr.event_name))
+         AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
+        WHERE et.ticket_id IN ({placeholders})
+        ORDER BY et.created_at, et.id
+        """,
+        ticket_ids,
+    )
+    rows = [dict(row) for row in cur.fetchall()]
+
+    if not rows:
+        conn.close()
+        return {"ok": False, "error": "Ticket not found."}, 404
+
+    remaining = requested_checked_count
+    total_capacity = 0
+    total_saved = 0
+
+    for row in rows:
+        capacity = max(1, int(row.get("guests_per_ticket") or 1))
+        total_capacity += capacity
+        save_count = max(0, min(remaining, capacity))
+        remaining -= save_count
+        total_saved += save_count
+
+        if save_count <= 0:
+            status = "not_checked_in"
+            checked_in = 0
+            checked_in_at_sql = "NULL"
+        else:
+            status = "checked_in" if save_count >= capacity else "partially_checked_in"
+            checked_in = 1 if save_count >= capacity else 0
+            checked_in_at_sql = "CURRENT_TIMESTAMP"
+
+        cur.execute(
+            f"""
+            UPDATE event_tickets
+            SET checked_in_count = ?,
+                checked_in = ?,
+                status = ?,
+                checked_in_at = {checked_in_at_sql}
+            WHERE ticket_id = ?
+            """,
+            (save_count, checked_in, status, row["ticket_id"]),
+        )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "checked_in_count": total_saved,
+        "total_capacity": total_capacity,
+        "not_checked_in_count": max(total_capacity - total_saved, 0),
+    }, 200
+
+
+@app.route("/api/events/<path:event_name>/delete", methods=["POST", "DELETE"])
+@requires_auth
+def api_delete_event_setup(event_name):
+    clean_event_name = (event_name or "").strip()
+
+    if not clean_event_name:
+        return {"ok": False, "error": "Event name is required."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    def table_exists(table_name):
+        cur.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            (table_name,),
+        )
+        return cur.fetchone() is not None
+
+    def count_rows(table_name, column_name):
+        if not table_exists(table_name):
+            return 0
+
+        cur.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM {table_name}
+            WHERE LOWER(TRIM({column_name})) = LOWER(TRIM(?))
+            """,
+            (clean_event_name,),
+        )
+        return int(cur.fetchone()[0] or 0)
+
+    ticket_count = count_rows("event_tickets", "event_name")
+    cash_count = count_rows("event_cash_revenue", "event_name")
+    expense_count = count_rows("event_expenses", "event_name")
+
+    if ticket_count or cash_count or expense_count:
+        conn.close()
+        return {
+            "ok": False,
+            "error": "This event already has tickets, revenue, or expenses attached. Delete those records first or mark the event completed instead."
+        }, 400
+
+    def delete_event_rows(table_name, column_name):
+        if not table_exists(table_name):
+            return 0
+
+        cur.execute(
+            f"""
+            DELETE FROM {table_name}
+            WHERE LOWER(TRIM({column_name})) = LOWER(TRIM(?))
+            """,
+            (clean_event_name,),
+        )
+        return cur.rowcount
+
+    delete_event_rows("event_ticket_rules", "event_name")
+    delete_event_rows("event_square_mappings", "event_name")
+    delete_event_rows("eventbrite_event_mappings", "event_name")
+
+    deleted = delete_event_rows("events", "name")
+
+    conn.commit()
+    conn.close()
+
+    if deleted == 0:
+        return {"ok": False, "error": "Event not found."}, 404
+
+    return {"ok": True, "event_name": clean_event_name}, 200
+
+
+@app.route("/api/events/setup-details")
+@requires_auth
+def api_events_setup_details():
+    event_name = (request.args.get("name") or "").strip()
+
+    if not event_name:
+        return {"ok": False, "error": "Event name is required."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT name, event_date, status
+        FROM events
+        WHERE name = ?
+        """,
+        (event_name,),
+    )
+    event_row = cur.fetchone()
+
+    if not event_row:
+        conn.close()
+        return {"ok": False, "error": "Event setup not found."}, 404
+
+    cur.execute(
+        """
+        SELECT ticket_type, guests_per_ticket
+        FROM event_ticket_rules
+        WHERE event_name = ?
+        ORDER BY id
+        """,
+        (event_name,),
+    )
+    ticket_rules = [dict(row) for row in cur.fetchall()]
+
+    cur.execute(
+        """
+        SELECT square_item_name, ticket_type
+        FROM event_square_mappings
+        WHERE event_name = ?
+        ORDER BY id
+        """,
+        (event_name,),
+    )
+    square_mappings = [dict(row) for row in cur.fetchall()]
+
+    cur.execute(
+        """
+        SELECT eventbrite_event_id, eventbrite_event_name
+        FROM eventbrite_event_mappings
+        WHERE event_name = ?
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (event_name,),
+    )
+    eventbrite_row = cur.fetchone()
+
+    conn.close()
+
+    return {
+        "ok": True,
+        "event": {
+            "name": event_row["name"],
+            "event_date": event_row["event_date"],
+            "status": event_row["status"],
+            "ticket_rules": ticket_rules,
+            "square_mappings": square_mappings,
+            "eventbrite_event_id": eventbrite_row["eventbrite_event_id"] if eventbrite_row else "",
+            "eventbrite_event_name": eventbrite_row["eventbrite_event_name"] if eventbrite_row else "",
+        },
+    }, 200
+
+
+@app.route("/api/events/setup", methods=["POST"])
+@requires_auth
+def api_events_setup():
+    data = request.get_json(silent=True) or {}
+
+    event_name = (data.get("name") or "").strip()
+    event_date = (data.get("event_date") or "").strip()
+    status = (data.get("status") or "Upcoming").strip() or "Upcoming"
+    ticket_rules = data.get("ticket_rules") or []
+    square_mappings = data.get("square_mappings") or []
+    eventbrite_event_id = (data.get("eventbrite_event_id") or "").strip()
+    eventbrite_event_name = (data.get("eventbrite_event_name") or "").strip()
+
+    if not event_name:
+        return {"ok": False, "status": "error", "error": "Event name is required."}, 400
+
+    if not event_date:
+        return {"ok": False, "status": "error", "error": "Event date is required."}, 400
+
+    if status not in {"Upcoming", "Live", "Completed"}:
+        status = "Upcoming"
+
+    cleaned_ticket_rules = []
+    for rule in ticket_rules:
+        ticket_type = (rule.get("ticket_type") or "").strip()
+
+        try:
+            guests_per_ticket = int(rule.get("guests_per_ticket") or 1)
+        except (TypeError, ValueError):
+            guests_per_ticket = 1
+
+        guests_per_ticket = max(1, guests_per_ticket)
+
+        if ticket_type:
+            cleaned_ticket_rules.append((event_name, ticket_type, guests_per_ticket))
+
+    cleaned_square_mappings = []
+    for mapping in square_mappings:
+        square_item_name = (mapping.get("square_item_name") or "").strip()
+        ticket_type = (mapping.get("ticket_type") or "").strip()
+
+        if square_item_name and ticket_type:
+            cleaned_square_mappings.append((event_name, square_item_name, ticket_type))
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("SELECT id FROM events WHERE name = ?", (event_name,))
+    existing_event = cur.fetchone()
+
+    if existing_event:
+        cur.execute(
+            """
+            UPDATE events
+            SET event_date = ?, status = ?
+            WHERE name = ?
+            """,
+            (event_date, status, event_name),
+        )
+        event_id = existing_event[0]
+    else:
+        cur.execute(
+            """
+            INSERT INTO events (name, event_date, status)
+            VALUES (?, ?, ?)
+            """,
+            (event_name, event_date, status),
+        )
+        event_id = cur.lastrowid
+
+    cur.execute("DELETE FROM event_ticket_rules WHERE event_name = ?", (event_name,))
+    cur.execute("DELETE FROM event_square_mappings WHERE event_name = ?", (event_name,))
+    cur.execute("DELETE FROM eventbrite_event_mappings WHERE event_name = ?", (event_name,))
+
+    if cleaned_ticket_rules:
+        cur.executemany(
+            """
+            INSERT INTO event_ticket_rules (event_name, ticket_type, guests_per_ticket)
+            VALUES (?, ?, ?)
+            """,
+            cleaned_ticket_rules,
+        )
+
+    if cleaned_square_mappings:
+        cur.executemany(
+            """
+            INSERT INTO event_square_mappings (event_name, square_item_name, ticket_type)
+            VALUES (?, ?, ?)
+            """,
+            cleaned_square_mappings,
+        )
+
+    if eventbrite_event_id or eventbrite_event_name:
+        cur.execute(
+            """
+            INSERT INTO eventbrite_event_mappings (event_name, eventbrite_event_id, eventbrite_event_name)
+            VALUES (?, ?, ?)
+            """,
+            (event_name, eventbrite_event_id, eventbrite_event_name),
+        )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "status": "ok",
+        "event": {
+            "id": event_id,
+            "name": event_name,
+            "event_date": event_date,
+            "status": status,
+            "ticket_rules_saved": len(cleaned_ticket_rules),
+            "square_mappings_saved": len(cleaned_square_mappings),
+            "eventbrite_mapping_saved": bool(eventbrite_event_id or eventbrite_event_name),
+        },
+    }, 200
+
+
+
+@app.route("/admin/dashboard-redesign/income-summary")
+@requires_auth
+def income_summary_report():
+    from datetime import datetime
+
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT event_name, category, amount_cents, COALESCE(quantity, 0) AS quantity, notes
+        FROM event_cash_revenue
+    """)
+    cash_rows = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT event_name, category, amount_cents, notes, payment_method
+        FROM event_expenses
+    """)
+    event_expense_rows = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT category, amount_cents, notes, payment_method, expense_date
+        FROM business_expenses
+    """)
+    business_expense_rows = [dict(row) for row in cursor.fetchall()]
+
+    expense_rows = event_expense_rows + [
+        {
+            "event_name": "Non-Event Business Expenses",
+            "category": row.get("category") or "Business Expense",
+            "amount_cents": row.get("amount_cents") or 0,
+            "notes": row.get("notes") or "",
+            "payment_method": row.get("payment_method") or "Other",
+        }
+        for row in business_expense_rows
+    ]
+
+    business_expense_total = sum(
+        int(row.get("amount_cents") or 0) / 100.0
+        for row in business_expense_rows
+    )
+
+    conn.close()
+
+    cash_by_event = {}
+    other_revenue_total = 0.0
+    ticket_cash_total_all = 0.0
+
+    for cash in cash_rows:
+        event_name = cash.get("event_name") or "Unknown"
+        amount = int(cash.get("amount_cents") or 0) / 100.0
+        quantity = int(cash.get("quantity") or 0)
+        category = (cash.get("category") or "").strip().lower()
+        notes = (cash.get("notes") or "").strip().lower()
+
+        is_other_revenue = (
+            "vendor" in category
+            or "vendor" in notes
+            or "sponsor" in category
+            or "sponsor" in notes
+            or "donation" in category
+            or "donation" in notes
+            or "other" in category
+        )
+
+        is_ticket_revenue = (
+            not is_other_revenue
+            and (
+                "door" in category
+                or "door" in notes
+                or "ticket" in category
+                or "ticket" in notes
+                or quantity > 0
+            )
+        )
+
+        cash_by_event.setdefault(event_name, {"ticket_cash": 0.0, "other": 0.0})
+
+        if is_ticket_revenue:
+            cash_by_event[event_name]["ticket_cash"] += amount
+            ticket_cash_total_all += amount
+        else:
+            cash_by_event[event_name]["other"] += amount
+            other_revenue_total += amount
+
+    expenses_by_event = {}
+    expenses_by_category_map = {}
+    expense_total = 0.0
+
+    for expense in expense_rows:
+        event_name = expense.get("event_name") or "Unknown"
+        category = expense.get("category") or "Other"
+        amount = int(expense.get("amount_cents") or 0) / 100.0
+
+        expenses_by_event[event_name] = expenses_by_event.get(event_name, 0.0) + amount
+        expenses_by_category_map[category] = expenses_by_category_map.get(category, 0.0) + amount
+        expense_total += amount
+
+    event_rows = []
+    ticket_revenue_total = 0.0
+
+    for event in events:
+        event_name = event.get("name") or "Unknown"
+        base_ticket_revenue = float(event.get("total_revenue", 0) or 0)
+        ticket_cash_revenue = cash_by_event.get(event_name, {}).get("ticket_cash", 0.0)
+        other_revenue = cash_by_event.get(event_name, {}).get("other", 0.0)
+        event_expenses = expenses_by_event.get(event_name, 0.0)
+
+        ticket_revenue = base_ticket_revenue + ticket_cash_revenue
+        total_event_income = ticket_revenue + other_revenue
+        net_income = total_event_income - event_expenses
+
+        ticket_revenue_total += ticket_revenue
+
+        event_rows.append({
+            "name": event_name,
+            "ticket_revenue": ticket_revenue,
+            "other_revenue": other_revenue,
+            "expenses": event_expenses,
+            "net_income": net_income,
+        })
+
+    if business_expense_total > 0:
+        event_rows.append({
+            "name": "Non-Event Business Expenses",
+            "ticket_revenue": 0.0,
+            "other_revenue": 0.0,
+            "expenses": business_expense_total,
+            "net_income": -business_expense_total,
+        })
+
+    expenses_by_category = [
+        {"category": category, "amount": amount}
+        for category, amount in sorted(expenses_by_category_map.items())
+    ]
+
+    total_income = ticket_revenue_total + other_revenue_total
+    net_income = total_income - expense_total
+
+    return render_template(
+        "income_summary_report.html",
+        generated_at=datetime.now().strftime("%B %d, %Y at %I:%M %p"),
+        ticket_revenue_total=ticket_revenue_total,
+        other_revenue_total=other_revenue_total,
+        total_income=total_income,
+        expense_total=expense_total,
+        net_income=net_income,
+        expenses_by_category=expenses_by_category,
+        event_rows=event_rows,
     )
 
 
 @app.route("/admin/dashboard-redesign/revenue")
 @requires_auth
 def admin_dashboard_revenue():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
-
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
-
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": estimated_attendance,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
-
-    events = [
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-        {
-            "name": "Juneteenth Celebration",
-            "tickets": [
-                {"name": "General Admission", "quantity": 0, "price": 0},
-                {"name": "VIP Section", "quantity": 0, "price": 0},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    preview_tickets_sold = max(total_tickets_sold - vip_tickets, 0)
-
-    dashboard_preview_summary = {
-        "upcoming_events_count": len(events),
-        "door_sales_count": sum(
-            ticket.get("quantity", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_total": sum(
-            ticket.get("revenue", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_cash": sum(
-            ticket.get("cash_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_square": sum(
-            ticket.get("square_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-    }
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT name, event_date, status
+        FROM events
+        ORDER BY event_date
+    """)
+    event_setup_rows = [dict(row) for row in cursor.fetchall()]
+    event_setup_map = {
+        row["name"]: row
+        for row in event_setup_rows
+    }
 
     cursor.execute(
         """
         SELECT COUNT(*)
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND status = 'Active'
+        FROM memberships
+        WHERE LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(amount, 0) > 0
         """
     )
     membership_log_count = int(cursor.fetchone()[0] or 0)
@@ -4672,43 +6664,272 @@ def admin_dashboard_revenue():
     cursor.execute(
         """
         SELECT DISTINCT LOWER(TRIM(email))
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND LOWER(COALESCE(status, '')) = 'active'
+        FROM memberships
+        WHERE LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(amount, 0) > 0
           AND email IS NOT NULL
           AND TRIM(email) <> ''
         ORDER BY LOWER(TRIM(email))
         """
     )
     membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+
+    cursor.execute("""
+        SELECT id,
+               event_name,
+               category,
+               amount_cents,
+               notes,
+               payment_method,
+               created_at
+        FROM event_expenses
+        ORDER BY created_at DESC, id DESC
+    """)
+    expense_rows = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT id,
+               category,
+               amount_cents,
+               notes,
+               payment_method,
+               expense_date,
+               created_at
+        FROM business_expenses
+        ORDER BY created_at DESC, id DESC
+    """)
+    business_expense_rows = [dict(row) for row in cursor.fetchall()]
+    business_expenses_total = sum(
+        int(row.get("amount_cents") or 0) / 100.0
+        for row in business_expense_rows
+    )
+
+    cursor.execute("""
+        SELECT id,
+               event_name,
+               category,
+               amount_cents,
+               COALESCE(quantity, 0) AS quantity,
+               notes,
+               created_at
+        FROM event_cash_revenue
+        ORDER BY created_at DESC, id DESC
+    """)
+    cash_rows = [dict(row) for row in cursor.fetchall()]
+
+    expenses_by_event = {}
+    cash_by_event = {}
+    total_expenses = 0.0
+    total_cash_revenue = 0.0
+
+    for cash in cash_rows:
+        event_name = cash.get("event_name") or "Unknown"
+        amount = int(cash.get("amount_cents") or 0) / 100.0
+        total_cash_revenue += amount
+
+        cash_by_event.setdefault(event_name, [])
+        cash_by_event[event_name].append({
+            "id": cash.get("id"),
+            "category": cash.get("category") or "Cash Revenue",
+            "amount": amount,
+            "quantity": int(cash.get("quantity") or 0),
+            "notes": cash.get("notes") or "",
+            "created_at": cash.get("created_at") or "",
+        })
+
+    for expense in expense_rows:
+        event_name = expense.get("event_name") or "Unknown"
+        amount = int(expense.get("amount_cents") or 0) / 100.0
+        total_expenses += amount
+
+        expenses_by_event.setdefault(event_name, [])
+        expenses_by_event[event_name].append({
+            "id": expense.get("id"),
+            "event_name": event_name,
+            "category": expense.get("category") or "Expense",
+            "amount": amount,
+            "notes": expense.get("notes") or "",
+            "payment_method": expense.get("payment_method") or "Other",
+            "created_at": expense.get("created_at") or "",
+        })
+
+    existing_event_names = {
+        event.get("name")
+        for event in events
+        if event.get("name")
+    }
+
+    for setup_event in event_setup_rows:
+        setup_name = setup_event.get("name")
+
+        if not setup_name or setup_name in existing_event_names:
+            continue
+
+        events.append({
+            "name": setup_name,
+            "total_tickets": 0,
+            "total_revenue": 0,
+            "ticket_revenue": 0,
+            "cash_revenue": 0,
+            "expenses": 0,
+            "net_profit": 0,
+            "ticket_breakdown": [],
+            "revenue_breakdown": [],
+            "revenue_sources": [],
+            "cash_breakdown": [],
+            "expense_breakdown": [],
+        })
+
+    for event in events:
+        event_name = event.get("name")
+        setup = event_setup_map.get(event_name, {})
+        event["event_date"] = setup.get("event_date") or event.get("event_date") or ""
+        event["status_label"] = setup.get("status") or event.get("status_label") or "Upcoming"
+        event_expenses = expenses_by_event.get(event_name, [])
+        event_cash_rows = cash_by_event.get(event_name, [])
+        event_expense_total = sum(float(item.get("amount", 0) or 0) for item in event_expenses)
+
+        ticket_cash_rows = []
+        other_cash_rows = []
+
+        for cash_item in event_cash_rows:
+            category = (cash_item.get("category") or "").strip().lower()
+            notes = (cash_item.get("notes") or "").strip().lower()
+            quantity = int(cash_item.get("quantity", 0) or 0)
+
+            is_other_revenue = (
+                "vendor" in category
+                or "vendor" in notes
+                or "sponsor" in category
+                or "sponsor" in notes
+                or "donation" in category
+                or "donation" in notes
+                or "other" in category
+            )
+
+            is_ticket_revenue = (
+                not is_other_revenue
+                and (
+                    "door" in category
+                    or "door" in notes
+                    or "ticket" in category
+                    or "ticket" in notes
+                    or quantity > 0
+                )
+            )
+
+            if is_ticket_revenue:
+                ticket_cash_rows.append(cash_item)
+            else:
+                other_cash_rows.append(cash_item)
+
+        ticket_cash_total = sum(float(item.get("amount", 0) or 0) for item in ticket_cash_rows)
+        ticket_cash_quantity = sum(int(item.get("quantity", 0) or 0) for item in ticket_cash_rows)
+        other_cash_total = sum(float(item.get("amount", 0) or 0) for item in other_cash_rows)
+        event_cash_total = ticket_cash_total + other_cash_total
+
+        # Bottom-left box: other/non-ticket revenue only
+        event["cash_revenue"] = other_cash_rows
+
+        event["cash_revenue_total"] = event_cash_total
+        event["ticket_cash_revenue_total"] = ticket_cash_total
+        event["other_revenue_total"] = other_cash_total
+        event["expenses"] = event_expenses
+        event["expense_total"] = event_expense_total
+        event["total_revenue_with_cash"] = float(event.get("total_revenue", 0) or 0) + event_cash_total
+        event["net_profit"] = event["total_revenue_with_cash"] - event_expense_total
+
+        # Top-right box: ticket revenue only
+        if ticket_cash_total > 0:
+            event.setdefault("revenue_sources", [])
+            event["revenue_sources"].append({
+                "name": "Door - Cash",
+                "quantity": ticket_cash_quantity,
+                "revenue": ticket_cash_total,
+            })
+
+    past_event_names = {
+        row.get("name")
+        for row in event_setup_rows
+        if (row.get("status") or "").strip().lower() == "completed"
+    }
+
+    if not past_event_names:
+        past_event_names = {"Battle of the DJs"}
+
+    past_events = [event for event in events if event.get("name") in past_event_names]
+    upcoming_events = [event for event in events if event.get("name") not in past_event_names]
+
+    past_expenses_total = sum(float(event.get("expense_total", 0) or 0) for event in past_events)
+    past_revenue_total = sum(float(event.get("total_revenue_with_cash", event.get("total_revenue", 0)) or 0) for event in past_events)
+    past_net_profit = past_revenue_total - past_expenses_total
+
+    metrics["cash_revenue"] = total_cash_revenue
+    metrics["business_expenses"] = business_expenses_total
+    metrics["total_expenses"] = total_expenses + business_expenses_total
+    metrics["gross_revenue_with_cash"] = float(metrics.get("square_total_collected", 0) or 0) + total_cash_revenue
+    metrics["net_profit"] = metrics["gross_revenue_with_cash"] - metrics["total_expenses"]
+
+    originals_count = int(metrics.get("active_memberships", 0) or 0)
+    regular_count = 0
+    monthly_revenue = float(metrics.get("membership_revenue", 0) or 0)
+    member_stats = {
+        "total_members": originals_count + regular_count,
+        "originals_count": originals_count,
+        "regular_count": regular_count,
+        "vip_email_count": len(vip_recipients),
+        "monthly_revenue": monthly_revenue,
+        "annual_projection": monthly_revenue * 12,
+        "originals_revenue": monthly_revenue,
+        "regular_revenue": 0.0,
+    }
+
+    metrics.setdefault("cash_revenue", 0.0)
+    metrics.setdefault("total_expenses", 0.0)
+    metrics.setdefault(
+        "gross_revenue_with_cash",
+        float(metrics.get("square_total_collected", 0) or 0) + float(metrics.get("cash_revenue", 0) or 0),
+    )
+    metrics.setdefault(
+        "net_profit",
+        float(metrics.get("gross_revenue_with_cash", 0) or 0) - float(metrics.get("total_expenses", 0) or 0),
+    )
+
     conn.close()
 
-    active_members = []
-    vip_members = []
-    membership_log_members = []
-
-    event_demand_votes = []
-    total_demand_votes = 0
-
-    active_suggestions = []
-    archived_suggestions = []
+    # Revenue page membership summary should show expected recurring revenue,
+    # not total collected payment history.
+    monthly_membership_rate = 10.0
+    member_stats["monthly_revenue"] = float(member_stats.get("total_members", 0) or 0) * monthly_membership_rate
+    member_stats["originals_revenue"] = float(member_stats.get("originals_count", 0) or 0) * monthly_membership_rate
+    member_stats["regular_revenue"] = float(member_stats.get("regular_count", 0) or 0) * monthly_membership_rate
+    member_stats["annual_projection"] = member_stats["monthly_revenue"] * 12
 
     return render_template(
         "revenue_dashboard.html",
         metrics=metrics,
-        events=events,
-        vip_members=vip_members,
-        membership_log_members=membership_log_members,
-        vip_count=len(vip_members),
+        member_stats=member_stats,
+        expenses_by_event=expenses_by_event,
+        cash_by_event=cash_by_event,
+        expense_rows=expense_rows,
+        cash_rows=cash_rows,
+        events=upcoming_events,
+        past_events=past_events,
+        past_expenses_total=past_expenses_total,
+        past_revenue_total=past_revenue_total,
+        past_net_profit=past_net_profit,
+        vip_members=[],
+        membership_log_members=[],
+        vip_count=0,
         membership_count=membership_log_count,
         membership_log_count=membership_log_count,
-        event_demand_votes=event_demand_votes,
-        total_demand_votes=total_demand_votes,
-        active_suggestions=active_suggestions,
-        archived_suggestions=archived_suggestions,
+        event_demand_votes=[],
+        total_demand_votes=0,
+        active_suggestions=[],
+        archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=False,
+        square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
     )
 
@@ -4716,246 +6937,378 @@ def admin_dashboard_revenue():
 @app.route("/admin/dashboard-redesign/events")
 @requires_auth
 def admin_dashboard_events():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
-
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
-
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": estimated_attendance,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
-
-    events = [
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-        {
-            "name": "Juneteenth Celebration",
-            "tickets": [
-                {"name": "General Admission", "quantity": 0, "price": 0},
-                {"name": "VIP Section", "quantity": 0, "price": 0},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    preview_tickets_sold = max(total_tickets_sold - vip_tickets, 0)
-
-    dashboard_preview_summary = {
-        "upcoming_events_count": len(events),
-        "door_sales_count": sum(
-            ticket.get("quantity", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_total": sum(
-            ticket.get("revenue", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_cash": sum(
-            ticket.get("cash_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_square": sum(
-            ticket.get("square_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-    }
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
     conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
 
-    cursor.execute(
-        """
-        SELECT COUNT(*)
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND status = 'Active'
-        """
-    )
-    membership_log_count = int(cursor.fetchone()[0] or 0)
+    cur.execute("""
+        SELECT name, event_date, status
+        FROM events
+        ORDER BY event_date
+    """)
+    event_setup_rows = [dict(row) for row in cur.fetchall()]
+    event_setup_map = {
+        row["name"]: row
+        for row in event_setup_rows
+    }
 
-    cursor.execute(
-        """
-        SELECT DISTINCT LOWER(TRIM(email))
-        FROM leads
-        WHERE type = 'VIP Signup'
-          AND LOWER(COALESCE(status, '')) = 'active'
-          AND email IS NOT NULL
-          AND TRIM(email) <> ''
-        ORDER BY LOWER(TRIM(email))
-        """
-    )
-    vip_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+    cur.execute("""
+        SELECT event_name,
+               name,
+               email,
+               ticket_type,
+               ticket_id,
+               payment_id,
+               checked_in,
+               COALESCE(checked_in_count, 0) AS checked_in_count,
+               status,
+               created_at
+        FROM event_tickets
+        ORDER BY event_name, created_at
+    """)
+    ticket_rows = [dict(row) for row in cur.fetchall()]
 
-    cursor.execute(
-        """
-        SELECT DISTINCT LOWER(TRIM(email))
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND LOWER(COALESCE(status, '')) = 'active'
-          AND email IS NOT NULL
-          AND TRIM(email) <> ''
-        ORDER BY LOWER(TRIM(email))
-        """
-    )
-    membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+    cur.execute("""
+        SELECT event_name,
+               ticket_type,
+               guests_per_ticket
+        FROM event_ticket_rules
+    """)
+    ticket_rule_rows = [dict(row) for row in cur.fetchall()]
+
+    ticket_rule_map = {
+        (
+            (row.get("event_name") or "").strip().lower(),
+            (row.get("ticket_type") or "").strip().lower(),
+        ): max(1, int(row.get("guests_per_ticket") or 1))
+        for row in ticket_rule_rows
+    }
+
+    cur.execute("""
+        SELECT COALESCE(et.event_name, 'Unknown') AS event_name,
+               SUM(
+                   CASE
+                       WHEN COALESCE(et.checked_in_count, 0) > 0
+                       THEN MIN(COALESCE(et.checked_in_count, 0), COALESCE(etr.guests_per_ticket, 1))
+                       WHEN COALESCE(et.checked_in, 0) = 1
+                         OR LOWER(COALESCE(et.status, '')) IN ('checked_in', 'checked in', 'used')
+                       THEN COALESCE(etr.guests_per_ticket, 1)
+                       ELSE 0
+                   END
+               ) AS checked_in_count
+        FROM event_tickets et
+        LEFT JOIN event_ticket_rules etr
+          ON LOWER(TRIM(et.event_name)) = LOWER(TRIM(etr.event_name))
+         AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
+        GROUP BY COALESCE(et.event_name, 'Unknown')
+    """)
+    checked_in_count_map = {
+        row["event_name"]: int(row["checked_in_count"] or 0)
+        for row in cur.fetchall()
+    }
+
+    cur.execute("""
+        SELECT event_name,
+               category,
+               COALESCE(quantity, 0) AS quantity,
+               amount_cents,
+               notes,
+               created_at
+        FROM event_cash_revenue
+        ORDER BY event_name, created_at
+    """)
+    cash_rows = [dict(row) for row in cur.fetchall()]
     conn.close()
 
-    active_members = []
-    vip_members = []
-    membership_log_members = []
+    cash_totals_by_event = {}
+    cash_quantity_by_event = {}
 
-    event_demand_votes = []
-    total_demand_votes = 0
+    for cash_row in cash_rows:
+        cash_event_name = cash_row.get("event_name") or "Unknown"
+        cash_amount = float(cash_row.get("amount_cents", 0) or 0) / 100.0
+        cash_quantity = int(cash_row.get("quantity", 0) or 0)
 
-    active_suggestions = []
-    archived_suggestions = []
+        cash_totals_by_event[cash_event_name] = cash_totals_by_event.get(cash_event_name, 0.0) + cash_amount
+        cash_quantity_by_event[cash_event_name] = cash_quantity_by_event.get(cash_event_name, 0) + cash_quantity
+
+    for event in events:
+        event_name = event.get("name") or ""
+        cash_total = cash_totals_by_event.get(event_name, 0.0)
+        cash_quantity = cash_quantity_by_event.get(event_name, 0)
+
+        event["cash_revenue_total"] = cash_total
+        event["cash_ticket_quantity"] = cash_quantity
+        event["total_revenue_with_cash"] = float(event.get("total_revenue", 0) or 0) + cash_total
+        event["net_profit"] = event["total_revenue_with_cash"]
+
+    guests_by_event = {}
+    vip_by_event = {}
+    checkin_by_event = {}
+
+    for row in ticket_rows:
+        event_name = row.get("event_name") or "Unknown"
+        payment_id = row.get("payment_id") or ""
+        ticket_type = row.get("ticket_type") or "Ticket"
+        raw_name = (row.get("name") or "").strip()
+        raw_email = (row.get("email") or "").strip()
+
+        placeholder_names = {"", "guest", "no name", "unknown", "door sale", "door sales"}
+        placeholder_emails = {"", "no-email@example.com", "none", "unknown"}
+
+        has_real_name = raw_name.lower() not in placeholder_names
+        has_real_email = raw_email.lower() not in placeholder_emails
+
+        # Skip placeholder/no-name door-sale rows from guest, VIP, and check-in logs.
+        # Cash/door totals still count in revenue and attendance, just not in named guest logs.
+        if not has_real_name and not has_real_email:
+            continue
+
+        checked_in = int(row.get("checked_in") or 0) == 1 or str(row.get("status") or "").lower() in ("checked_in", "checked in", "used")
+        source = "Eventbrite" if payment_id.startswith("eventbrite:") else "Square"
+        guests_per_ticket = ticket_rule_map.get(
+            (
+                event_name.strip().lower(),
+                ticket_type.strip().lower(),
+            ),
+            1,
+        )
+
+        checked_in_count = int(row.get("checked_in_count") or 0)
+        if checked_in and checked_in_count <= 0:
+            checked_in_count = guests_per_ticket
+
+        checked_in_count = max(0, min(checked_in_count, guests_per_ticket))
+
+        guest = {
+            "name": raw_name if has_real_name else raw_email,
+            "email": raw_email if has_real_email else "",
+            "phone": "",
+            "ticket_type": ticket_type,
+            "quantity": guests_per_ticket,
+            "source": source,
+            "checked_in": checked_in_count >= guests_per_ticket,
+            "checked_in_count": checked_in_count,
+            "ticket_id": row.get("ticket_id") or "",
+            "ticket_ids": [row.get("ticket_id") or ""],
+        }
+
+        guests_by_event.setdefault(event_name, []).append(guest)
+        checkin_by_event.setdefault(event_name, []).append(guest)
+
+        if "vip" in ticket_type.lower():
+            vip_by_event.setdefault(event_name, []).append(guest)
+
+    def group_guest_rows(rows):
+        grouped = {}
+
+        for guest in rows:
+            key = (
+                (guest.get("name") or "").strip().lower(),
+                (guest.get("email") or "").strip().lower(),
+                (guest.get("ticket_type") or "").strip().lower(),
+                (guest.get("source") or "").strip().lower(),
+            )
+
+            guest_quantity = int(guest.get("quantity") or 0)
+            guest_checked_count = int(guest.get("checked_in_count") or 0)
+
+            if key not in grouped:
+                grouped[key] = dict(guest)
+                grouped[key]["quantity"] = guest_quantity
+                grouped[key]["checked_in_count"] = guest_checked_count
+                grouped[key]["ticket_ids"] = [
+                    ticket_id
+                    for ticket_id in guest.get("ticket_ids", [])
+                    if ticket_id
+                ]
+            else:
+                grouped[key]["quantity"] += guest_quantity
+                grouped[key]["checked_in_count"] += guest_checked_count
+                grouped[key].setdefault("ticket_ids", [])
+                grouped[key]["ticket_ids"].extend([
+                    ticket_id
+                    for ticket_id in guest.get("ticket_ids", [])
+                    if ticket_id
+                ])
+
+        cleaned = []
+        for guest in grouped.values():
+            quantity = int(guest.get("quantity") or 0)
+            checked_count = int(guest.get("checked_in_count") or 0)
+            guest["checked_in"] = checked_count >= quantity and quantity > 0
+            guest["checked_in_display"] = f"{checked_count} of {quantity}"
+            cleaned.append(guest)
+
+        return cleaned
+
+    def format_event_date(value):
+        if not value:
+            return "Upcoming"
+
+        try:
+            from datetime import datetime
+            parsed = datetime.strptime(value, "%Y-%m-%d")
+            return parsed.strftime("%B %-d, %Y")
+        except Exception:
+            try:
+                from datetime import datetime
+                parsed = datetime.strptime(value, "%Y-%m-%d")
+                return parsed.strftime("%B %#d, %Y")
+            except Exception:
+                return value
+
+    def badge_class_for_status(status):
+        raw = (status or "").strip().lower()
+
+        if raw == "completed":
+            return "success"
+        if raw in ("live", "active"):
+            return "live"
+        return "warning"
+
+    existing_event_names = {
+        event.get("name")
+        for event in events
+        if event.get("name")
+    }
+
+    for setup_event in event_setup_rows:
+        setup_name = setup_event.get("name")
+
+        if not setup_name or setup_name in existing_event_names:
+            continue
+
+        events.append({
+            "name": setup_name,
+            "total_tickets": 0,
+            "total_revenue": 0,
+            "ticket_revenue": 0,
+            "cash_revenue": 0,
+            "expenses": 0,
+            "net_profit": 0,
+            "ticket_breakdown": [],
+            "revenue_breakdown": [],
+            "cash_breakdown": [],
+            "expense_breakdown": [],
+        })
+
+    for event in events:
+        setup = event_setup_map.get(event.get("name"), {})
+        status_label = setup.get("status") or "Upcoming"
+
+        event["date"] = format_event_date(setup.get("event_date"))
+        event["status_label"] = status_label
+        event["badge_class"] = badge_class_for_status(status_label)
+        event["guests"] = group_guest_rows(guests_by_event.get(event.get("name"), []))
+        event["vip_guests"] = group_guest_rows(vip_by_event.get(event.get("name"), []))
+        event["checkin_guests"] = group_guest_rows(checkin_by_event.get(event.get("name"), []))
+
+        estimated_attendance = int(event.get("estimated_attendance") or event.get("total_tickets_sold") or 0)
+        checked_in_count = int(checked_in_count_map.get(event.get("name"), 0) or 0)
+
+        event["estimated_attendance"] = estimated_attendance
+        event["checked_in_count"] = checked_in_count
+        event["not_checked_in_count"] = max(estimated_attendance - checked_in_count, 0)
+        event["checkin_progress_label"] = f"{checked_in_count} of {estimated_attendance}"
 
     return render_template(
         "events_dashboard.html",
         metrics=metrics,
         events=events,
-        vip_members=vip_members,
-        membership_log_members=membership_log_members,
-        vip_count=len(vip_members),
-        membership_count=membership_log_count,
-        membership_log_count=membership_log_count,
-        event_demand_votes=event_demand_votes,
-        total_demand_votes=total_demand_votes,
-        active_suggestions=active_suggestions,
-        archived_suggestions=archived_suggestions,
-        vip_recipients=vip_recipients,
-        membership_recipients=membership_recipients,
-        square_connected=False,
+        vip_members=[],
+        membership_log_members=[],
+        vip_count=0,
+        membership_count=metrics.get("active_memberships", 0),
+        membership_log_count=metrics.get("active_memberships", 0),
+        event_demand_votes=[],
+        total_demand_votes=0,
+        active_suggestions=[],
+        archived_suggestions=[],
+        vip_recipients=[],
+        membership_recipients=[],
+        square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
     )
+
+
 
 @app.route("/admin/dashboard-redesign/messages")
 @requires_auth
 def admin_dashboard_messages():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
-
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
-
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": estimated_attendance,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
-
-    events = [
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-        {
-            "name": "Juneteenth Celebration",
-            "tickets": [
-                {"name": "General Admission", "quantity": 0, "price": 0},
-                {"name": "VIP Section", "quantity": 0, "price": 0},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    preview_tickets_sold = max(total_tickets_sold - vip_tickets, 0)
-
-    dashboard_preview_summary = {
-        "upcoming_events_count": len(events),
-        "door_sales_count": sum(
-            ticket.get("quantity", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_total": sum(
-            ticket.get("revenue", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_cash": sum(
-            ticket.get("cash_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_square": sum(
-            ticket.get("square_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-    }
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
+    message_types = [
+        "Contact Message",
+        "DJ Application",
+        "Vendor Application",
+    ]
+
+    placeholders = ",".join(["?"] * len(message_types))
+
     cursor.execute(
-        """
-        SELECT COUNT(*)
+        f"""
+        SELECT id,
+               type,
+               name,
+               email,
+               details,
+               status,
+               created_at,
+               COALESCE(archived, 0) AS archived,
+               archived_at,
+               notes
         FROM leads
-        WHERE type = 'Membership Signup'
-          AND status = 'Active'
-        """
+        WHERE type IN ({placeholders})
+        ORDER BY COALESCE(archived, 0), datetime(COALESCE(created_at, '1900-01-01')) DESC, id DESC
+        """,
+        message_types,
     )
-    membership_log_count = int(cursor.fetchone()[0] or 0)
+    lead_rows = [dict(row) for row in cursor.fetchall()]
+
+    active_messages = [row for row in lead_rows if int(row.get("archived") or 0) == 0]
+
+    # Archived Messages should only show closed general inquiries.
+    # DJ/Vendor applications that are moved to the Contact Log are archived in the database
+    # but should live in the Contact Log, not the Messages archive.
+    archived_messages = [
+        row
+        for row in lead_rows
+        if int(row.get("archived") or 0) == 1
+        and row.get("type") == "Contact Message"
+        and (row.get("status") or "").strip().lower() == "closed"
+    ]
+
+    def count_active(lead_type):
+        return sum(1 for row in active_messages if row.get("type") == lead_type)
+
+    new_messages_count = sum(
+        1
+        for row in active_messages
+        if (row.get("status") or "").strip().lower() in ("new", "active")
+    )
+
+    follow_up_needed_count = sum(
+        1
+        for row in active_messages
+        if (row.get("status") or "").strip().lower() in ("new", "contacted")
+    )
+
+    message_stats = {
+        "new_messages": new_messages_count,
+        "contact_messages": count_active("Contact Message"),
+        "dj_applications": count_active("DJ Application"),
+        "vendor_applications": count_active("Vendor Application"),
+        "vip_signups": count_active("VIP Signup"),
+        "archived_messages": len(archived_messages),
+        "follow_up_needed": follow_up_needed_count,
+        "total_active": len(active_messages),
+    }
 
     cursor.execute(
         """
@@ -4982,282 +7335,502 @@ def admin_dashboard_messages():
         """
     )
     membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+
     conn.close()
-
-    active_members = []
-    vip_members = []
-    membership_log_members = []
-
-    event_demand_votes = []
-    total_demand_votes = 0
-
-    active_suggestions = []
-    archived_suggestions = []
 
     return render_template(
         "messages_dashboard.html",
         metrics=metrics,
         events=events,
-        vip_members=vip_members,
-        membership_log_members=membership_log_members,
-        vip_count=len(vip_members),
-        membership_count=membership_log_count,
-        membership_log_count=membership_log_count,
-        event_demand_votes=event_demand_votes,
-        total_demand_votes=total_demand_votes,
-        active_suggestions=active_suggestions,
-        archived_suggestions=archived_suggestions,
+        message_stats=message_stats,
+        active_messages=active_messages,
+        archived_messages=archived_messages,
+        vip_members=[],
+        membership_log_members=[],
+        vip_count=message_stats["vip_signups"],
+        membership_count=metrics.get("active_memberships", 0),
+        membership_log_count=metrics.get("active_memberships", 0),
+        event_demand_votes=[],
+        total_demand_votes=0,
+        active_suggestions=[],
+        archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=False,
+        square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
     )
+
+
+@app.route("/api/members/add", methods=["POST"])
+@requires_auth
+def api_add_member():
+    data = request.get_json(silent=True) or {}
+
+    list_key = (data.get("list_key") or "").strip()
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip().lower()
+    status = (data.get("status") or "Active").strip()
+
+    if not name:
+        return {"ok": False, "error": "Name is required."}, 400
+
+    if not email:
+        return {"ok": False, "error": "Email is required."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    if list_key == "vip-email":
+        cursor.execute(
+            """
+            INSERT INTO leads (type, name, email, details, status, archived, archived_at, created_at)
+            VALUES (?, ?, ?, ?, ?, 0, NULL, CURRENT_TIMESTAMP)
+            """,
+            (
+                "VIP Signup",
+                name,
+                email,
+                "Manual entry from Members dashboard",
+                "Active",
+            ),
+        )
+
+        member_id = cursor.lastrowid
+        list_title = "VIP Email List"
+        saved_status = "Active"
+        signup_date = "Manual Entry"
+
+    elif list_key in ("originals", "circle"):
+        membership_group = "Original" if list_key == "originals" else "Circle"
+
+        cursor.execute(
+            """
+            INSERT INTO memberships (name, email, amount, status, payment_id, source, membership_group)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                name,
+                email,
+                10.0,
+                "Active",
+                None,
+                "manual-entry",
+                membership_group,
+            ),
+        )
+
+        member_id = cursor.lastrowid
+        list_title = "Original Members" if list_key == "originals" else "Jukebox Circle Members"
+        saved_status = "Active"
+        signup_date = "Manual Entry"
+
+    else:
+        conn.close()
+        return {"ok": False, "error": "Unknown member list."}, 400
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "member": {
+            "id": member_id,
+            "name": name,
+            "email": email,
+            "list": list_title,
+            "status": saved_status,
+            "signup_date": signup_date,
+        },
+    }, 200
+
+
+
+@app.route("/api/members/delete", methods=["POST"])
+@requires_auth
+def api_delete_member():
+    data = request.get_json(silent=True) or {}
+
+    list_key = (data.get("list_key") or "").strip()
+    record_id = data.get("record_id")
+    email = (data.get("email") or "").strip().lower()
+
+    if not list_key:
+        return {"ok": False, "error": "Member list is required."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    if list_key == "vip-email":
+        if record_id:
+            cursor.execute(
+                """
+                UPDATE leads
+                SET status = 'Inactive',
+                    archived = 1,
+                    archived_at = CURRENT_TIMESTAMP
+                WHERE id = ?
+                  AND type = 'VIP Signup'
+                """,
+                (record_id,),
+            )
+        elif email:
+            cursor.execute(
+                """
+                UPDATE leads
+                SET status = 'Inactive',
+                    archived = 1,
+                    archived_at = CURRENT_TIMESTAMP
+                WHERE type = 'VIP Signup'
+                  AND LOWER(COALESCE(email, '')) = ?
+                """,
+                (email,),
+            )
+        else:
+            conn.close()
+            return {"ok": False, "error": "Member id or email is required."}, 400
+
+    elif list_key in ("originals", "circle"):
+        membership_group = "Original" if list_key == "originals" else "Circle"
+
+        if record_id:
+            cursor.execute(
+                """
+                UPDATE memberships
+                SET status = 'Inactive'
+                WHERE id = ?
+                  AND COALESCE(membership_group, 'Circle') = ?
+                """,
+                (record_id, membership_group),
+            )
+        elif email:
+            cursor.execute(
+                """
+                UPDATE memberships
+                SET status = 'Inactive'
+                WHERE LOWER(COALESCE(email, '')) = ?
+                  AND COALESCE(membership_group, 'Circle') = ?
+                """,
+                (email, membership_group),
+            )
+        else:
+            conn.close()
+            return {"ok": False, "error": "Member id or email is required."}, 400
+
+    else:
+        conn.close()
+        return {"ok": False, "error": "Unknown member list."}, 400
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return {"ok": False, "error": "Member not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "list_key": list_key,
+        "record_id": record_id,
+        "email": email,
+    }, 200
+
 
 
 @app.route("/admin/dashboard-redesign/members")
 @requires_auth
 def admin_dashboard_members():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
-
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
-
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": estimated_attendance,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
-
-    events = [
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-        {
-            "name": "Juneteenth Celebration",
-            "tickets": [
-                {"name": "General Admission", "quantity": 0, "price": 0},
-                {"name": "VIP Section", "quantity": 0, "price": 0},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    preview_tickets_sold = max(total_tickets_sold - vip_tickets, 0)
-
-    dashboard_preview_summary = {
-        "upcoming_events_count": len(events),
-        "door_sales_count": sum(
-            ticket.get("quantity", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_total": sum(
-            ticket.get("revenue", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_cash": sum(
-            ticket.get("cash_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_square": sum(
-            ticket.get("square_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-    }
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        SELECT COUNT(*)
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND status = 'Active'
-        """
-    )
-    membership_log_count = int(cursor.fetchone()[0] or 0)
-
-    cursor.execute(
-        """
-        SELECT DISTINCT LOWER(TRIM(email))
+        SELECT id,
+               name,
+               email,
+               status,
+               created_at,
+               details
         FROM leads
         WHERE type = 'VIP Signup'
+          AND COALESCE(archived, 0) = 0
           AND LOWER(COALESCE(status, '')) = 'active'
           AND email IS NOT NULL
           AND TRIM(email) <> ''
-        ORDER BY LOWER(TRIM(email))
+        ORDER BY datetime(COALESCE(created_at, '1900-01-01')) DESC, id DESC
         """
     )
-    vip_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+    vip_email_members = [dict(row) for row in cursor.fetchall()]
+    vip_email_count = len({
+        (member.get("email") or "").strip().lower()
+        for member in vip_email_members
+        if (member.get("email") or "").strip()
+    })
 
     cursor.execute(
         """
-        SELECT DISTINCT LOWER(TRIM(email))
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND LOWER(COALESCE(status, '')) = 'active'
-          AND email IS NOT NULL
-          AND TRIM(email) <> ''
-        ORDER BY LOWER(TRIM(email))
+        SELECT id,
+               name,
+               email,
+               amount,
+               status,
+               payment_id,
+               source,
+               COALESCE(membership_group, 'Circle') AS membership_group
+        FROM memberships
+        WHERE LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(amount, 0) > 0
+        ORDER BY id
         """
     )
-    membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+    paid_members = [dict(row) for row in cursor.fetchall()]
+
+    for member in paid_members:
+        name = (member.get("name") or "").strip()
+        email = (member.get("email") or "").strip()
+
+        if not name or name.lower() == "member":
+            member["display_name"] = email.split("@")[0] if "@" in email else "Member"
+        else:
+            member["display_name"] = name
+
+    original_members = [
+        member for member in paid_members
+        if (member.get("membership_group") or "").strip().lower() == "original"
+    ]
+
+    circle_members = [
+        member for member in paid_members
+        if (member.get("membership_group") or "").strip().lower() != "original"
+    ]
+
+    originals_count = len(original_members)
+    regular_count = len(circle_members)
+
+    # Expected monthly subscription revenue is based on active paid members,
+    # not total payment history. Actual collected revenue is tracked separately
+    # through membership_payments and dashboard metrics.
+    monthly_membership_rate = 10.0
+    monthly_revenue = (originals_count + regular_count) * monthly_membership_rate
+    originals_revenue = originals_count * monthly_membership_rate
+    regular_revenue = regular_count * monthly_membership_rate
+    annual_projection = monthly_revenue * 12
+
+    member_stats = {
+        "total_members": originals_count + regular_count,
+        "originals_count": originals_count,
+        "regular_count": regular_count,
+        "vip_email_count": vip_email_count,
+        "monthly_revenue": monthly_revenue,
+        "annual_projection": annual_projection,
+        "originals_revenue": monthly_revenue,
+        "regular_revenue": 0.0,
+    }
+
+    vip_recipients = []
+    membership_recipients = [m.get("email") for m in paid_members if m.get("email")]
+
     conn.close()
-
-    active_members = []
-    vip_members = []
-    membership_log_members = []
-
-    event_demand_votes = []
-    total_demand_votes = 0
-
-    active_suggestions = []
-    archived_suggestions = []
 
     return render_template(
         "members_dashboard.html",
         metrics=metrics,
         events=events,
-        vip_members=vip_members,
-        membership_log_members=membership_log_members,
-        vip_count=len(vip_members),
-        membership_count=membership_log_count,
-        membership_log_count=membership_log_count,
-        event_demand_votes=event_demand_votes,
-        total_demand_votes=total_demand_votes,
-        active_suggestions=active_suggestions,
-        archived_suggestions=archived_suggestions,
+        member_stats=member_stats,
+        paid_members=paid_members,
+        original_members=original_members,
+        circle_members=circle_members,
+        vip_email_members=vip_email_members,
+        vip_members=vip_email_members,
+        membership_log_members=paid_members,
+        vip_count=vip_email_count,
+        membership_count=member_stats["total_members"],
+        membership_log_count=member_stats["total_members"],
+        event_demand_votes=[],
+        total_demand_votes=0,
+        active_suggestions=[],
+        archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=False,
+        square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
     )
 
 
-@app.route("/admin/dashboard-redesign/contacts")
+
+@app.route("/api/contact-log", methods=["POST"])
 @requires_auth
-def admin_dashboard_contacts():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
+def api_create_contact_log():
+    data = request.get_json(silent=True) or {}
 
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
+    name = (data.get("name") or "").strip()
+    email = (data.get("email") or "").strip()
+    contact_type = (data.get("contact_type") or "Other").strip()
+    category = (data.get("category") or "Talent").strip()
+    details = (data.get("details") or "").strip()
+    notes = (data.get("notes") or "").strip()
 
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": estimated_attendance,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
+    if not name:
+        return {"ok": False, "error": "Contact name is required."}, 400
 
-    events = [
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-        {
-            "name": "Juneteenth Celebration",
-            "tickets": [
-                {"name": "General Admission", "quantity": 0, "price": 0},
-                {"name": "VIP Section", "quantity": 0, "price": 0},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    preview_tickets_sold = max(total_tickets_sold - vip_tickets, 0)
-
-    dashboard_preview_summary = {
-        "upcoming_events_count": len(events),
-        "door_sales_count": sum(
-            ticket.get("quantity", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_total": sum(
-            ticket.get("revenue", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_cash": sum(
-            ticket.get("cash_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-        "door_sales_square": sum(
-            ticket.get("square_amount", 0)
-            for event in events
-            for ticket in event.get("tickets", [])
-            if ticket.get("name") == "Door Sales"
-        ),
-    }
+    if category not in {"Talent", "Vendor"}:
+        category = "Talent"
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute(
         """
-        SELECT COUNT(*)
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND status = 'Active'
+        INSERT INTO contact_log (
+            source_lead_id,
+            category,
+            name,
+            email,
+            phone,
+            contact_type,
+            details,
+            status,
+            notes
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            None,
+            category,
+            name,
+            email,
+            "",
+            contact_type,
+            details,
+            "New",
+            notes,
+        ),
+    )
+
+    conn.commit()
+    contact_id = cursor.lastrowid
+    conn.close()
+
+    return {
+        "ok": True,
+        "contact": {
+            "id": contact_id,
+            "category": category,
+            "name": name,
+            "email": email,
+            "contact_type": contact_type,
+            "details": details,
+            "status": "New",
+            "notes": notes,
+        },
+    }, 200
+
+
+@app.route("/api/contact-log/<int:contact_id>/notes", methods=["POST"])
+@requires_auth
+def api_update_contact_log_notes(contact_id):
+    data = request.get_json(silent=True) or {}
+    notes = (data.get("notes") or "").strip()
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE contact_log
+        SET notes = ?
+        WHERE id = ?
+        """,
+        (notes, contact_id),
+    )
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return {"ok": False, "error": "Contact not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "contact_id": contact_id,
+        "notes": notes,
+    }, 200
+
+
+
+@app.route("/api/contact-log/<int:contact_id>/delete", methods=["POST", "DELETE"])
+@requires_auth
+def api_delete_contact_log(contact_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM contact_log WHERE id = ?", (contact_id,))
+
+    if cursor.rowcount == 0:
+        conn.close()
+        return {"ok": False, "error": "Contact not found."}, 404
+
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "deleted_id": contact_id}, 200
+
+
+
+@app.route("/admin/dashboard-redesign/contacts")
+@requires_auth
+def admin_dashboard_contacts():
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id,
+               source_lead_id,
+               category,
+               name,
+               email,
+               phone,
+               contact_type,
+               details,
+               status,
+               notes,
+               created_at
+        FROM contact_log
+        ORDER BY datetime(COALESCE(created_at, '1900-01-01')) DESC, id DESC
         """
     )
-    membership_log_count = int(cursor.fetchone()[0] or 0)
+    contact_rows = [dict(row) for row in cursor.fetchall()]
+
+    talent_contacts = [
+        row for row in contact_rows
+        if (row.get("category") or "").strip().lower() == "talent"
+    ]
+
+    vendor_contacts = [
+        row for row in contact_rows
+        if (row.get("category") or "").strip().lower() == "vendor"
+    ]
+
+    contact_stats = {
+        "talent_contacts": len(talent_contacts),
+        "vendor_contacts": len(vendor_contacts),
+        "new_contacts": sum(
+            1 for row in contact_rows
+            if (row.get("status") or "").strip().lower() == "new"
+        ),
+        "preferred_vendors": sum(
+            1 for row in vendor_contacts
+            if (row.get("status") or "").strip().lower() == "preferred"
+        ),
+        "total_contacts": len(contact_rows),
+    }
 
     cursor.execute(
         """
@@ -5284,62 +7857,32 @@ def admin_dashboard_contacts():
         """
     )
     membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+
     conn.close()
-
-    active_members = []
-    vip_members = []
-    membership_log_members = []
-
-    event_demand_votes = []
-    total_demand_votes = 0
-
-    active_suggestions = []
-    archived_suggestions = []
 
     return render_template(
         "contacts_dashboard.html",
         metrics=metrics,
         events=events,
-        vip_members=vip_members,
-        membership_log_members=membership_log_members,
-        vip_count=len(vip_members),
-        membership_count=membership_log_count,
-        membership_log_count=membership_log_count,
-        event_demand_votes=event_demand_votes,
-        total_demand_votes=total_demand_votes,
-        active_suggestions=active_suggestions,
-        archived_suggestions=archived_suggestions,
+        contacts=contact_rows,
+        talent_contacts=talent_contacts,
+        vendor_contacts=vendor_contacts,
+        contact_stats=contact_stats,
+        vip_members=[],
+        membership_log_members=[],
+        vip_count=len(vip_recipients),
+        membership_count=metrics.get("active_memberships", 0),
+        membership_log_count=metrics.get("active_memberships", 0),
+        event_demand_votes=[],
+        total_demand_votes=0,
+        active_suggestions=[],
+        archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=False,
+        square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
     )
 
-
-@app.route("/dashboard-redesign")
-@requires_auth
-def client_dashboard_redesign_preview():
-    return admin_dashboard_redesign()
-
-@app.route("/dashboard-redesign/events")
-@requires_auth
-def client_dashboard_events_preview():
-    return admin_dashboard_events()
-
-@app.route("/dashboard-redesign/revenue")
-@requires_auth
-def client_dashboard_revenue_preview():
-    return admin_dashboard_revenue()
-
-@app.route("/dashboard-redesign/messages")
-@requires_auth
-def client_dashboard_messages_preview():
-    return admin_dashboard_messages()
-
-@app.route("/dashboard-redesign/members")
-@requires_auth
-def client_dashboard_members_preview():
-    return admin_dashboard_members()
 
 @app.route("/dashboard-redesign/contacts")
 @requires_auth

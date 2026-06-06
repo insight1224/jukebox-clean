@@ -37,8 +37,6 @@
         <a href="/admin/dashboard-redesign/messages">Messages</a>
         <a href="/admin/dashboard-redesign/members">Members</a>
         <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
-        <a href="/admin/dashboard-redesign#reports">Reports</a>
-        <a href="/admin/dashboard-redesign#settings">Settings</a>
       </nav>
     </aside>
 
@@ -60,6 +58,8 @@
 
         <div class="topbar-actions">
           <button class="btn secondary js-export-revenue-report" type="button" id="exportRevenueOverview">Export Report</button>
+          <a class="btn primary" href="/admin/dashboard-redesign/income-summary" target="_blank">Income Summary Report</a>
+
         </div>
       </header>
 
@@ -86,7 +86,7 @@
           </div>
 
           <div class="revenue-card">
-            <p>VIP Tickets</p>
+            <p>VIP Booths</p>
             <h4>{{ metrics.vip_tickets }}</h4>
             <span>VIP ticket purchases</span>
           </div>
@@ -94,7 +94,25 @@
           <div class="revenue-card">
             <p>Ticket Revenue</p>
             <h4>${{ "%.2f"|format(metrics.ticket_revenue) }}</h4>
-            <span>Ticket sales only</span>
+            <span>Square + Eventbrite ticket sales</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Membership Revenue</p>
+            <h4>${{ "%.2f"|format(metrics.membership_revenue) }}</h4>
+            <span>Paid memberships</span>
+          </div>
+
+          <div class="revenue-card">
+            <p>Tips / Other</p>
+            <h4>${{ "%.2f"|format(metrics.tips_other_revenue) }}</h4>
+            <span>Tips + other collected revenue</span>
+          </div>
+
+          <div class="revenue-card total-revenue-highlight">
+            <p>Total Collected</p>
+            <h4>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</h4>
+            <span>Tickets + memberships + tips/other + cash</span>
           </div>
         </div>
 
@@ -104,18 +122,18 @@
             <h4>{{ event.name }}</h4>
 
             <div class="breakdown-row">
-              <span>Tickets Sold</span>
-              <strong>{{ event.total_tickets_sold }}</strong>
+              <span>Total Revenue</span>
+              <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
             </div>
 
             <div class="breakdown-row">
-              <span>Revenue</span>
-              <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+              <span>Total Expenses</span>
+              <strong>${{ "%.2f"|format(event.expense_total|default(0)) }}</strong>
             </div>
 
             <div class="breakdown-row">
-              <span>Ticket Types</span>
-              <strong>{{ event.tickets|length }}</strong>
+              <span>Net Profit</span>
+              <strong>${{ "%.2f"|format((event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0))) }}</strong>
             </div>
           </button>
           {% endfor %}
@@ -134,48 +152,55 @@
         <div class="membership-kpi-grid past-events-kpi-grid">
           <div class="revenue-card">
             <p>Completed Events</p>
-            <h4>1</h4>
+            <h4>{{ past_events|length }}</h4>
             <span>Past event records</span>
           </div>
 
           <div class="revenue-card">
             <p>Past Revenue</p>
-            <h4>$4,503.15</h4>
+            <h4>${{ "%.2f"|format(past_revenue_total) }}</h4>
             <span>Completed event revenue</span>
           </div>
 
           <div class="revenue-card">
             <p>Past Expenses</p>
-            <h4>$800</h4>
+            <h4>${{ "%.2f"|format(past_expenses_total) }}</h4>
             <span>Completed event expenses</span>
           </div>
 
           <div class="revenue-card">
             <p>Past Net Profit</p>
-            <h4>$3,703.15</h4>
+            <h4>${{ "%.2f"|format(past_net_profit) }}</h4>
             <span>Revenue after expenses</span>
           </div>
         </div>
 
         <div class="membership-breakdown-grid past-events-breakdown-grid">
-          <button class="breakdown-card past-event-revenue-card js-open-revenue-modal" type="button" data-target="past-battle-djs" data-title="Battle of the DJs">
-            <h4>Battle of the DJs</h4>
+          {% for event in past_events %}
+          <button class="breakdown-card past-event-revenue-card js-open-revenue-modal" type="button" data-target="past-event-revenue-{{ loop.index }}" data-title="{{ event.name }}">
+            <h4>{{ event.name }}</h4>
 
             <div class="breakdown-row">
-              <span>Tickets Sold</span>
-              <strong>192</strong>
+              <span>Total Revenue</span>
+              <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
             </div>
 
             <div class="breakdown-row">
-              <span>Revenue</span>
-              <strong>$4,503.15</strong>
+              <span>Total Expenses</span>
+              <strong>${{ "%.2f"|format(event.expense_total|default(0)) }}</strong>
             </div>
 
             <div class="breakdown-row">
               <span>Net Profit</span>
-              <strong>$3,703.15</strong>
+              <strong>${{ "%.2f"|format((event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0))) }}</strong>
             </div>
           </button>
+          {% else %}
+          <div class="breakdown-card">
+            <h4>No past events yet</h4>
+            <p>Completed events will show here once they are marked as past.</p>
+          </div>
+          {% endfor %}
         </div>
       </section>
 
@@ -191,26 +216,26 @@
         <div class="membership-kpi-grid">
           <div class="revenue-card">
             <p>Total Members</p>
-            <h4>20</h4>
-            <span>Originals + Jukebox Circle</span>
+            <h4>{{ member_stats.total_members }}</h4>
+            <span>Original members only</span>
           </div>
 
           <div class="revenue-card">
-            <p>VIP Email List</p>
-            <h4>31</h4>
-            <span>Email subscribers</span>
+            <p>Original Members</p>
+            <h4>{{ member_stats.originals_count }}</h4>
+            <span>Paid original memberships</span>
           </div>
 
           <div class="revenue-card">
             <p>Monthly Revenue</p>
-            <h4>$200</h4>
-            <span>Estimated recurring revenue</span>
+            <h4>${{ "%.2f"|format(member_stats.monthly_revenue) }}</h4>
+            <span>Expected recurring revenue</span>
           </div>
 
           <div class="revenue-card">
             <p>Annual Projection</p>
-            <h4>$2,400</h4>
-            <span>Based on monthly revenue</span>
+            <h4>${{ "%.2f"|format(member_stats.annual_projection) }}</h4>
+            <span>Expected annual recurring revenue</span>
           </div>
         </div>
 
@@ -219,11 +244,11 @@
             <h4>Jukebox Circle Originals</h4>
             <div class="breakdown-row">
               <span>Active Members</span>
-              <strong>12</strong>
+              <strong>{{ member_stats.originals_count }}</strong>
             </div>
             <div class="breakdown-row">
               <span>Monthly Revenue</span>
-              <strong>$120</strong>
+              <strong>${{ "%.2f"|format(member_stats.originals_revenue) }}</strong>
             </div>
           </div>
 
@@ -231,11 +256,11 @@
             <h4>Jukebox Circle</h4>
             <div class="breakdown-row">
               <span>Active Members</span>
-              <strong>8</strong>
+              <strong>{{ member_stats.regular_count }}</strong>
             </div>
             <div class="breakdown-row">
               <span>Monthly Revenue</span>
-              <strong>$80</strong>
+              <strong>${{ "%.2f"|format(member_stats.regular_revenue) }}</strong>
             </div>
           </div>
 
@@ -243,11 +268,11 @@
             <h4>VIP Email List</h4>
             <div class="breakdown-row">
               <span>Email Subscribers</span>
-              <strong>31</strong>
+              <strong>{{ member_stats.vip_email_count }}</strong>
             </div>
             <div class="breakdown-row">
               <span>Revenue</span>
-              <strong>$0</strong>
+              <strong>$0.00</strong>
             </div>
           </div>
         </div>
@@ -261,34 +286,36 @@
             <p>Track ticket revenue, expenses, payment methods, and profit.</p>
           </div>
           <div class="section-actions">
+            <a class="btn secondary" href="/admin/dashboard-redesign/events">Back to Events</a>
             <button class="btn secondary js-export-revenue-report" type="button" id="exportEventRevenueButton">Export Report</button>
-            <button class="btn primary" type="button" id="addExpenseButton">Add Expense</button>
+            <button class="btn secondary" type="button" id="addCashRevenueButton" onclick="document.getElementById('cashRevenueModalOverlay').classList.add('active')">Add Cash Revenue</button>
+            <button class="btn primary" type="button" id="addExpenseButton" onclick="document.getElementById('expenseModalOverlay').classList.add('active')">Add Expense</button>
           </div>
         </div>
 
         <div class="revenue-summary-grid">
           <div class="revenue-card">
             <p>Gross Revenue</p>
-            <h4>$4,250</h4>
-            <span>Online + ticket sales</span>
+            <h4>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</h4>
+            <span>Tickets + memberships + tips/other + cash</span>
           </div>
 
           <div class="revenue-card">
             <p>Expenses</p>
-            <h4 id="expenseTotal">$800</h4>
-            <span>Staff, DJ, supplies</span>
+            <h4 id="expenseTotal">${{ "%.2f"|format(metrics.total_expenses) }}</h4>
+            <span>Expenses not added yet</span>
           </div>
 
           <div class="revenue-card">
             <p>Net Profit</p>
-            <h4 id="netProfitTotal">$3,450</h4>
-            <span>After expenses</span>
+            <h4 id="netProfitTotal">${{ "%.2f"|format(metrics.net_profit) }}</h4>
+            <span>Gross revenue minus expenses</span>
           </div>
 
           <div class="revenue-card">
-            <p>Comps</p>
-            <h4>12</h4>
-            <span>Guest list / promo</span>
+            <p>Cash Revenue</p>
+            <h4>${{ "%.2f"|format(metrics.cash_revenue) }}</h4>
+            <span>Door cash / other cash</span>
           </div>
         </div>
       </section>
@@ -308,24 +335,24 @@
           <div class="revenue-detail-content" id="event-revenue-{{ loop.index }}">
             <div class="event-detail-stats">
               <div>
-                <p>Total Tickets</p>
-                <strong>{{ event.total_tickets_sold }}</strong>
-                <span>All ticket categories</span>
-              </div>
-              <div>
                 <p>Total Revenue</p>
-                <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
                 <span>Event ticket revenue</span>
               </div>
               <div>
-                <p>Ticket Types</p>
-                <strong>{{ event.tickets|length }}</strong>
-                <span>Categories tracked</span>
+                <p>Expenses</p>
+                <strong>${{ "%.2f"|format(event.expense_total) }}</strong>
+                <span>Saved event expenses</span>
               </div>
               <div>
-                <p>Status</p>
-                <strong>Upcoming</strong>
-                <span>Preview status</span>
+                <p>Net Profit</p>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue) - event.expense_total|default(0)) }}</strong>
+                <span>Revenue after expenses</span>
+              </div>
+              <div>
+                <p>Total Tickets</p>
+                <strong>{{ event.total_tickets_sold }}</strong>
+                <span>All ticket categories</span>
               </div>
             </div>
 
@@ -342,10 +369,86 @@
 
               <div class="event-detail-panel">
                 <h5>Revenue Breakdown</h5>
-                {% for ticket in event.tickets %}
+                {% for source in event.revenue_sources %}
                 <div class="breakdown-row">
-                  <span>{{ ticket.name }}</span>
-                  <strong>${{ "%.2f"|format(ticket.revenue) }}</strong>
+                  <span>{{ source.name }}</span>
+                  <strong>{{ source.quantity }} / ${{ "%.2f"|format(source.revenue) }}</strong>
+                </div>
+                {% endfor %}
+              </div>
+
+              <div class="event-detail-panel">
+                <h5>Other Revenue</h5>
+                {% for cash in event.cash_revenue %}
+                <div class="breakdown-row stacked-breakdown-row expense-action-row">
+                  <span>
+                    {{ cash.category }}
+                    {% if cash.notes %}
+                    <small>{{ cash.notes }}</small>
+                    {% endif %}
+                    {% if cash.quantity and cash.quantity > 0 %}<small>{{ cash.quantity }} tickets</small>{% endif %}
+                  </span>
+                  <strong>${{ "%.2f"|format(cash.amount) }}</strong>
+                  <div class="expense-row-actions">
+                    <button type="button"
+                      class="js-edit-cash"
+                      data-cash-id="{{ cash.id }}"
+                      data-event-name="{{ event.name }}"
+                      data-category="{{ cash.category }}"
+                      data-quantity="{{ cash.quantity }}"
+                      data-amount="{{ cash.amount }}"
+                      data-notes="{{ cash.notes }}">
+                      Edit
+                    </button>
+                    <button type="button"
+                      class="js-delete-cash"
+                      data-cash-id="{{ cash.id }}">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                {% else %}
+                <div class="breakdown-row">
+                  <span>No cash revenue saved for this event yet.</span>
+                  <strong>$0.00</strong>
+                </div>
+                {% endfor %}
+              </div>
+
+              <div class="event-detail-panel">
+                <h5>Expense Breakdown</h5>
+                {% for expense in event.expenses %}
+                <div class="breakdown-row stacked-breakdown-row expense-action-row">
+                  <span>
+                    {{ expense.category }}
+                    {% if expense.notes %}
+                    <small>{{ expense.notes }}</small>
+                    {% endif %}
+                    <small>{{ expense.payment_method }}</small>
+                  </span>
+                  <strong>${{ "%.2f"|format(expense.amount) }}</strong>
+                  <div class="expense-row-actions">
+                    <button type="button"
+                      class="js-edit-expense"
+                      data-expense-id="{{ expense.id }}"
+                      data-event-name="{{ expense.event_name }}"
+                      data-category="{{ expense.category }}"
+                      data-amount="{{ expense.amount }}"
+                      data-notes="{{ expense.notes }}"
+                      data-payment-method="{{ expense.payment_method }}">
+                      Edit
+                    </button>
+                    <button type="button"
+                      class="js-delete-expense"
+                      data-expense-id="{{ expense.id }}">
+                      Delete
+                    </button>
+                  </div>
+                </div>
+                {% else %}
+                <div class="breakdown-row">
+                  <span>No expenses saved for this event yet.</span>
+                  <strong>$0.00</strong>
                 </div>
                 {% endfor %}
               </div>
@@ -353,118 +456,186 @@
           </div>
           {% endfor %}
 
-          <div class="revenue-detail-content" id="past-battle-djs">
+          {% for event in past_events %}
+          <div class="revenue-detail-content" id="past-event-revenue-{{ loop.index }}">
             <div class="event-detail-stats">
               <div>
-                <p>Tickets Sold</p>
-                <strong>192</strong>
-                <span>Completed event total</span>
-              </div>
-              <div>
                 <p>Total Revenue</p>
-                <strong>$4,503.15</strong>
-                <span>Ticket sales total</span>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
+                <span>Event ticket revenue</span>
               </div>
               <div>
                 <p>Expenses</p>
-                <strong>$800.00</strong>
-                <span>Estimated expenses</span>
+                <strong>${{ "%.2f"|format(event.expense_total) }}</strong>
+                <span>Saved event expenses</span>
               </div>
               <div>
                 <p>Net Profit</p>
-                <strong>$3,703.15</strong>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue) - event.expense_total|default(0)) }}</strong>
                 <span>Revenue after expenses</span>
+              </div>
+              <div>
+                <p>Total Tickets</p>
+                <strong>{{ event.total_tickets_sold }}</strong>
+                <span>All ticket categories</span>
               </div>
             </div>
 
             <div class="event-detail-grid">
               <div class="event-detail-panel">
                 <h5>Ticket Breakdown</h5>
-
+                {% for ticket in event.tickets %}
                 <div class="breakdown-row">
-                  <span>Early Bird</span>
-                  <strong>22 sold</strong>
+                  <span>{{ ticket.name }}</span>
+                  <strong>{{ ticket.quantity }} sold</strong>
                 </div>
-
-                <div class="breakdown-row">
-                  <span>General Admissions</span>
-                  <strong>37 sold</strong>
-                </div>
-
-                <div class="breakdown-row">
-                  <span>VIP</span>
-                  <strong>6 sold</strong>
-                </div>
-
-                <div class="breakdown-row">
-                  <span>DJ VIP</span>
-                  <strong>0 sold</strong>
-                </div>
-
-                <div class="breakdown-row">
-                  <span>Eventbrite</span>
-                  <strong>65 sold</strong>
-                </div>
-
-                <div class="breakdown-row">
-                  <span>Door - Square</span>
-                  <strong>$1,220.00</strong>
-                </div>
-
-                <div class="breakdown-row">
-                  <span>Door - Cash</span>
-                  <strong>$1,320.00</strong>
-                </div>
+                {% endfor %}
               </div>
 
               <div class="event-detail-panel">
                 <h5>Revenue Breakdown</h5>
-
+                {% for source in event.revenue_sources %}
                 <div class="breakdown-row">
-                  <span>Early Bird</span>
-                  <strong>$308.45</strong>
+                  <span>{{ source.name }}</span>
+                  <strong>{{ source.quantity }} / ${{ "%.2f"|format(source.revenue) }}</strong>
                 </div>
+                {% endfor %}
+              </div>
 
-                <div class="breakdown-row">
-                  <span>General Admissions</span>
-                  <strong>$704.70</strong>
+              <div class="event-detail-panel">
+                <h5>Other Revenue</h5>
+                {% for cash in event.cash_revenue %}
+                <div class="breakdown-row stacked-breakdown-row expense-action-row">
+                  <span>
+                    {{ cash.category }}
+                    {% if cash.notes %}
+                    <small>{{ cash.notes }}</small>
+                    {% endif %}
+                    {% if cash.quantity and cash.quantity > 0 %}<small>{{ cash.quantity }} tickets</small>{% endif %}
+                  </span>
+                  <strong>${{ "%.2f"|format(cash.amount) }}</strong>
+                  <div class="expense-row-actions">
+                    <button type="button"
+                      class="js-edit-cash"
+                      data-cash-id="{{ cash.id }}"
+                      data-event-name="{{ event.name }}"
+                      data-category="{{ cash.category }}"
+                      data-quantity="{{ cash.quantity }}"
+                      data-amount="{{ cash.amount }}"
+                      data-notes="{{ cash.notes }}">
+                      Edit
+                    </button>
+                    <button type="button"
+                      class="js-delete-cash"
+                      data-cash-id="{{ cash.id }}">
+                      Delete
+                    </button>
+                  </div>
                 </div>
-
+                {% else %}
                 <div class="breakdown-row">
-                  <span>VIP</span>
-                  <strong>$950.00</strong>
-                </div>
-
-                <div class="breakdown-row">
-                  <span>DJ VIP</span>
+                  <span>No cash revenue saved for this event yet.</span>
                   <strong>$0.00</strong>
                 </div>
+                {% endfor %}
+              </div>
 
-                <div class="breakdown-row">
-                  <span>Eventbrite Total</span>
-                  <strong>$1,963.15</strong>
+              <div class="event-detail-panel">
+                <h5>Expense Breakdown</h5>
+                {% for expense in event.expenses %}
+                <div class="breakdown-row stacked-breakdown-row expense-action-row">
+                  <span>
+                    {{ expense.category }}
+                    {% if expense.notes %}
+                    <small>{{ expense.notes }}</small>
+                    {% endif %}
+                    <small>{{ expense.payment_method }}</small>
+                  </span>
+                  <strong>${{ "%.2f"|format(expense.amount) }}</strong>
+                  <div class="expense-row-actions">
+                    <button type="button"
+                      class="js-edit-expense"
+                      data-expense-id="{{ expense.id }}"
+                      data-event-name="{{ expense.event_name }}"
+                      data-category="{{ expense.category }}"
+                      data-amount="{{ expense.amount }}"
+                      data-notes="{{ expense.notes }}"
+                      data-payment-method="{{ expense.payment_method }}">
+                      Edit
+                    </button>
+                    <button type="button"
+                      class="js-delete-expense"
+                      data-expense-id="{{ expense.id }}">
+                      Delete
+                    </button>
+                  </div>
                 </div>
-
+                {% else %}
                 <div class="breakdown-row">
-                  <span>Door - Square</span>
-                  <strong>$1,220.00</strong>
+                  <span>No expenses saved for this event yet.</span>
+                  <strong>$0.00</strong>
                 </div>
-
-                <div class="breakdown-row">
-                  <span>Door - Cash</span>
-                  <strong>$1,320.00</strong>
-                </div>
-
-                <div class="breakdown-row">
-                  <span>Total Revenue</span>
-                  <strong>$4,503.15</strong>
-                </div>
+                {% endfor %}
               </div>
             </div>
           </div>
+          {% endfor %}
         </div>
       </div>
-      </div>
+
+      <div class="event-modal-overlay" id="cashRevenueModalOverlay">
+        <div class="event-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Add Cash Revenue</p>
+              <h3>Add Event Cash</h3>
+              <p>Track door cash and other cash collected by event.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="cashRevenueModalClose">Close</button>
+          </div>
+
+          <form class="expense-form">
+            <label>
+              Event
+              <select id="cashRevenueEvent">
+                <option>Select Event</option>
+                {% for event in events %}
+                <option>{{ event.name }}</option>
+                {% endfor %}
+                {% for event in past_events %}
+                <option>{{ event.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+
+            <label>
+              Cash Category
+              <select id="cashRevenueCategory">
+                <option>Door Cash</option>
+                <option>Bar Cash</option>
+                <option>Vendor Cash</option>
+                <option>Other Cash</option>
+              </select>
+            </label>
+
+            <label>
+              Number of Tickets Sold
+              <input id="cashRevenueQuantity" type="number" min="0" step="1" placeholder="Example: 10" />
+            </label>
+
+            <label>
+              Amount
+              <input id="cashRevenueAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+            </label>
+
+            <label>
+              Notes
+              <textarea id="cashRevenueNotes" placeholder="Example: Cash collected at the door"></textarea>
+            </label>
+
+            <button class="btn primary" type="button" id="cashRevenueSave">Save Cash Revenue</button>
+          </form>
+        </div>
       </div>
 
       <div class="event-modal-overlay" id="expenseModalOverlay">
@@ -480,6 +651,14 @@
 
           <form class="expense-form">
             <label>
+              Expense Type
+              <select id="expenseType">
+                <option value="event">Event Expense</option>
+                <option value="business">Non-Event Business Expense</option>
+              </select>
+            </label>
+
+            <label id="expenseEventWrap">
               Event
               <select id="expenseEvent">
                 <option>Select Event</option>
@@ -490,32 +669,45 @@
               </select>
             </label>
 
-            <label>
-              Expense Category
-              <select id="expenseCategory">
-                <option>Select Category</option>
-                <option>Staff</option>
-                <option>DJ / Performer</option>
-                <option>Security</option>
-                <option>Supplies</option>
-                <option>Marketing</option>
-                <option>Decor</option>
-                <option>Food / Catering</option>
-                <option>Other</option>
-              </select>
-            </label>
+            <div id="expenseRows" class="expense-rows">
+              <div class="expense-entry-row">
+                <div class="expense-row-header">
+                  <strong>Expense 1</strong>
+                  <button class="btn ghost removeExpenseRow" type="button" style="display:none;">Remove</button>
+                </div>
 
-            <label>
-              Amount
-              <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
-            </label>
+                <div class="expense-row-grid">
+                  <label>
+                    Expense Category
+                    <select class="expenseCategory">
+                      <option>Select Category</option>
+                      <option>Venue</option>
+                      <option>Staff</option>
+                      <option>DJ / Performer</option>
+                      <option>Security</option>
+                      <option>Supplies</option>
+                      <option>Marketing</option>
+                      <option>Decor</option>
+                      <option>Food / Catering</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
 
-            <label>
-              Notes
-              <textarea id="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
-            </label>
+                  <label>
+                    Amount
+                    <input class="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+                  </label>
+                </div>
 
-            <button class="btn primary" type="button" id="expenseSave">Save Expense</button>
+                <label class="expense-notes-field">
+                  Notes
+                  <textarea class="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
+                </label>
+              </div>
+            </div>
+
+            <button class="btn ghost" type="button" id="addExpenseRow">+ Add Another Expense</button>
+            <button class="btn primary" type="button" id="expenseSave">Save All Expenses</button>
 
             <div class="expense-preview">
               <h4>Saved Expenses Preview</h4>
@@ -529,6 +721,70 @@
 
     </main>
   </div>
+
+      <div class="event-modal-overlay" id="financialEditModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow" id="financialEditEyebrow">Edit Entry</p>
+              <h3 id="financialEditTitle">Edit Entry</h3>
+              <p id="financialEditDescription">Update the saved amount, category, notes, or ticket quantity.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="financialEditClose">Close</button>
+          </div>
+
+          <form class="expense-form">
+            <input type="hidden" id="financialEditType" />
+            <input type="hidden" id="financialEditId" />
+            <input type="hidden" id="financialEditEventName" />
+
+            <label>
+              Category
+              <input id="financialEditCategory" type="text" placeholder="Example: Staff, Door Cash, Security" />
+            </label>
+
+            <label id="financialEditQuantityWrap">
+              Number of Tickets Sold
+              <input id="financialEditQuantity" type="number" min="0" step="1" placeholder="Example: 10" />
+            </label>
+
+            <label>
+              Amount
+              <input id="financialEditAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+            </label>
+
+            <label>
+              Notes
+              <textarea id="financialEditNotes" placeholder="Add notes here"></textarea>
+            </label>
+
+            <button class="btn primary" type="button" id="financialEditSave">Save Changes</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="event-modal-overlay" id="financialDeleteModalOverlay">
+        <div class="event-modal small-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Confirm Delete</p>
+              <h3 id="financialDeleteTitle">Delete Entry?</h3>
+              <p id="financialDeleteDescription">This will remove the saved item from the event totals.</p>
+            </div>
+            <button class="event-modal-close" type="button" id="financialDeleteClose">Close</button>
+          </div>
+
+          <div class="delete-confirm-card">
+            <strong id="financialDeleteItemName">Selected item</strong>
+            <span id="financialDeleteItemAmount">$0.00</span>
+          </div>
+
+          <div class="modal-action-row">
+            <button class="btn secondary" type="button" id="financialDeleteCancel">Cancel</button>
+            <button class="btn primary danger-action" type="button" id="financialDeleteConfirm">Delete</button>
+          </div>
+        </div>
+      </div>
 
   <script>
     const revenueDetailModalOverlay = document.getElementById("revenueDetailModalOverlay");
@@ -634,13 +890,23 @@
     const expenseModalOverlay = document.getElementById("expenseModalOverlay");
     const expenseModalClose = document.getElementById("expenseModalClose");
     const expenseSave = document.getElementById("expenseSave");
+    const expenseType = document.getElementById("expenseType");
+    const expenseEventWrap = document.getElementById("expenseEventWrap");
     const expenseEvent = document.getElementById("expenseEvent");
-    const expenseCategory = document.getElementById("expenseCategory");
-    const expenseAmount = document.getElementById("expenseAmount");
-    const expenseNotes = document.getElementById("expenseNotes");
+    const expenseRows = document.getElementById("expenseRows");
+    const addExpenseRowButton = document.getElementById("addExpenseRow");
     const expenseSavedList = document.getElementById("expenseSavedList");
     const expenseTotal = document.getElementById("expenseTotal");
     const netProfitTotal = document.getElementById("netProfitTotal");
+    const addCashRevenueButton = document.getElementById("addCashRevenueButton");
+    const cashRevenueModalOverlay = document.getElementById("cashRevenueModalOverlay");
+    const cashRevenueModalClose = document.getElementById("cashRevenueModalClose");
+    const cashRevenueSave = document.getElementById("cashRevenueSave");
+    const cashRevenueEvent = document.getElementById("cashRevenueEvent");
+    const cashRevenueCategory = document.getElementById("cashRevenueCategory");
+    const cashRevenueQuantity = document.getElementById("cashRevenueQuantity");
+    const cashRevenueAmount = document.getElementById("cashRevenueAmount");
+    const cashRevenueNotes = document.getElementById("cashRevenueNotes");
 
     function moneyToNumber(value) {
       return Number(String(value || "").replace(/[$,]/g, "")) || 0;
@@ -650,6 +916,87 @@
       return "$" + Number(value || 0).toLocaleString(undefined, {
         minimumFractionDigits: 0,
         maximumFractionDigits: 2
+      });
+    }
+
+    if (addCashRevenueButton) {
+      addCashRevenueButton.addEventListener("click", () => {
+        if (cashRevenueModalOverlay) {
+          cashRevenueModalOverlay.classList.add("active");
+        }
+      });
+    }
+
+    if (cashRevenueModalClose) {
+      cashRevenueModalClose.addEventListener("click", () => {
+        cashRevenueModalOverlay.classList.remove("active");
+      });
+    }
+
+    if (cashRevenueModalOverlay) {
+      cashRevenueModalOverlay.addEventListener("click", (event) => {
+        if (event.target === cashRevenueModalOverlay) {
+          cashRevenueModalOverlay.classList.remove("active");
+        }
+      });
+    }
+
+    if (cashRevenueSave) {
+      cashRevenueSave.addEventListener("click", async () => {
+        const eventName = cashRevenueEvent.value;
+        const category = cashRevenueCategory.value;
+        const quantity = Number(cashRevenueQuantity.value || 0);
+        const amount = Number(cashRevenueAmount.value || 0);
+        const notes = cashRevenueNotes.value.trim();
+
+        if (!eventName || eventName === "Select Event") {
+          alert("Please select an event.");
+          return;
+        }
+
+        if (!amount || amount <= 0) {
+          alert("Please enter a cash amount.");
+          return;
+        }
+
+        const originalText = cashRevenueSave.textContent;
+        cashRevenueSave.disabled = true;
+        cashRevenueSave.textContent = "Saving...";
+
+        try {
+          const response = await fetch("/api/event-cash-revenue", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              event_name: eventName,
+              category: category,
+              quantity: quantity,
+              amount: amount,
+              notes: notes
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Could not save cash revenue.");
+          }
+
+          cashRevenueSave.textContent = "Saved!";
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 700);
+        } catch (error) {
+          console.error(error);
+          alert(error.message || "Could not save cash revenue.");
+          cashRevenueSave.disabled = false;
+          cashRevenueSave.textContent = originalText;
+        }
       });
     }
 
@@ -675,63 +1022,424 @@
       });
     }
 
-    if (expenseSave) {
-      expenseSave.addEventListener("click", () => {
-        const eventName = expenseEvent.value;
-        const category = expenseCategory.value;
-        const amount = Number(expenseAmount.value || 0);
-        const notes = expenseNotes.value.trim();
+    const eventExpenseCategories = [
+      "Venue",
+      "Staff",
+      "DJ / Performer",
+      "Security",
+      "Supplies",
+      "Marketing",
+      "Decor",
+      "Food / Catering",
+      "Other"
+    ];
 
-        if (!eventName || eventName === "Select Event") {
+    const businessExpenseCategories = [
+      "Website Maintenance",
+      "Software / Subscriptions",
+      "Accounting / Bookkeeping",
+      "Marketing",
+      "Administrative",
+      "Contractor / Support",
+      "Supplies",
+      "Other Business Expense"
+    ];
+
+    function getExpenseCategoryOptions() {
+      const selectedExpenseType = expenseType ? expenseType.value : "event";
+      const categories = selectedExpenseType === "business" ? businessExpenseCategories : eventExpenseCategories;
+
+      return [
+        '<option>Select Category</option>',
+        ...categories.map((category) => `<option>${category}</option>`)
+      ].join("");
+    }
+
+    function syncExpenseCategoryOptions() {
+      document.querySelectorAll(".expenseCategory").forEach((select) => {
+        const currentValue = select.value;
+        select.innerHTML = getExpenseCategoryOptions();
+
+        const stillExists = Array.from(select.options).some((option) => option.value === currentValue);
+        if (stillExists) {
+          select.value = currentValue;
+        }
+      });
+    }
+
+    function createExpenseRow() {
+      if (!expenseRows) return;
+
+      const row = document.createElement("div");
+      row.className = "expense-entry-row";
+      const expenseNumber = expenseRows.querySelectorAll(".expense-entry-row").length + 1;
+
+      row.innerHTML = `
+        <div class="expense-row-header">
+          <strong>Expense ${expenseNumber}</strong>
+          <button class="btn ghost removeExpenseRow" type="button">Remove</button>
+        </div>
+
+        <div class="expense-row-grid">
+          <label>
+            Expense Category
+            <select class="expenseCategory">
+              <option>Select Category</option>
+              <option>Venue</option>
+              <option>Staff</option>
+              <option>DJ / Performer</option>
+              <option>Security</option>
+              <option>Supplies</option>
+              <option>Marketing</option>
+              <option>Decor</option>
+              <option>Food / Catering</option>
+              <option>Other</option>
+            </select>
+          </label>
+
+          <label>
+            Amount
+            <input class="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+          </label>
+        </div>
+
+        <label class="expense-notes-field">
+          Notes
+          <textarea class="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
+        </label>
+      `;
+
+      expenseRows.appendChild(row);
+    }
+
+    function syncExpenseTypeDisplay() {
+      if (!expenseType || !expenseEventWrap) return;
+
+      const isBusinessExpense = expenseType.value === "business";
+      expenseEventWrap.style.display = isBusinessExpense ? "none" : "";
+      syncExpenseCategoryOptions();
+    }
+
+    if (expenseType) {
+      expenseType.addEventListener("change", syncExpenseTypeDisplay);
+      syncExpenseTypeDisplay();
+    }
+
+    if (addExpenseRowButton) {
+      addExpenseRowButton.addEventListener("click", createExpenseRow);
+    }
+
+    if (expenseRows) {
+      expenseRows.addEventListener("click", (event) => {
+        const removeButton = event.target.closest(".removeExpenseRow");
+        if (!removeButton) return;
+
+        const rows = expenseRows.querySelectorAll(".expense-entry-row");
+        if (rows.length <= 1) return;
+
+        removeButton.closest(".expense-entry-row").remove();
+      });
+    }
+
+    if (expenseSave) {
+      expenseSave.addEventListener("click", async () => {
+        const selectedExpenseType = expenseType ? expenseType.value : "event";
+        const isBusinessExpense = selectedExpenseType === "business";
+        const eventName = expenseEvent ? expenseEvent.value : "";
+
+        if (!isBusinessExpense && (!eventName || eventName === "Select Event")) {
           alert("Please select an event.");
           return;
         }
 
-        if (!category || category === "Select Category") {
-          alert("Please select an expense category.");
+        const rows = Array.from(document.querySelectorAll(".expense-entry-row"));
+        const expenses = [];
+
+        for (const row of rows) {
+          const category = row.querySelector(".expenseCategory")?.value || "";
+          const amount = Number(row.querySelector(".expenseAmount")?.value || 0);
+          const notes = row.querySelector(".expenseNotes")?.value.trim() || "";
+
+          if (!category || category === "Select Category") {
+            alert("Please select an expense category for each row.");
+            return;
+          }
+
+          if (!amount || amount <= 0) {
+            alert("Please enter an expense amount for each row.");
+            return;
+          }
+
+          if (isBusinessExpense) {
+            expenses.push({
+              category: category,
+              amount: amount,
+              notes: notes,
+              expense_date: new Date().toISOString().slice(0, 10),
+              payment_method: "Other"
+            });
+          } else {
+            expenses.push({
+              event_name: eventName,
+              category: category,
+              amount: amount,
+              notes: notes,
+              payment_method: "Other"
+            });
+          }
+        }
+
+        if (!expenses.length) {
+          alert("Please add at least one expense.");
           return;
         }
 
-        if (!amount || amount <= 0) {
-          alert("Please enter an expense amount.");
-          return;
+        const originalText = expenseSave.textContent;
+        expenseSave.disabled = true;
+        expenseSave.textContent = `Saving ${expenses.length} expenses...`;
+
+        try {
+          const url = isBusinessExpense ? "/api/business-expenses" : "/api/event-expenses";
+
+          for (const expense of expenses) {
+            const response = await fetch(url, {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(expense)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== "ok") {
+              throw new Error(result.error || "Could not save one of the expenses.");
+            }
+          }
+
+          expenseSave.textContent = "Saved!";
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 700);
+        } catch (error) {
+          console.error(error);
+          alert(error.message || "Could not save expenses.");
+          expenseSave.disabled = false;
+          expenseSave.textContent = originalText;
         }
-
-        const emptyText = expenseSavedList.querySelector(".muted-preview");
-        if (emptyText) {
-          emptyText.remove();
-        }
-
-        const row = document.createElement("div");
-        row.className = "expense-preview-row";
-        row.innerHTML = `
-          <div>
-            <strong>${eventName}</strong>
-            <span>${category}${notes ? " • " + notes : ""}</span>
-          </div>
-          <strong>${formatMoney(amount)}</strong>
-        `;
-
-        expenseSavedList.appendChild(row);
-
-        if (expenseTotal) {
-          expenseTotal.textContent = formatMoney(moneyToNumber(expenseTotal.textContent) + amount);
-        }
-
-        if (netProfitTotal) {
-          netProfitTotal.textContent = formatMoney(moneyToNumber(netProfitTotal.textContent) - amount);
-        }
-
-        expenseAmount.value = "";
-        expenseNotes.value = "";
       });
     }
+
+    document.querySelectorAll(".js-edit-expense").forEach((button) => {
+      button.addEventListener("click", () => openFinancialEditModal("expense", button));
+    });
+
+    document.querySelectorAll(".js-delete-expense").forEach((button) => {
+      button.addEventListener("click", () => openFinancialDeleteModal("expense", button));
+    });
+
+    document.querySelectorAll(".js-edit-cash").forEach((button) => {
+      button.addEventListener("click", () => openFinancialEditModal("cash", button));
+    });
+
+    document.querySelectorAll(".js-delete-cash").forEach((button) => {
+      button.addEventListener("click", () => openFinancialDeleteModal("cash", button));
+    });
+
+    if (financialEditClose) {
+      financialEditClose.addEventListener("click", closeFinancialEditModal);
+    }
+
+    if (financialEditModalOverlay) {
+      financialEditModalOverlay.addEventListener("click", (event) => {
+        if (event.target === financialEditModalOverlay) closeFinancialEditModal();
+      });
+    }
+
+    if (financialDeleteClose) {
+      financialDeleteClose.addEventListener("click", closeFinancialDeleteModal);
+    }
+
+    if (financialDeleteCancel) {
+      financialDeleteCancel.addEventListener("click", closeFinancialDeleteModal);
+    }
+
+    if (financialDeleteModalOverlay) {
+      financialDeleteModalOverlay.addEventListener("click", (event) => {
+        if (event.target === financialDeleteModalOverlay) closeFinancialDeleteModal();
+      });
+    }
+
+    if (financialEditSave) {
+      financialEditSave.addEventListener("click", async () => {
+        const type = financialEditType.value;
+        const id = financialEditId.value;
+        const isCash = type === "cash";
+
+        if (!id) return;
+
+        const originalText = financialEditSave.textContent;
+        financialEditSave.disabled = true;
+        financialEditSave.textContent = "Saving...";
+
+        const url = isCash ? `/api/event-cash-revenue/${id}` : `/api/event-expenses/${id}`;
+
+        const payload = {
+          event_name: financialEditEventName.value,
+          category: financialEditCategory.value,
+          amount: Number(financialEditAmount.value || 0),
+          notes: financialEditNotes.value
+        };
+
+        if (isCash) {
+          payload.quantity = Number(financialEditQuantity.value || 0);
+        } else {
+          payload.payment_method = "Other";
+        }
+
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: {
+              "Accept": "application/json",
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Could not save changes.");
+          }
+
+          financialEditSave.textContent = "Saved!";
+          setTimeout(() => window.location.reload(), 600);
+        } catch (error) {
+          console.error(error);
+          alert(error.message || "Could not save changes.");
+          financialEditSave.disabled = false;
+          financialEditSave.textContent = originalText;
+        }
+      });
+    }
+
+    if (financialDeleteConfirm) {
+      financialDeleteConfirm.addEventListener("click", async () => {
+        if (!pendingDelete || !pendingDelete.id) return;
+
+        const originalText = financialDeleteConfirm.textContent;
+        financialDeleteConfirm.disabled = true;
+        financialDeleteConfirm.textContent = "Deleting...";
+
+        const url = pendingDelete.type === "cash"
+          ? `/api/event-cash-revenue/${pendingDelete.id}/delete`
+          : `/api/event-expenses/${pendingDelete.id}/delete`;
+
+        try {
+          const response = await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Accept": "application/json" }
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Could not delete entry.");
+          }
+
+          financialDeleteConfirm.textContent = "Deleted!";
+          setTimeout(() => window.location.reload(), 600);
+        } catch (error) {
+          console.error(error);
+          alert(error.message || "Could not delete entry.");
+          financialDeleteConfirm.disabled = false;
+          financialDeleteConfirm.textContent = originalText;
+        }
+      });
+    }
+
+    function saveRevenueDetailReturnTarget(button) {
+      const detailContent = button.closest(".revenue-detail-content");
+      if (!detailContent || !detailContent.id) return;
+
+      const title = document.getElementById("revenueDetailTitle")?.textContent || "Revenue Details";
+
+      sessionStorage.setItem("returnToRevenueDetailDraft", JSON.stringify({
+        targetId: detailContent.id,
+        title: title
+      }));
+    }
+
+    document.querySelectorAll(".js-edit-expense, .js-delete-expense, .js-edit-cash, .js-delete-cash").forEach((button) => {
+      button.addEventListener("click", () => {
+        saveRevenueDetailReturnTarget(button);
+      }, true);
+    });
+
+    function confirmRevenueDetailReturnAfterReload() {
+      const draft = sessionStorage.getItem("returnToRevenueDetailDraft");
+      if (draft) {
+        sessionStorage.setItem("returnToRevenueDetailAfterReload", draft);
+      }
+    }
+
+    if (financialEditSave) {
+      financialEditSave.addEventListener("click", confirmRevenueDetailReturnAfterReload, true);
+    }
+
+    if (financialDeleteConfirm) {
+      financialDeleteConfirm.addEventListener("click", confirmRevenueDetailReturnAfterReload, true);
+    }
+
+    function reopenRevenueDetailAfterReload() {
+      const saved = sessionStorage.getItem("returnToRevenueDetailAfterReload");
+      if (!saved) return;
+
+      sessionStorage.removeItem("returnToRevenueDetailAfterReload");
+      sessionStorage.removeItem("returnToRevenueDetailDraft");
+
+      let data = null;
+
+      try {
+        data = JSON.parse(saved);
+      } catch (error) {
+        return;
+      }
+
+      if (!data || !data.targetId) return;
+
+      const overlay = document.getElementById("revenueDetailModalOverlay");
+      const target = document.getElementById(data.targetId);
+      const title = document.getElementById("revenueDetailTitle");
+
+      if (!overlay || !target) return;
+
+      document.querySelectorAll("#revenueDetailModalOverlay .revenue-detail-content").forEach((content) => {
+        content.classList.remove("active");
+      });
+
+      target.classList.add("active");
+
+      if (title && data.title) {
+        title.textContent = data.title;
+      }
+
+      overlay.classList.add("active");
+    }
+
+    reopenRevenueDetailAfterReload();
 
     function downloadRevenueReport() {
       const rows = [
         ["Section", "Label", "Value", "Notes"],
         ["Events & Tickets", "Tickets Sold", "187", "Excludes VIP tickets"],
-        ["Events & Tickets", "VIP Tickets", "6", "VIP ticket purchases"],
+        ["Events & Tickets", "VIP Booths", "6", "VIP ticket purchases"],
         ["Events & Tickets", "Ticket Revenue", "$4,515.15", "Ticket sales only"],
         ["Past Events", "Battle of the DJs Revenue", "$4,503.15", "Completed event revenue"],
         ["Past Events", "Battle of the DJs Expenses", "$800.00", "Completed event expenses"],

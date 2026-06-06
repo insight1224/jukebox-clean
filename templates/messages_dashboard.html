@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jukebox Lounge NC | Messages Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}?v=messages-clean-1">
 </head>
 <body>
   <div class="dashboard-shell">
@@ -26,8 +26,6 @@
         <a href="/admin/dashboard-redesign/messages" class="active">Messages</a>
         <a href="/admin/dashboard-redesign/members">Members</a>
         <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
-        <a href="/admin/dashboard-redesign#reports">Reports</a>
-        <a href="/admin/dashboard-redesign#settings">Settings</a>
       </nav>
     </aside>
 
@@ -47,36 +45,38 @@
           <p class="subtext">Review new messages, mark replies, archive old inquiries, and view message details.</p>
         </div>
 
-        <div class="topbar-actions">
-          <button class="btn secondary" type="button" id="viewArchivedMessages">Archived Messages</button>
-          <button class="btn primary" type="button" id="viewAllMessages">View All Messages</button>
-        </div>
       </header>
 
-      <section class="stats-grid">
-        <div class="stat-card">
-          <p>New Messages</p>
-          <h3>2</h3>
-          <span>Needs review</span>
-        </div>
+      <section class="stats-grid message-filter-grid">
+        <button class="stat-card message-filter-card active" type="button" data-message-filter="all">
+          <p>New / Active</p>
+          <h3>{{ message_stats.new_messages }}</h3>
+          <span>Needs review or follow-up</span>
+        </button>
 
-        <div class="stat-card">
-          <p>VIP Interest</p>
-          <h3>1</h3>
-          <span>Membership inquiry</span>
-        </div>
+        <button class="stat-card message-filter-card" type="button" data-message-filter="Contact Message">
+          <p>Contact Messages</p>
+          <h3>{{ message_stats.contact_messages }}</h3>
+          <span>General website inquiries</span>
+        </button>
 
-        <div class="stat-card">
-          <p>Private Events</p>
-          <h3>1</h3>
-          <span>Booking request</span>
-        </div>
+        <button class="stat-card message-filter-card" type="button" data-message-filter="DJ Application">
+          <p>DJ Applications</p>
+          <h3>{{ message_stats.dj_applications }}</h3>
+          <span>Talent submissions</span>
+        </button>
 
-        <div class="stat-card">
-          <p>Archived</p>
-          <h3 id="archivedMessageCount">0</h3>
-          <span>Moved out of active list</span>
-        </div>
+        <button class="stat-card message-filter-card" type="button" data-message-filter="Vendor Application">
+          <p>Vendor Applications</p>
+          <h3>{{ message_stats.vendor_applications }}</h3>
+          <span>Vendor submissions</span>
+        </button>
+
+        <button class="stat-card message-filter-card" type="button" data-message-filter="archived">
+          <p>Closed Inquiries</p>
+          <h3 id="archivedMessageCount">{{ message_stats.archived_messages }}</h3>
+          <span>Closed contact messages</span>
+        </button>
       </section>
 
       <section class="section-panel" id="messages-leads">
@@ -86,10 +86,11 @@
             <h3>Website Inquiries</h3>
             <p>Manage incoming website messages, VIP interest, and private event requests.</p>
           </div>
-          <div class="section-actions">
-            <button class="btn secondary" type="button" id="viewArchivedMessagesSecondary">Archived Messages</button>
-            <button class="btn primary" type="button" id="viewAllMessagesSecondary">View All Messages</button>
-          </div>
+        </div>
+
+        <div class="message-filter-status">
+          <span id="messageFilterLabel">Showing all active messages</span>
+          <button type="button" id="clearMessageFilter">Clear Filter</button>
         </div>
 
         <div class="table-card">
@@ -102,33 +103,52 @@
             <span>Actions</span>
           </div>
 
-          <div class="table-row leads-row message-row" data-message-name="Danielle Carter">
-            <span>Danielle Carter</span>
-            <span>VIP Member</span>
-            <span>Interested in VIP membership options.</span>
-            <span><span class="badge warning message-status-badge">New</span></span>
-            <span>Today</span>
-            <span class="row-actions">
-              <button class="js-message-status" type="button" data-status="New">New</button>
-              <button class="js-message-status" type="button" data-status="Replied">Replied</button>
-              <button class="js-archive-message" type="button">Archived</button>
-              <button class="js-delete-message" type="button">Delete</button>
+          {% for message in active_messages %}
+          <div
+            class="table-row leads-row message-row"
+            data-message-id="{{ message.id }}"
+            data-message-type="{{ message.type or 'Message' }}"
+            data-message-status="{{ message.status or 'New' }}"
+            data-message-name="{{ message.name or 'Website Inquiry' }}"
+            data-message-email="{{ message.email or '' }}"
+            data-message-notes="{{ message.notes or '' }}"
+          >
+            <span>{{ message.name or 'Unknown' }}</span>
+            <span>{{ message.type or 'Message' }}</span>
+            <span>{{ message.details or 'No message details provided.' }}</span>
+            <span>
+              <span class="badge {% if message.status in ['New', 'Active'] %}warning{% elif message.status in ['Replied', 'Contacted', 'Booked'] %}live{% elif message.status in ['Closed', 'Declined'] %}success{% endif %} message-status-badge">
+                {{ message.status or 'New' }}
+              </span>
             </span>
-          </div>
+            <span>{{ message.created_at or '' }}</span>
+            <span class="row-actions message-action-cell">
+              <button class="js-view-message-detail" type="button">View</button>
 
-          <div class="table-row leads-row message-row" data-message-name="Marcus Lee">
-            <span>Marcus Lee</span>
-            <span>Private Event</span>
-            <span>Asked about booking a birthday celebration.</span>
-            <span><span class="badge message-status-badge">New</span></span>
-            <span>Yesterday</span>
-            <span class="row-actions">
-              <button class="js-message-status" type="button" data-status="New">New</button>
-              <button class="js-message-status" type="button" data-status="Replied">Replied</button>
-              <button class="js-archive-message" type="button">Archived</button>
-              <button class="js-delete-message" type="button">Delete</button>
+              <select class="message-action-select" aria-label="Message action">
+                <option value="">Actions</option>
+                {% if message.type == 'Contact Message' %}
+                  <option value="status:New">New</option>
+                  <option value="status:Replied">Replied</option>
+                  <option value="status:Closed">Close</option>
+                  <option value="delete">Delete</option>
+                {% elif message.type in ['DJ Application', 'Vendor Application'] %}
+                  <option value="move_contact">Move to Contact Log</option>
+                  <option value="delete">Delete</option>
+                {% else %}
+                  <option value="status:Active">Active</option>
+                  <option value="status:Inactive">Inactive</option>
+                  <option value="delete">Delete</option>
+                {% endif %}
+              </select>
             </span>
           </div>
+          {% else %}
+          <div class="empty-state">
+            <h4>No active messages</h4>
+            <p>New website inquiries, DJ applications, vendor applications, and VIP signups will appear here.</p>
+          </div>
+          {% endfor %}
         </div>
       </section>
 
@@ -162,8 +182,8 @@
         <div class="event-modal">
           <div class="event-modal-header">
             <div>
-              <p class="eyebrow">Archived Messages</p>
-              <h3>Archived Website Inquiries</h3>
+              <p class="eyebrow">Closed Inquiries</p>
+              <h3>Closed Website Inquiries</h3>
               <p>Messages moved out of the active inbox will appear here.</p>
             </div>
             <button class="event-modal-close" type="button" id="archivedMessagesClose">Close</button>
@@ -180,10 +200,31 @@
             </div>
 
             <div id="archivedMessagesList">
+              {% for message in archived_messages %}
+              <div
+                class="table-row leads-row message-row archived-message-row"
+                data-message-id="{{ message.id }}"
+                data-message-type="{{ message.type or 'Message' }}"
+                data-message-status="{{ message.status or 'Archived' }}"
+                data-message-name="{{ message.name or 'Website Inquiry' }}"
+                data-message-email="{{ message.email or '' }}"
+                data-message-notes="{{ message.notes or '' }}"
+              >
+                <span>{{ message.name or 'Unknown' }}</span>
+                <span>{{ message.type or 'Message' }}</span>
+                <span>{{ message.details or 'No message details provided.' }}</span>
+                <span><span class="badge success message-status-badge">{{ message.status or 'Archived' }}</span></span>
+                <span>{{ message.archived_at or message.created_at or '' }}</span>
+                <span class="row-actions">
+                  <button class="js-view-archived-message" type="button">View</button>
+                </span>
+              </div>
+              {% else %}
               <div class="empty-state">
                 <h4>No archived messages yet</h4>
-                <p>When a message is archived in this preview, it will move here.</p>
+                <p>Closed contact messages will appear here.</p>
               </div>
+              {% endfor %}
             </div>
           </div>
         </div>
@@ -246,67 +287,133 @@
       messageDetailModalOverlay.classList.add("active");
     }
 
-    document.querySelectorAll(".js-message-status").forEach((button) => {
-      button.addEventListener("click", () => {
-        const row = button.closest(".message-row");
-        const status = button.getAttribute("data-status");
-        const badge = row.querySelector(".message-status-badge");
+    function updateMessageBadge(row, status) {
+      const badge = row.querySelector(".message-status-badge");
 
-        if (badge) {
-          badge.textContent = status;
-          badge.classList.remove("warning", "live");
+      if (!badge) return;
 
-          if (status === "New") {
-            badge.classList.add("warning");
-          }
+      badge.textContent = status;
+      badge.classList.remove("warning", "live", "success");
 
-          if (status === "Replied") {
-            badge.classList.add("live");
-          }
-        }
+      if (["New", "Active"].includes(status)) {
+        badge.classList.add("warning");
+      } else if (["Replied", "Contacted", "Booked"].includes(status)) {
+        badge.classList.add("live");
+      } else if (["Closed", "Declined", "Inactive"].includes(status)) {
+        badge.classList.add("success");
+      }
+    }
+
+    function moveRowToArchivedModal(row, status = "Archived") {
+      if (!row || !archivedMessagesList) return;
+
+      const emptyState = archivedMessagesList.querySelector(".empty-state");
+      if (emptyState) {
+        emptyState.remove();
+      }
+
+      const clonedRow = row.cloneNode(true);
+      clonedRow.classList.add("archived-message-row");
+
+      const badge = clonedRow.querySelector(".message-status-badge");
+      if (badge) {
+        badge.textContent = status;
+        badge.classList.remove("warning", "live");
+        badge.classList.add("success");
+      }
+
+      const actions = clonedRow.querySelector(".row-actions");
+      if (actions) {
+        actions.innerHTML = "<button class='js-view-archived-message' type='button'>View</button>";
+      }
+
+      archivedMessagesList.prepend(clonedRow);
+      updateArchivedCount();
+    }
+
+    async function updateMessageStatus(row, status) {
+      const messageId = row.getAttribute("data-message-id");
+
+      const response = await fetch(`/api/messages/${messageId}/status`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ status })
       });
-    });
 
-    document.querySelectorAll(".js-archive-message").forEach((button) => {
-      button.addEventListener("click", () => {
-        const row = button.closest(".message-row");
+      const result = await response.json();
 
-        if (!row) return;
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Unable to update message.");
+      }
 
-        const emptyState = archivedMessagesList.querySelector(".empty-state");
-        if (emptyState) {
-          emptyState.remove();
-        }
+      updateMessageBadge(row, result.status);
 
-        const clonedRow = row.cloneNode(true);
-        const badge = clonedRow.querySelector(".message-status-badge");
-
-        if (badge) {
-          badge.textContent = "Archived";
-          badge.classList.remove("warning", "live");
-        }
-
-        const actions = clonedRow.querySelector(".row-actions");
-        if (actions) {
-          actions.innerHTML = "<button class='js-view-archived-message' type='button'>View</button>";
-        }
-
-        archivedMessagesList.appendChild(clonedRow);
+      if (result.archived) {
+        moveRowToArchivedModal(row, result.status);
         row.remove();
-        updateArchivedCount();
+      }
+    }
+
+    async function deleteMessage(row) {
+      const messageId = row.getAttribute("data-message-id");
+
+      const response = await fetch(`/api/messages/${messageId}/delete`, {
+        method: "POST"
       });
-    });
 
-    document.querySelectorAll(".js-delete-message").forEach((button) => {
-      button.addEventListener("click", () => {
-        const row = button.closest(".message-row");
-        if (!row) return;
+      const result = await response.json();
 
-        const name = row.getAttribute("data-message-name") || "this message";
-        const confirmed = confirm("Delete " + name + " from Website Inquiries?");
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Unable to delete message.");
+      }
 
-        if (confirmed) {
-          row.remove();
+      row.remove();
+    }
+
+    async function moveMessageToContactLog(row) {
+      const messageId = row.getAttribute("data-message-id");
+
+      const response = await fetch(`/api/messages/${messageId}/move-to-contact-log`, {
+        method: "POST"
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error || "Unable to move to Contact Log.");
+      }
+
+      row.remove();
+      updateArchivedCount();
+    }
+
+    document.querySelectorAll(".message-action-select").forEach((select) => {
+      select.addEventListener("change", async () => {
+        const row = select.closest(".message-row");
+        const action = select.value;
+
+        if (!row || !action) return;
+
+        select.disabled = true;
+
+        try {
+          if (action.startsWith("status:")) {
+            await updateMessageStatus(row, action.replace("status:", ""));
+          } else if (action === "delete") {
+            const name = row.getAttribute("data-message-name") || "this message";
+            if (confirm("Delete " + name + " from Website Inquiries?")) {
+              await deleteMessage(row);
+            }
+          } else if (action === "move_contact") {
+            await moveMessageToContactLog(row);
+          }
+        } catch (error) {
+          alert(error.message || "Unable to complete action.");
+        } finally {
+          select.value = "";
+          select.disabled = false;
         }
       });
     });
@@ -343,10 +450,15 @@
       archivedMessagesModalOverlay.classList.add("active");
     }
 
-    document.getElementById("viewAllMessages").addEventListener("click", openAllMessages);
-    document.getElementById("viewAllMessagesSecondary").addEventListener("click", openAllMessages);
-    document.getElementById("viewArchivedMessages").addEventListener("click", openArchivedMessages);
-    document.getElementById("viewArchivedMessagesSecondary").addEventListener("click", openArchivedMessages);
+    const viewAllMessages = document.getElementById("viewAllMessages");
+    const viewAllMessagesSecondary = document.getElementById("viewAllMessagesSecondary");
+    const viewArchivedMessages = document.getElementById("viewArchivedMessages");
+    const viewArchivedMessagesSecondary = document.getElementById("viewArchivedMessagesSecondary");
+
+    if (viewAllMessages) viewAllMessages.addEventListener("click", openAllMessages);
+    if (viewAllMessagesSecondary) viewAllMessagesSecondary.addEventListener("click", openAllMessages);
+    if (viewArchivedMessages) viewArchivedMessages.addEventListener("click", openArchivedMessages);
+    if (viewArchivedMessagesSecondary) viewArchivedMessagesSecondary.addEventListener("click", openArchivedMessages);
 
     document.addEventListener("click", (event) => {
       if (
@@ -364,6 +476,62 @@
     archivedMessagesClose.addEventListener("click", () => {
       archivedMessagesModalOverlay.classList.remove("active");
     });
+
+    const messageFilterCards = document.querySelectorAll(".message-filter-card");
+    const messageRows = document.querySelectorAll("#messages-leads .message-row");
+    const messageFilterLabel = document.getElementById("messageFilterLabel");
+    const clearMessageFilter = document.getElementById("clearMessageFilter");
+
+    function applyMessageFilter(filterValue) {
+      if (filterValue === "archived") {
+        openArchivedMessages();
+        messageFilterCards.forEach((card) => {
+          card.classList.toggle("active", card.getAttribute("data-message-filter") === "archived");
+        });
+        if (messageFilterLabel) {
+          messageFilterLabel.textContent = "Viewing closed inquiries";
+        }
+        return;
+      }
+
+      let visibleCount = 0;
+
+      messageRows.forEach((row) => {
+        const rowType = row.getAttribute("data-message-type") || "";
+        const shouldShow = filterValue === "all" || rowType === filterValue;
+
+        row.style.display = shouldShow ? "" : "none";
+
+        if (shouldShow) {
+          visibleCount += 1;
+        }
+      });
+
+      messageFilterCards.forEach((card) => {
+        card.classList.toggle("active", card.getAttribute("data-message-filter") === filterValue);
+      });
+
+      if (messageFilterLabel) {
+        if (filterValue === "all") {
+          messageFilterLabel.textContent = `Showing all active messages (${visibleCount})`;
+        } else {
+          messageFilterLabel.textContent = `Showing ${filterValue} messages (${visibleCount})`;
+        }
+      }
+    }
+
+    messageFilterCards.forEach((card) => {
+      card.addEventListener("click", () => {
+        applyMessageFilter(card.getAttribute("data-message-filter"));
+      });
+    });
+
+    if (clearMessageFilter) {
+      clearMessageFilter.addEventListener("click", () => {
+        applyMessageFilter("all");
+      });
+    }
+
 
     messageDetailClose.addEventListener("click", () => {
       messageDetailModalOverlay.classList.remove("active");

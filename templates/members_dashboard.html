@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jukebox Lounge NC | Members Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}?v=members-apply-search-1">
 </head>
 <body>
   <div class="dashboard-shell">
@@ -26,8 +26,6 @@
         <a href="/admin/dashboard-redesign/messages">Messages</a>
         <a href="/admin/dashboard-redesign/members" class="active">Members</a>
         <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
-        <a href="/admin/dashboard-redesign#reports">Reports</a>
-        <a href="/admin/dashboard-redesign#settings">Settings</a>
       </nav>
     </aside>
 
@@ -56,27 +54,28 @@
       <section class="stats-grid">
         <div class="stat-card">
           <p>VIP Email List</p>
-          <h3>31</h3>
-          <span>Email subscribers</span>
+          <h3 id="vipEmailKpiCount">{{ member_stats.vip_email_count }}</h3>
+          <span>Email subscribers, not revenue</span>
         </div>
 
         <div class="stat-card">
           <p>Original Members</p>
-          <h3>12</h3>
-          <span>Jukebox Circle Originals</span>
+          <h3 id="originalMembersKpiCount">{{ member_stats.originals_count }}</h3>
+          <span>Original members</span>
         </div>
 
         <div class="stat-card">
           <p>Jukebox Circle</p>
-          <h3>8</h3>
-          <span>General members</span>
+          <h3 id="circleMembersKpiCount">{{ member_stats.regular_count }}</h3>
+          <span>Regular members</span>
         </div>
 
         <div class="stat-card">
-          <p>Monthly Revenue</p>
-          <h3>$200</h3>
-          <span>Estimated membership revenue</span>
+          <p>Total Paid Members</p>
+          <h3 id="totalPaidMembersKpiCount">{{ member_stats.total_members }}</h3>
+          <span>Original + Circle members</span>
         </div>
+
       </section>
 
       <section class="section-panel" id="members">
@@ -95,21 +94,14 @@
                 <p class="eyebrow">Email List</p>
                 <h4>VIP Email List</h4>
               </div>
-              <span class="badge warning">31 Total</span>
+              <span class="badge warning" id="vipEmailCardCount">{{ member_stats.vip_email_count }} Total</span>
             </div>
 
-            <p>People who signed up to receive VIP updates, event announcements, and early access information.</p>
+            <p>People who signed up to receive VIP updates, event announcements, and early access information. This list is separate from paid memberships.</p>
 
-            <div class="mini-list">
-              <div>
-                <strong>Danielle Carter</strong>
-                <p>danielle@example.com</p>
-              </div>
-
-              <div>
-                <strong>Marcus Lee</strong>
-                <p>marcus@example.com</p>
-              </div>
+            <div class="member-card-summary">
+              <strong id="vipEmailSummaryCount">{{ member_stats.vip_email_count }} people saved</strong>
+              <p>Use View List to see VIP subscriber names and emails.</p>
             </div>
 
             <div class="row-actions">
@@ -127,21 +119,14 @@
                 <p class="eyebrow">Original Members</p>
                 <h4>Jukebox Circle Originals</h4>
               </div>
-              <span class="badge live">12 Active</span>
+              <span class="badge live" id="originalMembersCardCount">{{ member_stats.originals_count }} Active</span>
             </div>
 
-            <p>Founding or early members who are part of the original Jukebox Circle group.</p>
+            <p>Paid Jukebox Circle members synced from membership payments.</p>
 
-            <div class="mini-list">
-              <div>
-                <strong>Renee Thompson</strong>
-                <p>Original member · Active</p>
-              </div>
-
-              <div>
-                <strong>Anthony Green</strong>
-                <p>Original member · New</p>
-              </div>
+            <div class="member-card-summary">
+              <strong id="originalMembersSummaryCount">{{ member_stats.originals_count }} original members</strong>
+              <p>Use View List to see original member names and emails.</p>
             </div>
 
             <div class="row-actions">
@@ -157,23 +142,16 @@
             <div class="member-card-header">
               <div>
                 <p class="eyebrow">Membership</p>
-                <h4>Jukebox Circle</h4>
+                <h4>Jukebox Circle Members</h4>
               </div>
-              <span class="badge warning">8 New</span>
+              <span class="badge warning" id="circleMembersCardCount">{{ member_stats.regular_count }} Active</span>
             </div>
 
-            <p>General Jukebox Circle members who signed up for membership access, updates, or perks.</p>
+            <p>New paid Jukebox Circle members going forward. These are separate from the original member group.</p>
 
-            <div class="mini-list">
-              <div>
-                <strong>Nicole Harris</strong>
-                <p>General member · New</p>
-              </div>
-
-              <div>
-                <strong>Chris Williams</strong>
-                <p>General member · Active</p>
-              </div>
+            <div class="member-card-summary">
+              <strong id="circleMembersSummaryCount">{{ member_stats.regular_count }} circle members</strong>
+              <p>Use View List to see Jukebox Circle member names and emails.</p>
             </div>
 
             <div class="row-actions">
@@ -184,6 +162,7 @@
               <button class="js-export-members" type="button" data-member-list="circle">Export</button>
             </div>
           </div>
+
         </div>
       </section>
 
@@ -198,11 +177,28 @@
             <button class="event-modal-close" type="button" id="memberListModalClose">Close</button>
           </div>
 
+          <div class="member-list-toolbar">
+            <div>
+              <label for="memberListSearchInput">Search this list</label>
+              <input id="memberListSearchInput" type="search" placeholder="Search name, email, status, or date..." />
+            </div>
+
+            <div class="member-list-actions">
+              <button class="btn primary" type="button" id="applyMemberListSearch">Apply Search</button>
+              <button class="btn secondary" type="button" id="clearMemberListSearch">Clear Search</button>
+              <button class="btn secondary" type="button" id="copyVisibleMemberEmails">Copy Visible Emails</button>
+              <button class="btn primary" type="button" id="exportVisibleMembers">Export Visible List</button>
+            </div>
+          </div>
+
+          <div class="member-list-status" id="memberListSearchStatus">
+            Showing full list.
+          </div>
+
           <div class="table-card">
             <div class="table-row member-list-row table-head">
               <span>Name</span>
               <span>Email</span>
-              <span>List</span>
               <span>Status</span>
               <span>Signup Date</span>
             </div>
@@ -246,7 +242,7 @@
             <button class="btn primary" type="button" id="saveManualMemberButton">Save Person</button>
 
             <div class="note-preview">
-              Preview only: this adds the person to the page visually. Later, this will save to the database.
+              This saves the person to the selected member list.
             </div>
           </form>
         </div>
@@ -281,26 +277,50 @@
         subtitle: "People who signed up to receive VIP updates, announcements, and early access.",
         fileName: "vip-email-list.csv",
         rows: [
-          ["Danielle Carter", "danielle@example.com", "VIP Email List", "Subscribed", "Today"],
-          ["Marcus Lee", "marcus@example.com", "VIP Email List", "Subscribed", "Yesterday"]
+          {% for member in vip_email_members %}
+          [
+            {{ (member.name or "VIP Subscriber")|tojson }},
+            {{ (member.email or "")|tojson }},
+            "VIP Email List",
+            {{ (member.status or "Active")|tojson }},
+            {{ (member.created_at or "")|tojson }},
+            {{ member.id|tojson }}
+          ]{% if not loop.last %},{% endif %}
+          {% endfor %}
         ]
       },
       originals: {
-        title: "Jukebox Circle Originals",
-        subtitle: "Founding or early Jukebox Circle members.",
-        fileName: "jukebox-circle-originals.csv",
+        title: "Original Members",
+        subtitle: "Original paid Jukebox Circle members.",
+        fileName: "original-members.csv",
         rows: [
-          ["Renee Thompson", "renee@example.com", "Jukebox Circle Originals", "Active", "This Month"],
-          ["Anthony Green", "anthony@example.com", "Jukebox Circle Originals", "New", "Today"]
+          {% for member in original_members %}
+          [
+            {{ (member.display_name or member.name or "Member")|tojson }},
+            {{ (member.email or "")|tojson }},
+            "Original Members",
+            {{ (member.status or "Active")|tojson }},
+            {{ (member.source or "square")|tojson }},
+            {{ member.id|tojson }}
+          ]{% if not loop.last %},{% endif %}
+          {% endfor %}
         ]
       },
       circle: {
-        title: "Jukebox Circle",
-        subtitle: "General Jukebox Circle members.",
-        fileName: "jukebox-circle.csv",
+        title: "Jukebox Circle Members",
+        subtitle: "New paid Jukebox Circle members going forward.",
+        fileName: "jukebox-circle-members.csv",
         rows: [
-          ["Nicole Harris", "nicole@example.com", "Jukebox Circle", "New", "Today"],
-          ["Chris Williams", "chris@example.com", "Jukebox Circle", "Active", "This Month"]
+          {% for member in circle_members %}
+          [
+            {{ (member.display_name or member.name or "Member")|tojson }},
+            {{ (member.email or "")|tojson }},
+            "Jukebox Circle Members",
+            {{ (member.status or "Active")|tojson }},
+            {{ (member.source or "square")|tojson }},
+            {{ member.id|tojson }}
+          ]{% if not loop.last %},{% endif %}
+          {% endfor %}
         ]
       },
       all: {
@@ -321,32 +341,114 @@
 
     refreshAllMembers();
 
+    function setTextById(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    }
+
+    function updateMemberPageCounts() {
+      const vipCount = memberLists["vip-email"].rows.length;
+      const originalCount = memberLists.originals.rows.length;
+      const circleCount = memberLists.circle.rows.length;
+      const totalPaidCount = originalCount + circleCount;
+
+      setTextById("vipEmailKpiCount", vipCount);
+      setTextById("originalMembersKpiCount", originalCount);
+      setTextById("circleMembersKpiCount", circleCount);
+      setTextById("totalPaidMembersKpiCount", totalPaidCount);
+
+      setTextById("vipEmailCardCount", `${vipCount} Total`);
+      setTextById("originalMembersCardCount", `${originalCount} Active`);
+      setTextById("circleMembersCardCount", `${circleCount} Active`);
+
+      setTextById("vipEmailSummaryCount", `${vipCount} people saved`);
+      setTextById("originalMembersSummaryCount", `${originalCount} original members`);
+      setTextById("circleMembersSummaryCount", `${circleCount} circle members`);
+    }
+
+    updateMemberPageCounts();
+
     const memberListModalOverlay = document.getElementById("memberListModalOverlay");
     const memberListModalClose = document.getElementById("memberListModalClose");
     const memberListModalTitle = document.getElementById("memberListModalTitle");
     const memberListModalSubtitle = document.getElementById("memberListModalSubtitle");
     const memberListModalRows = document.getElementById("memberListModalRows");
+    const memberListSearchInput = document.getElementById("memberListSearchInput");
+    const memberListSearchStatus = document.getElementById("memberListSearchStatus");
+    const copyVisibleMemberEmails = document.getElementById("copyVisibleMemberEmails");
+    const exportVisibleMembers = document.getElementById("exportVisibleMembers");
+    const applyMemberListSearchButton = document.getElementById("applyMemberListSearch");
+    const clearMemberListSearchButton = document.getElementById("clearMemberListSearch");
+
+    let activeMemberListKeyForModal = "";
+
+    function updateMemberListSearchStatus() {
+      const rows = memberListModalRows.querySelectorAll(".member-list-row");
+      const visibleRows = Array.from(rows).filter((row) => row.style.display !== "none");
+
+      if (memberListSearchStatus) {
+        memberListSearchStatus.textContent = `Showing ${visibleRows.length} of ${rows.length} people.`;
+      }
+    }
+
+    function applyMemberListSearch() {
+      const query = (memberListSearchInput?.value || "").trim().toLowerCase();
+      const rows = memberListModalRows.querySelectorAll(".member-list-row");
+
+      rows.forEach((row) => {
+        const searchable = row.textContent.toLowerCase();
+        const shouldShow = !query || searchable.includes(query);
+
+        if (shouldShow) {
+          row.style.removeProperty("display");
+        } else {
+          row.style.setProperty("display", "none", "important");
+        }
+      });
+
+      updateMemberListSearchStatus();
+    }
 
     function renderMemberRows(listKey) {
+      activeMemberListKeyForModal = listKey;
+
       const list = memberLists[listKey];
       memberListModalTitle.textContent = list.title;
       memberListModalSubtitle.textContent = list.subtitle;
 
+      if (memberListSearchInput) {
+        memberListSearchInput.value = "";
+      }
+
       memberListModalRows.innerHTML = "";
+
+      if (!list.rows.length) {
+        memberListModalRows.innerHTML = `
+          <div class="empty-state">
+            <h4>No people found</h4>
+            <p>This list does not have anyone yet.</p>
+          </div>
+        `;
+      }
 
       list.rows.forEach((row) => {
         const div = document.createElement("div");
         div.className = "table-row member-list-row";
+        div.setAttribute("data-member-email", row[1] || "");
+        div.setAttribute("data-member-csv", JSON.stringify(row));
+
+        const statusClass = ["Active", "Subscribed"].includes(row[3]) ? "live" : "warning";
+
         div.innerHTML = `
           <span>${row[0]}</span>
           <span>${row[1]}</span>
-          <span>${row[2]}</span>
-          <span>${row[3]}</span>
+          <span><span class="badge ${statusClass}">${row[3]}</span></span>
           <span>${row[4]}</span>
         `;
         memberListModalRows.appendChild(div);
       });
 
+      updateMemberListSearchStatus();
       memberListModalOverlay.classList.add("active");
     }
 
@@ -356,6 +458,81 @@
         renderMemberRows(button.getAttribute("data-member-list"));
       });
     });
+
+    if (applyMemberListSearchButton) {
+      applyMemberListSearchButton.addEventListener("click", applyMemberListSearch);
+    }
+
+    if (memberListSearchInput) {
+      memberListSearchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          applyMemberListSearch();
+        }
+      });
+    }
+
+    if (clearMemberListSearchButton) {
+      clearMemberListSearchButton.addEventListener("click", () => {
+        if (memberListSearchInput) {
+          memberListSearchInput.value = "";
+        }
+        applyMemberListSearch();
+      });
+    }
+
+    if (copyVisibleMemberEmails) {
+      copyVisibleMemberEmails.addEventListener("click", () => {
+        const visibleRows = Array.from(memberListModalRows.querySelectorAll(".member-list-row"))
+          .filter((row) => row.style.display !== "none");
+
+        const emails = visibleRows
+          .map((row) => row.getAttribute("data-member-email") || "")
+          .filter(Boolean)
+          .join(", ");
+
+        if (!emails) {
+          alert("No visible emails to copy.");
+          return;
+        }
+
+        navigator.clipboard.writeText(emails).then(() => {
+          const originalText = copyVisibleMemberEmails.textContent;
+          copyVisibleMemberEmails.textContent = "Copied!";
+          setTimeout(() => copyVisibleMemberEmails.textContent = originalText, 1400);
+        });
+      });
+    }
+
+    if (exportVisibleMembers) {
+      exportVisibleMembers.addEventListener("click", () => {
+        const visibleRows = Array.from(memberListModalRows.querySelectorAll(".member-list-row"))
+          .filter((row) => row.style.display !== "none");
+
+        const rows = [["Name", "Email", "Status", "Signup Date"]];
+
+        visibleRows.forEach((row) => {
+          const saved = JSON.parse(row.getAttribute("data-member-csv") || "[]");
+          rows.push([saved[0] || "", saved[1] || "", saved[3] || "", saved[4] || ""]);
+        });
+
+        const csv = rows
+          .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+          .join("\n");
+
+        const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        const list = memberLists[activeMemberListKeyForModal] || memberLists.all;
+        link.href = url;
+        link.download = "visible-" + list.fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      });
+    }
 
     memberListModalClose.addEventListener("click", () => {
       memberListModalOverlay.classList.remove("active");
@@ -441,7 +618,7 @@
       addMemberModalOverlay.classList.remove("active");
     });
 
-    saveManualMemberButton.addEventListener("click", () => {
+    saveManualMemberButton.addEventListener("click", async () => {
       const name = manualMemberName.value.trim();
       const email = manualMemberEmail.value.trim();
       const status = manualMemberStatus.value;
@@ -456,27 +633,54 @@
         return;
       }
 
-      const listTitle = memberLists[activeMemberListKey].title;
+      saveManualMemberButton.disabled = true;
+      saveManualMemberButton.textContent = "Saving...";
 
-      memberLists[activeMemberListKey].rows.push([
-        name,
-        email,
-        listTitle,
-        status,
-        "Manual Entry"
-      ]);
+      try {
+        const response = await fetch("/api/members/add", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            list_key: activeMemberListKey,
+            name,
+            email,
+            status
+          })
+        });
 
-      const card = document.querySelector(`.js-add-member[data-member-list="${activeMemberListKey}"]`).closest(".member-overview-card");
-      const miniList = card.querySelector(".mini-list");
+        const result = await response.json();
 
-      const item = document.createElement("div");
-      item.innerHTML = `
-        <strong>${name}</strong>
-        <p>${email}</p>
-      `;
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "Unable to save person.");
+        }
 
-      miniList.appendChild(item);
-      addMemberModalOverlay.classList.remove("active");
+        const member = result.member;
+
+        memberLists[activeMemberListKey].rows.unshift([
+          member.name,
+          member.email,
+          member.list,
+          member.status,
+          member.signup_date,
+          member.id
+        ]);
+
+        manualMemberName.value = "";
+        manualMemberEmail.value = "";
+        manualMemberStatus.value = "Active";
+        refreshAllMembers();
+        updateMemberPageCounts();
+        addMemberModalOverlay.classList.remove("active");
+
+        alert("Person saved successfully.");
+      } catch (error) {
+        alert(error.message || "Unable to save person.");
+      } finally {
+        saveManualMemberButton.disabled = false;
+        saveManualMemberButton.textContent = "Save Person";
+      }
     });
 
     const deleteMemberModalOverlay = document.getElementById("deleteMemberModalOverlay");
@@ -513,25 +717,46 @@
           <button class="delete-button" type="button">Delete</button>
         `;
 
-        item.querySelector("button").addEventListener("click", () => {
+        item.querySelector("button").addEventListener("click", async () => {
           const confirmed = confirm("Delete " + row[0] + " from " + list.title + "?");
 
           if (!confirmed) return;
 
-          const email = row[1];
+          const button = item.querySelector("button");
+          const email = row[1] || "";
+          const recordId = row[5] || "";
 
-          memberLists[listKey].rows.splice(index, 1);
+          button.disabled = true;
+          button.textContent = "Deleting...";
 
-          const card = document.querySelector(`.js-delete-member-list-item[data-member-list="${listKey}"]`).closest(".member-overview-card");
-          const miniItems = card.querySelectorAll(".mini-list > div");
+          try {
+            const response = await fetch("/api/members/delete", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                list_key: listKey,
+                record_id: recordId,
+                email
+              })
+            });
 
-          miniItems.forEach((miniItem) => {
-            if ((miniItem.textContent || "").includes(email)) {
-              miniItem.remove();
+            const result = await response.json();
+
+            if (!response.ok || !result.ok) {
+              throw new Error(result.error || "Unable to delete member.");
             }
-          });
 
-          renderDeleteMemberList(listKey);
+            memberLists[listKey].rows.splice(index, 1);
+            refreshAllMembers();
+            updateMemberPageCounts();
+            renderDeleteMemberList(listKey);
+          } catch (error) {
+            alert(error.message || "Unable to delete member.");
+            button.disabled = false;
+            button.textContent = "Delete";
+          }
         });
 
         deleteMemberList.appendChild(item);

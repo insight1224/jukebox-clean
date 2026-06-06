@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jukebox Lounge NC | Contact Log</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}?v=contact-copy-email-1">
 </head>
 <body>
   <div class="dashboard-shell">
@@ -26,8 +26,6 @@
         <a href="/admin/dashboard-redesign/messages">Messages</a>
         <a href="/admin/dashboard-redesign/members">Members</a>
         <a href="/admin/dashboard-redesign/contacts" class="active">Contact Log</a>
-        <a href="/admin/dashboard-redesign#reports">Reports</a>
-        <a href="/admin/dashboard-redesign#settings">Settings</a>
       </nav>
     </aside>
 
@@ -49,33 +47,26 @@
 
         <div class="topbar-actions">
           <button class="btn secondary" type="button" id="exportContactsButton">Export Contacts</button>
-          <button class="btn primary" type="button" id="addContactButton">Add Contact</button>
         </div>
       </header>
 
       <section class="stats-grid">
         <div class="stat-card">
           <p>Talent Contacts</p>
-          <h3>3</h3>
+          <h3>{{ contact_stats.talent_contacts }}</h3>
           <span>DJs, bands, hosts, performers</span>
         </div>
 
         <div class="stat-card">
           <p>Vendor Contacts</p>
-          <h3>3</h3>
+          <h3>{{ contact_stats.vendor_contacts }}</h3>
           <span>Food, decor, media, services</span>
         </div>
 
         <div class="stat-card">
-          <p>New Contacts</p>
-          <h3>2</h3>
-          <span>Recently submitted</span>
-        </div>
-
-        <div class="stat-card">
-          <p>Preferred Vendors</p>
-          <h3>1</h3>
-          <span>Marked preferred</span>
+          <p>Total Contacts</p>
+          <h3>{{ contact_stats.total_contacts }}</h3>
+          <span>Saved talent and vendors</span>
         </div>
       </section>
 
@@ -86,7 +77,22 @@
             <h3>Talent & Vendor Contact Log</h3>
             <p>Keep track of people she may want to book or contact for future events.</p>
           </div>
-          <button class="btn primary" type="button" id="viewFullContactLog">View Full Log</button>
+          <button class="btn primary" type="button" id="addContactButton">Add Contact</button>
+        </div>
+
+        <div class="contact-log-toolbar">
+          <div>
+            <label for="contactSearchInput">Search Contact Log</label>
+            <input id="contactSearchInput" type="search" placeholder="Search name, email, type, details, or notes..." />
+          </div>
+          <div class="contact-search-actions">
+            <button class="btn primary" type="button" id="applyContactSearch">Apply Search</button>
+            <button class="btn secondary" type="button" id="clearContactSearch">Clear Search</button>
+          </div>
+        </div>
+
+        <div class="contact-search-status" id="contactSearchStatus">
+          Showing all saved contacts.
         </div>
 
         <div class="contact-log-grid">
@@ -97,42 +103,44 @@
                 <h4>Talent Contacts</h4>
                 <p>DJs, bands, performers, hosts, and entertainers she may want to book for future events.</p>
               </div>
-              <span class="badge warning">2 New</span>
+              <span class="badge warning">{{ contact_stats.talent_contacts }} Saved</span>
+            </div>
+
+            <div class="contact-category-filters" data-filter-group="talent">
+              <button type="button" class="contact-type-filter active" data-contact-list="talentContactList" data-contact-type="all">All</button>
+              <button type="button" class="contact-type-filter" data-contact-list="talentContactList" data-contact-type="dj">DJ</button>
+              <button type="button" class="contact-type-filter" data-contact-list="talentContactList" data-contact-type="band">Band</button>
+              <button type="button" class="contact-type-filter" data-contact-list="talentContactList" data-contact-type="singer">Singer</button>
+              <button type="button" class="contact-type-filter" data-contact-list="talentContactList" data-contact-type="host">Host</button>
+              <button type="button" class="contact-type-filter" data-contact-list="talentContactList" data-contact-type="performer">Performer</button>
             </div>
 
             <div class="contact-scroll-list" id="talentContactList">
-              <div class="contact-log-row" data-contact-name="DJ Showtime" data-contact-type="DJ" data-contact-email="djshowtime@example.com">
+              {% for contact in talent_contacts %}
+              <div
+                class="contact-log-row"
+                data-contact-id="{{ contact.id }}"
+                data-contact-name="{{ contact.name or 'Contact' }}"
+                data-contact-type="{{ contact.contact_type or 'Talent' }}"
+                data-contact-email="{{ contact.email or '' }}"
+                data-contact-details="{{ contact.details or '' }}"
+                data-contact-notes="{{ contact.notes or '' }}"
+              >
                 <div>
-                  <strong>DJ Showtime</strong>
-                  <span>DJ · djshowtime@example.com</span>
+                  <strong>{{ contact.name or 'Unnamed Contact' }}</strong>
+                  <span>{{ contact.contact_type or 'Talent' }} · {{ contact.email or 'No email' }}</span>
                 </div>
                 <div class="row-actions">
                   <button class="js-view-contact" type="button">View</button>
                   <button class="js-delete-contact" type="button">Delete</button>
                 </div>
               </div>
-
-              <div class="contact-log-row" data-contact-name="Soul Rhythm Band" data-contact-type="Band" data-contact-email="booking@example.com">
-                <div>
-                  <strong>Soul Rhythm Band</strong>
-                  <span>Band · booking@example.com</span>
-                </div>
-                <div class="row-actions">
-                  <button class="js-view-contact" type="button">View</button>
-                  <button class="js-delete-contact" type="button">Delete</button>
-                </div>
+              {% else %}
+              <div class="empty-state">
+                <h4>No talent contacts yet</h4>
+                <p>DJ and band applications moved from Messages will appear here.</p>
               </div>
-
-              <div class="contact-log-row" data-contact-name="MC Jay" data-contact-type="Host" data-contact-email="mcjay@example.com">
-                <div>
-                  <strong>MC Jay</strong>
-                  <span>Host · mcjay@example.com</span>
-                </div>
-                <div class="row-actions">
-                  <button class="js-view-contact" type="button">View</button>
-                  <button class="js-delete-contact" type="button">Delete</button>
-                </div>
-              </div>
+              {% endfor %}
             </div>
           </div>
 
@@ -143,49 +151,51 @@
                 <h4>Vendor & Partner Contacts</h4>
                 <p>Food vendors, decorators, photographers, promoters, service providers, and event partners.</p>
               </div>
-              <span class="badge live">Preferred</span>
+              <span class="badge live">{{ contact_stats.vendor_contacts }} Saved</span>
+            </div>
+
+            <div class="contact-category-filters" data-filter-group="vendor">
+              <button type="button" class="contact-type-filter active" data-contact-list="vendorContactList" data-contact-type="all">All</button>
+              <button type="button" class="contact-type-filter" data-contact-list="vendorContactList" data-contact-type="food">Food</button>
+              <button type="button" class="contact-type-filter" data-contact-list="vendorContactList" data-contact-type="decor">Decor</button>
+              <button type="button" class="contact-type-filter" data-contact-list="vendorContactList" data-contact-type="photography">Photography</button>
+              <button type="button" class="contact-type-filter" data-contact-list="vendorContactList" data-contact-type="promoter">Promoter</button>
+              <button type="button" class="contact-type-filter" data-contact-list="vendorContactList" data-contact-type="service">Service Provider</button>
             </div>
 
             <div class="contact-scroll-list" id="vendorContactList">
-              <div class="contact-log-row" data-contact-name="Chef T’s Plates" data-contact-type="Food Vendor" data-contact-email="vendor@example.com">
+              {% for contact in vendor_contacts %}
+              <div
+                class="contact-log-row"
+                data-contact-id="{{ contact.id }}"
+                data-contact-name="{{ contact.name or 'Contact' }}"
+                data-contact-type="{{ contact.contact_type or 'Vendor' }}"
+                data-contact-email="{{ contact.email or '' }}"
+                data-contact-details="{{ contact.details or '' }}"
+                data-contact-notes="{{ contact.notes or '' }}"
+              >
                 <div>
-                  <strong>Chef T’s Plates</strong>
-                  <span>Food Vendor · vendor@example.com</span>
+                  <strong>{{ contact.name or 'Unnamed Contact' }}</strong>
+                  <span>{{ contact.contact_type or 'Vendor' }} · {{ contact.email or 'No email' }}</span>
                 </div>
                 <div class="row-actions">
                   <button class="js-view-contact" type="button">View</button>
                   <button class="js-delete-contact" type="button">Delete</button>
                 </div>
               </div>
-
-              <div class="contact-log-row" data-contact-name="Glow Decor Co." data-contact-type="Decor" data-contact-email="decor@example.com">
-                <div>
-                  <strong>Glow Decor Co.</strong>
-                  <span>Decor · decor@example.com</span>
-                </div>
-                <div class="row-actions">
-                  <button class="js-view-contact" type="button">View</button>
-                  <button class="js-delete-contact" type="button">Delete</button>
-                </div>
+              {% else %}
+              <div class="empty-state">
+                <h4>No vendor contacts yet</h4>
+                <p>Vendor applications moved from Messages will appear here.</p>
               </div>
-
-              <div class="contact-log-row" data-contact-name="Lens Life Media" data-contact-type="Photography" data-contact-email="media@example.com">
-                <div>
-                  <strong>Lens Life Media</strong>
-                  <span>Photography · media@example.com</span>
-                </div>
-                <div class="row-actions">
-                  <button class="js-view-contact" type="button">View</button>
-                  <button class="js-delete-contact" type="button">Delete</button>
-                </div>
-              </div>
+              {% endfor %}
             </div>
           </div>
         </div>
       </section>
 
       <div class="event-modal-overlay" id="contactDetailModalOverlay">
-        <div class="event-modal small-modal">
+        <div class="event-modal contact-detail-modal">
           <div class="event-modal-header">
             <div>
               <p class="eyebrow">Contact Details</p>
@@ -195,8 +205,28 @@
             <button class="event-modal-close" type="button" id="contactDetailClose">Close</button>
           </div>
 
-          <div class="note-preview" id="contactDetailBody">
-            Select a contact to view details.
+          <div class="contact-detail-layout">
+            <div class="contact-detail-card">
+              <div class="contact-detail-card-heading">
+                <p class="eyebrow">Profile</p>
+                <button class="btn secondary" type="button" id="copyContactEmailButton">Copy Email</button>
+              </div>
+
+              <div id="contactDetailBody">
+                Select a contact to view details.
+              </div>
+            </div>
+
+            <div class="contact-detail-card">
+              <p class="eyebrow">Notes</p>
+              <h4>Internal Notes</h4>
+              <p class="contact-detail-muted">Add booking notes, follow-up reminders, vendor details, pricing notes, or event ideas.</p>
+
+              <textarea id="contactNotesField" placeholder="Example: Good fit for live music nights. Follow up for July event."></textarea>
+
+              <button class="btn primary" type="button" id="saveContactNotesButton">Save Notes</button>
+              <div class="note-preview" id="contactNotesStatus">Notes save to the Contact Log.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -250,7 +280,7 @@
             <button class="btn primary" type="button" id="saveContactButton">Save Contact</button>
 
             <div class="note-preview">
-              Preview only: this adds the contact visually. Later, this can save to the database.
+              This saves the contact to the Contact Log database.
             </div>
           </form>
         </div>
@@ -264,6 +294,13 @@
     const contactDetailTitle = document.getElementById("contactDetailTitle");
     const contactDetailSubtitle = document.getElementById("contactDetailSubtitle");
     const contactDetailBody = document.getElementById("contactDetailBody");
+    const contactNotesField = document.getElementById("contactNotesField");
+    const saveContactNotesButton = document.getElementById("saveContactNotesButton");
+    const contactNotesStatus = document.getElementById("contactNotesStatus");
+    const copyContactEmailButton = document.getElementById("copyContactEmailButton");
+    let activeContactId = null;
+    let activeContactRow = null;
+    let activeContactEmail = "";
 
     function bindContactButtons() {
       document.querySelectorAll(".js-view-contact").forEach((button) => {
@@ -272,13 +309,43 @@
 
         button.addEventListener("click", () => {
           const row = button.closest(".contact-log-row");
-          const name = row.getAttribute("data-contact-name");
-          const type = row.getAttribute("data-contact-type");
-          const email = row.getAttribute("data-contact-email");
+          const name = row.getAttribute("data-contact-name") || "Contact";
+          const type = row.getAttribute("data-contact-type") || "Contact";
+          const email = row.getAttribute("data-contact-email") || "No email";
+          const details = row.getAttribute("data-contact-details") || "No details saved.";
+          const notes = row.getAttribute("data-contact-notes") || "";
+          const contactId = row.getAttribute("data-contact-id") || "";
+
+          activeContactId = contactId;
+          activeContactRow = row;
+          activeContactEmail = email === "No email" ? "" : email;
 
           contactDetailTitle.textContent = name;
           contactDetailSubtitle.textContent = type + " • " + email;
-          contactDetailBody.textContent = "Contact saved for future event planning, booking, vendor outreach, or partnership follow-up.";
+          contactNotesField.value = notes;
+          contactNotesStatus.textContent = "Notes save to the Contact Log.";
+
+          contactDetailBody.innerHTML = `
+            <div class="contact-profile-grid">
+              <div>
+                <span>Name</span>
+                <strong>${name}</strong>
+              </div>
+              <div>
+                <span>Email</span>
+                <strong>${email}</strong>
+              </div>
+              <div>
+                <span>Type</span>
+                <strong>${type}</strong>
+              </div>
+            </div>
+
+            <div class="contact-detail-message">
+              <span>Details</span>
+              <p>${details}</p>
+            </div>
+          `;
           contactDetailModalOverlay.classList.add("active");
         });
       });
@@ -287,18 +354,194 @@
         if (button.dataset.bound === "true") return;
         button.dataset.bound = "true";
 
-        button.addEventListener("click", () => {
+        button.addEventListener("click", async () => {
           const row = button.closest(".contact-log-row");
           const name = row.getAttribute("data-contact-name");
+          const contactId = row.getAttribute("data-contact-id");
 
-          if (confirm("Delete " + name + " from the contact log?")) {
+          if (!confirm("Delete " + name + " from the contact log?")) {
+            return;
+          }
+
+          if (!contactId) {
             row.remove();
+            return;
+          }
+
+          button.disabled = true;
+
+          try {
+            const response = await fetch(`/api/contact-log/${contactId}/delete`, {
+              method: "POST"
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.ok) {
+              throw new Error(result.error || "Unable to delete contact.");
+            }
+
+            row.remove();
+          } catch (error) {
+            alert(error.message || "Unable to delete contact.");
+            button.disabled = false;
           }
         });
       });
     }
 
     bindContactButtons();
+
+    const contactSearchInput = document.getElementById("contactSearchInput");
+    const applyContactSearchButton = document.getElementById("applyContactSearch");
+    const clearContactSearchButton = document.getElementById("clearContactSearch");
+    const contactSearchStatus = document.getElementById("contactSearchStatus");
+
+    function runContactSearch() {
+      const query = (contactSearchInput ? contactSearchInput.value : "").trim().toLowerCase();
+      const rows = document.querySelectorAll("#talentContactList .contact-log-row, #vendorContactList .contact-log-row");
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const searchableText = [
+          row.dataset.contactName || "",
+          row.dataset.contactType || "",
+          row.dataset.contactEmail || "",
+          row.dataset.contactDetails || "",
+          row.dataset.contactNotes || "",
+          row.textContent || ""
+        ].join(" ").toLowerCase();
+
+        const isMatch = !query || searchableText.includes(query);
+
+        if (isMatch) {
+          row.style.removeProperty("display");
+          visibleCount += 1;
+        } else {
+          row.style.setProperty("display", "none", "important");
+        }
+      });
+
+      if (contactSearchStatus) {
+        contactSearchStatus.textContent = query
+          ? `Showing ${visibleCount} matching contact${visibleCount === 1 ? "" : "s"}.`
+          : "Showing all saved contacts.";
+      }
+    }
+
+    if (applyContactSearchButton) {
+      applyContactSearchButton.onclick = runContactSearch;
+    }
+
+    if (contactSearchInput) {
+      contactSearchInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          runContactSearch();
+        }
+      });
+    }
+
+    if (clearContactSearchButton) {
+      clearContactSearchButton.onclick = () => {
+        if (contactSearchInput) {
+          contactSearchInput.value = "";
+        }
+        runContactSearch();
+      };
+    }
+
+    document.querySelectorAll(".contact-type-filter").forEach((button) => {
+      button.addEventListener("click", () => {
+        const listId = button.getAttribute("data-contact-list");
+        const filterType = (button.getAttribute("data-contact-type") || "all").toLowerCase();
+        const list = document.getElementById(listId);
+
+        if (!list) return;
+
+        const group = button.closest(".contact-category-filters");
+        if (group) {
+          group.querySelectorAll(".contact-type-filter").forEach((filterButton) => {
+            filterButton.classList.toggle("active", filterButton === button);
+          });
+        }
+
+        list.querySelectorAll(".contact-log-row").forEach((row) => {
+          const contactType = [
+            row.dataset.contactType || "",
+            row.textContent || ""
+          ].join(" ").toLowerCase();
+
+          const shouldShow = filterType === "all" || contactType.includes(filterType);
+
+          if (shouldShow) {
+            row.style.removeProperty("display");
+          } else {
+            row.style.setProperty("display", "none", "important");
+          }
+        });
+      });
+    });
+
+    if (copyContactEmailButton) {
+      copyContactEmailButton.addEventListener("click", async () => {
+        if (!activeContactEmail) {
+          alert("No email available for this contact.");
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(activeContactEmail);
+          copyContactEmailButton.textContent = "Copied!";
+          setTimeout(() => {
+            copyContactEmailButton.textContent = "Copy Email";
+          }, 1400);
+        } catch (error) {
+          alert("Could not copy email. Email: " + activeContactEmail);
+        }
+      });
+    }
+
+    saveContactNotesButton.addEventListener("click", async () => {
+      if (!activeContactId) {
+        alert("No contact selected.");
+        return;
+      }
+
+      saveContactNotesButton.disabled = true;
+      saveContactNotesButton.textContent = "Saving...";
+      contactNotesStatus.textContent = "Saving notes...";
+
+      try {
+        const response = await fetch(`/api/contact-log/${activeContactId}/notes`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            notes: contactNotesField.value
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "Unable to save notes.");
+        }
+
+        if (activeContactRow) {
+          activeContactRow.setAttribute("data-contact-notes", result.notes || "");
+        }
+
+        contactNotesStatus.textContent = "Notes saved.";
+      } catch (error) {
+        alert(error.message || "Unable to save notes.");
+        contactNotesStatus.textContent = "Notes could not be saved.";
+      } finally {
+        saveContactNotesButton.disabled = false;
+        saveContactNotesButton.textContent = "Save Notes";
+      }
+    });
 
     contactDetailClose.addEventListener("click", () => {
       contactDetailModalOverlay.classList.remove("active");
@@ -322,10 +565,10 @@
       addContactModalOverlay.classList.remove("active");
     });
 
-    saveContactButton.addEventListener("click", () => {
+    saveContactButton.addEventListener("click", async () => {
       const name = newContactName.value.trim();
       const type = newContactType.value;
-      const email = newContactEmail.value.trim() || "No email";
+      const email = newContactEmail.value.trim();
       const group = newContactGroup.value;
 
       if (!name) {
@@ -333,33 +576,71 @@
         return;
       }
 
-      const targetList = group === "Talent"
-        ? document.getElementById("talentContactList")
-        : document.getElementById("vendorContactList");
+      saveContactButton.disabled = true;
+      saveContactButton.textContent = "Saving...";
 
-      const row = document.createElement("div");
-      row.className = "contact-log-row";
-      row.setAttribute("data-contact-name", name);
-      row.setAttribute("data-contact-type", type);
-      row.setAttribute("data-contact-email", email);
+      try {
+        const response = await fetch("/api/contact-log", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            contact_type: type,
+            category: group
+          })
+        });
 
-      row.innerHTML = `
-        <div>
-          <strong>${name}</strong>
-          <span>${type} · ${email}</span>
-        </div>
-        <div class="row-actions">
-          <button class="js-view-contact" type="button">View</button>
-          <button class="js-delete-contact" type="button">Delete</button>
-        </div>
-      `;
+        const result = await response.json();
 
-      targetList.appendChild(row);
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "Unable to save contact.");
+        }
 
-      newContactName.value = "";
-      newContactEmail.value = "";
-      addContactModalOverlay.classList.remove("active");
-      bindContactButtons();
+        const contact = result.contact;
+        const targetList = group === "Talent"
+          ? document.getElementById("talentContactList")
+          : document.getElementById("vendorContactList");
+
+        const emptyState = targetList.querySelector(".empty-state");
+        if (emptyState) {
+          emptyState.remove();
+        }
+
+        const row = document.createElement("div");
+        row.className = "contact-log-row";
+        row.setAttribute("data-contact-id", contact.id);
+        row.setAttribute("data-contact-name", contact.name);
+        row.setAttribute("data-contact-type", contact.contact_type);
+        row.setAttribute("data-contact-email", contact.email || "");
+        row.setAttribute("data-contact-details", contact.details || "");
+        row.setAttribute("data-contact-notes", contact.notes || "");
+
+        row.innerHTML = `
+          <div>
+            <strong>${contact.name}</strong>
+            <span>${contact.contact_type} · ${contact.email || "No email"}</span>
+          </div>
+          <div class="row-actions">
+            <button class="js-view-contact" type="button">View</button>
+            <button class="js-delete-contact" type="button">Delete</button>
+          </div>
+        `;
+
+        targetList.prepend(row);
+
+        newContactName.value = "";
+        newContactEmail.value = "";
+        addContactModalOverlay.classList.remove("active");
+        bindContactButtons();
+      } catch (error) {
+        alert(error.message || "Unable to save contact.");
+      } finally {
+        saveContactButton.disabled = false;
+        saveContactButton.textContent = "Save Contact";
+      }
     });
 
     function downloadContactsCsv() {

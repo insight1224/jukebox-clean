@@ -4,3 +4,12 @@ __pycache__/
 .DS_Store
 instance/
 venv/
+.env
+square_payment_review.csv
+square_payment_review_all.csv
+square_payment_review_all.numbers
+square_report.json
+square_report_300.json
+transactions-2026-01-01-2027-01-01.csv
+app.py.backup
+database.backup-before-square-sync.db

@@ -79,3 +79,370 @@ nav a {
     max-width: 400px;
     margin: 0 auto;
 }
+.membership-page-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  gap: 32px;
+  align-items: start;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+.membership-page-wrap .membership-page,
+.membership-page-wrap .originals-section {
+  margin: 0;
+  height: 100%;
+}
+
+.membership-page-wrap .originals-section {
+  padding: 40px 24px;
+  border-radius: 24px;
+}
+
+.membership-page-wrap .originals-grid {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 900px) {
+  .membership-page-wrap {
+    grid-template-columns: 1fr;
+  }
+}
+
+.membership-page-wrap {
+  display: block;
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 70px 20px;
+}
+
+.membership-circle-layout {
+  position: relative;
+  min-height: 820px;
+  display: grid;
+  place-items: center;
+}
+
+.membership-circle-layout .membership-page {
+  position: relative;
+  z-index: 2;
+  max-width: 520px;
+  border: 1px solid rgba(212,175,55,0.35);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+}
+
+.membership-circle-layout .originals-section {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.membership-circle-layout .originals-section .container {
+  height: 100%;
+}
+
+.membership-circle-layout .section-kicker,
+.membership-circle-layout .originals-section h2,
+.membership-circle-layout .originals-intro {
+  display: none;
+}
+
+.membership-circle-layout .originals-grid {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: 1050px;
+  margin: 0 auto;
+  display: block;
+}
+
+.membership-circle-layout .original-card {
+  position: absolute;
+  width: 230px;
+  min-height: 92px;
+  padding: 16px;
+  border-radius: 18px;
+}
+
+.membership-circle-layout .original-card:nth-child(1) { top: 2%; left: 50%; transform: translateX(-50%); }
+.membership-circle-layout .original-card:nth-child(2) { top: 13%; right: 7%; }
+.membership-circle-layout .original-card:nth-child(3) { top: 35%; right: 0%; }
+.membership-circle-layout .original-card:nth-child(4) { bottom: 23%; right: 7%; }
+.membership-circle-layout .original-card:nth-child(5) { bottom: 4%; right: 25%; }
+.membership-circle-layout .original-card:nth-child(6) { bottom: 4%; left: 25%; }
+.membership-circle-layout .original-card:nth-child(7) { bottom: 23%; left: 7%; }
+.membership-circle-layout .original-card:nth-child(8) { top: 35%; left: 0%; }
+.membership-circle-layout .original-card:nth-child(9) { top: 13%; left: 7%; }
+.membership-circle-layout .original-card:nth-child(10) { top: 50%; left: 50%; transform: translate(-50%, 245px); }
+
+@media (max-width: 950px) {
+  .membership-circle-layout {
+    min-height: auto;
+    display: block;
+  }
+
+  .membership-circle-layout .membership-page {
+    margin: 0 auto 32px;
+  }
+
+  .membership-circle-layout .originals-section {
+    position: static;
+  }
+
+  .membership-circle-layout .section-kicker,
+  .membership-circle-layout .originals-section h2,
+  .membership-circle-layout .originals-intro {
+    display: block;
+  }
+
+  .membership-circle-layout .originals-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .membership-circle-layout .original-card {
+    position: static;
+    width: auto;
+    transform: none !important;
+  }
+}
+
+.membership-circle-layout {
+  min-height: 1050px;
+  place-items: center;
+}
+
+.membership-circle-layout .membership-page {
+  margin: 0 auto;
+  align-self: center;
+  justify-self: center;
+}
+
+.membership-circle-layout .originals-grid {
+  max-width: 1250px;
+}
+
+.membership-circle-layout .original-card {
+  width: 250px;
+}
+
+.membership-circle-layout .original-card:nth-child(1) { top: 0%; left: 50%; transform: translateX(-50%); }
+.membership-circle-layout .original-card:nth-child(2) { top: 10%; right: 5%; }
+.membership-circle-layout .original-card:nth-child(3) { top: 36%; right: -3%; }
+.membership-circle-layout .original-card:nth-child(4) { bottom: 18%; right: 5%; }
+.membership-circle-layout .original-card:nth-child(5) { bottom: 0%; right: 27%; }
+.membership-circle-layout .original-card:nth-child(6) { bottom: 0%; left: 27%; }
+.membership-circle-layout .original-card:nth-child(7) { bottom: 18%; left: 5%; }
+.membership-circle-layout .original-card:nth-child(8) { top: 36%; left: -3%; }
+.membership-circle-layout .original-card:nth-child(9) { top: 10%; left: 5%; }
+.membership-circle-layout .original-card:nth-child(10) { top: 50%; left: 50%; transform: translate(-50%, 380px); }
+
+
+
+
+/* CLEAN Jukebox Circle Originals Wall */
+.membership-page-wrap {
+  display: block;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+.membership-page-wrap .membership-page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.originals-section {
+  max-width: 1150px;
+  margin: 80px auto 0;
+  padding: 50px 24px;
+  text-align: center;
+  background: radial-gradient(circle at top, rgba(212,175,55,0.14), transparent 45%), rgba(255,255,255,0.03);
+  border: 1px solid rgba(212,175,55,0.24);
+  border-radius: 28px;
+}
+
+.originals-section .container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.section-kicker {
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.originals-section h2 {
+  color: #f5d76e;
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin-bottom: 12px;
+}
+
+.originals-intro {
+  color: #eadfc7;
+  max-width: 720px;
+  margin: 0 auto 38px;
+}
+
+.originals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.original-card {
+  background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(212,175,55,0.08));
+  border: 1px solid rgba(212,175,55,0.28);
+  border-radius: 20px;
+  padding: 26px 18px;
+  text-align: center;
+  box-shadow: 0 16px 34px rgba(0,0,0,0.25);
+}
+
+.original-number {
+  display: inline-grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #d4af37;
+  color: #140b04;
+  font-weight: 900;
+  margin-bottom: 16px;
+}
+
+.original-card h3 {
+  color: #fff;
+  margin: 0 0 8px;
+  font-size: 1.1rem;
+}
+
+.original-card p {
+  color: #d4af37;
+  text-transform: uppercase;
+  font-size: .78rem;
+  letter-spacing: 1px;
+  font-weight: 800;
+  margin: 0;
+}
+
+.original-card:nth-child(5) {
+  grid-column: 1 / span 1;
+}
+
+.original-card:nth-child(7) {
+  grid-column: 3 / span 1;
+}
+
+@media (max-width: 900px) {
+  .originals-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .original-card:nth-child(5),
+  .original-card:nth-child(7) {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .originals-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* FINAL ORIGINALS GRID - 4 PER ROW */
+.membership-page-wrap {
+  display: block !important;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+.membership-page-wrap .membership-page {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.originals-section {
+  max-width: 1150px;
+  margin: 80px auto 0;
+  text-align: center;
+}
+
+.originals-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 20px;
+}
+
+.original-card {
+  position: static !important;
+  transform: none !important;
+  width: auto !important;
+}
+
+@media (max-width: 900px) {
+  .originals-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .originals-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* CLEANER LEGACY MEMBER CARDS */
+.originals-section {
+  padding: 55px 32px;
+}
+
+.originals-grid {
+  gap: 24px !important;
+}
+
+.original-card {
+  min-height: 170px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-radius: 24px !important;
+  background: linear-gradient(145deg, rgba(18, 12, 6, 0.96), rgba(45, 31, 12, 0.82)) !important;
+  border: 1px solid rgba(212, 175, 55, 0.36) !important;
+}
+
+.original-card h3 {
+  font-size: 1.25rem !important;
+  line-height: 1.25;
+}
+
+.original-card p {
+  font-size: 0.72rem !important;
+}
+
+.membership-donation-btn {
+  display: inline-block;
+  margin-top: 18px;
+  padding: 14px 28px;
+  border-radius: 999px;
+  border: 2px solid #d4af37;
+  color: #d4af37;
+  text-decoration: none;
+  font-weight: 800;
+  transition: all .3s ease;
+}
+
+.membership-donation-btn:hover {
+  background: #d4af37;
+  color: #120804;
+}

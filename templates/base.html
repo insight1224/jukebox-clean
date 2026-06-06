@@ -39,11 +39,53 @@
       <div class="nav-links" id="navLinks">
         <a class="nav-link" href="/">Home</a>
         <a class="nav-link" href="/events">Events</a>
-        <a class="nav-link" href="/contact">Contact</a>
+        <a class="nav-link" href="/merch">Merch</a>
+        <a class="nav-link" href="/about">About Us</a>
+        <a class="nav-link" href="/donate">JBL Gives Back</a>
+        <a class="nav-link" href="/sponsors">Partners</a>
         <a class="nav-link" href="/membership">Membership</a>
       </div>
     </nav>
     {% block content %}{% endblock %}
+
+    <footer class="site-footer">
+      <div class="footer-wrap">
+        <div>
+          <h3>The Jukebox Lounge NC</h3>
+          <p>Good music. Good people. Good energy.</p>
+        </div>
+
+        <div>
+          <h4>Explore</h4>
+          <a href="/events">Events</a>
+          <a href="/gallery">Gallery</a>
+          <a href="/membership">Membership</a>
+          <a href="/gallery">Gallery</a>
+        </div>
+
+        <div>
+          <h4>Connect</h4>
+          <a href="/about">About Us</a>
+          <a href="/donate">JBL Gives Back</a>
+          <a href="/sponsors">Partners</a>
+          <a href="/contact">Contact</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>&copy; 2026 The Jukebox Lounge NC. All rights reserved.</p>
+      </div>
+    </footer>
+
     <script src="{{ url_for('static', filename='base.js') }}"></script>
-  </body>
+  
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll(".form-started-at").forEach(function (field) {
+      field.value = String(Date.now() / 1000);
+    });
+  });
+</script>
+
+</body>
 </html>

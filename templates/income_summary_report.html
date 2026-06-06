@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Income Summary Report | The Jukebox Lounge NC</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      font-family: Arial, sans-serif;
+      background: #f5f2ea;
+      color: #171717;
+    }
+
+    .report-page {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #fff;
+      padding: 42px;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.12);
+    }
+
+    .report-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 3px solid #111;
+      padding-bottom: 22px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 12px;
+      font-weight: 800;
+      color: #a67918;
+      margin: 0 0 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 34px;
+      letter-spacing: -0.03em;
+    }
+
+    .report-meta {
+      text-align: right;
+      font-size: 14px;
+      color: #555;
+      line-height: 1.6;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 999px;
+      padding: 12px 20px;
+      background: #111;
+      color: #fff;
+      font-weight: 800;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .btn.secondary {
+      background: #d9ae45;
+      color: #111;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 30px;
+    }
+
+    .summary-card {
+      border: 1px solid #ddd;
+      border-radius: 14px;
+      padding: 18px;
+      background: #fafafa;
+    }
+
+    .summary-card span {
+      display: block;
+      color: #666;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .summary-card strong {
+      font-size: 24px;
+    }
+
+    .highlight {
+      background: #111;
+      color: #fff;
+      border-color: #111;
+    }
+
+    .highlight span {
+      color: #d6d6d6;
+    }
+
+    h2 {
+      margin: 34px 0 12px;
+      font-size: 22px;
+      border-bottom: 2px solid #ddd;
+      padding-bottom: 10px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 22px;
+      font-size: 14px;
+    }
+
+    th {
+      background: #e8e8e8;
+      text-align: left;
+      padding: 12px;
+      border-bottom: 2px solid #ccc;
+    }
+
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e3e3e3;
+    }
+
+    td.amount,
+    th.amount {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .total-row {
+      font-weight: 800;
+      background: #f3f3f3;
+    }
+
+    .net-row {
+      font-weight: 900;
+      background: #111;
+      color: #fff;
+    }
+
+    .muted {
+      color: #777;
+      font-size: 13px;
+    }
+
+    @media print {
+      body {
+        background: #fff;
+        padding: 0;
+      }
+
+      .report-page {
+        box-shadow: none;
+        border-radius: 0;
+        padding: 24px;
+      }
+
+      .actions {
+        display: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="report-page">
+    <div class="actions">
+      <a class="btn" href="/admin/dashboard-redesign/revenue">Back to Revenue</a>
+      <button class="btn secondary" onclick="window.print()">Print / Save as PDF</button>
+    </div>
+
+    <div class="report-header">
+      <div>
+        <p class="eyebrow">The Jukebox Lounge NC</p>
+        <h1>Income Summary Report</h1>
+        <p class="muted">Summary of ticket revenue, other revenue, expenses, and net income.</p>
+      </div>
+      <div class="report-meta">
+        <strong>Generated:</strong><br>
+        {{ generated_at }}<br><br>
+        <strong>Report Type:</strong><br>
+        All Events Summary
+      </div>
+    </div>
+
+    <div class="summary-grid">
+      <div class="summary-card">
+        <span>Ticket Revenue</span>
+        <strong>${{ "%.2f"|format(ticket_revenue_total) }}</strong>
+      </div>
+      <div class="summary-card">
+        <span>Other Revenue</span>
+        <strong>${{ "%.2f"|format(other_revenue_total) }}</strong>
+      </div>
+      <div class="summary-card">
+        <span>Total Expenses</span>
+        <strong>${{ "%.2f"|format(expense_total) }}</strong>
+      </div>
+      <div class="summary-card highlight">
+        <span>Net Income</span>
+        <strong>${{ "%.2f"|format(net_income) }}</strong>
+      </div>
+    </div>
+
+    <h2>Revenue Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Revenue Source</th>
+          <th class="amount">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Ticket Revenue</td>
+          <td class="amount">${{ "%.2f"|format(ticket_revenue_total) }}</td>
+        </tr>
+        <tr>
+          <td>Other Revenue</td>
+          <td class="amount">${{ "%.2f"|format(other_revenue_total) }}</td>
+        </tr>
+        <tr class="total-row">
+          <td>Total Revenue</td>
+          <td class="amount">${{ "%.2f"|format(total_income) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Expense Summary</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Expense Category</th>
+          <th class="amount">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in expenses_by_category %}
+        <tr>
+          <td>{{ row.category }}</td>
+          <td class="amount">${{ "%.2f"|format(row.amount) }}</td>
+        </tr>
+        {% endfor %}
+        <tr class="total-row">
+          <td>Total Expenses</td>
+          <td class="amount">${{ "%.2f"|format(expense_total) }}</td>
+        </tr>
+        <tr class="net-row">
+          <td>Net Income</td>
+          <td class="amount">${{ "%.2f"|format(net_income) }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Event Income Breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th class="amount">Ticket Revenue</th>
+          <th class="amount">Other Revenue</th>
+          <th class="amount">Expenses</th>
+          <th class="amount">Net Income</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for event in event_rows %}
+        <tr>
+          <td>{{ event.name }}</td>
+          <td class="amount">${{ "%.2f"|format(event.ticket_revenue) }}</td>
+          <td class="amount">${{ "%.2f"|format(event.other_revenue) }}</td>
+          <td class="amount">${{ "%.2f"|format(event.expenses) }}</td>
+          <td class="amount">${{ "%.2f"|format(event.net_income) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
