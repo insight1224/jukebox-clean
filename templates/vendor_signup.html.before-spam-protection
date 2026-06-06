@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<link rel="stylesheet" href="{{ url_for('static', filename='dj.css') }}">
+
+<div class="dj-page">
+
+    <div class="dj-card">
+
+        <div class="dj-header">
+            <img src="/static/images/logo.png">
+            <h2>VENDOR APPLICATION</h2>
+            <p>Submit your profile for event vendor consideration</p>
+        </div>
+
+        <form method="POST" action="{{ url_for('vendor_signup') }}">
+
+            <div class="field">
+                <label>Name</label>
+                <input type="text" name="name" required>
+            </div>
+
+            <div class="field">
+                <label>Business Name</label>
+                <input type="text" name="business" required>
+            </div>
+
+            <div class="field">
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </div>
+
+            <div class="field">
+                <label>Phone Number</label>
+                <input type="text" name="phone" required>
+            </div>
+
+            <div class="field">
+                <label>Vendor Type</label>
+                <select name="vendor_type" required>
+                    <option value="" disabled selected>Select one</option>
+                    <option value="Food">Food</option>
+                    <option value="Beverage">Beverage</option>
+                    <option value="Apparel">Apparel</option>
+                    <option value="Retail">Retail</option>
+                    <option value="Service">Service</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Products / Services</label>
+                <input type="text" name="products">
+            </div>
+
+            <div class="field">
+                <label>Website / Social Links</label>
+                <input type="text" name="links">
+            </div>
+
+            <div class="field">
+                <label>Setup Needs</label>
+                <input type="text" name="setup">
+            </div>
+
+            <div class="field">
+                <label>Comments</label>
+                <textarea name="comments"></textarea>
+            </div>
+
+            <button type="submit">SUBMIT APPLICATION</button>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

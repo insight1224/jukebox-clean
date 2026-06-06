@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="membership-page-wrap">
+<link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='membership.css') }}">
+
+<section class="membership-page">
+  <h1>🎧 Join The Jukebox Circle – $10/month</h1>
+
+  <p class="tagline">Become part of the vibe before everyone else.</p>
+
+  <ul class="membership-perks">
+    <li>🎟️ Discounted or complimentary event entry</li>
+    <li>⏰ Early access to tickets & VIP sections</li>
+    <li>🔐 Access to members-only events & experiences</li>
+    <li>🎶 First look at DJs, themes, and upcoming drops</li>
+    <li>🎉 Birthday perks & special surprises</li>
+    <li>📲 Priority updates before the public</li>
+  </ul>
+
+  <p class="membership-note">
+    This is just the beginning. As The Jukebox Lounge grows, so will your perks—think complimentary drinks, VIP upgrades, and exclusive experiences.
+  </p>
+
+<form action="/join-membership" method="POST" class="membership-form">
+
+  <input type="text" name="name" placeholder="Your Name" class="membership-input" required>
+
+<input type="email" name="email" placeholder="Your Email" class="membership-input" required>
+
+</form>
+  <a href="https://square.link/u/fgiSNspy" class="membership-btn" target="_blank" rel="noopener noreferrer">👉 Lock in now and grow with the vibe</a>
+<a href="https://square.link/u/L5FK7Cb0" target="_blank" rel="noopener noreferrer"
+   class="membership-donation-btn"
+   target="_blank"
+   rel="noopener noreferrer">
+   ❤️ Make a One-Time Donation
+</a>
+  <p style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
+  Secure checkout powered by Square
+</p>
+</section>
+
+
+<section class="member-spotlight-section">
+  <div class="member-spotlight-card">
+    <p class="section-kicker">Member Spotlight</p>
+    <h2>Jukebox Circle Member Spotlight</h2>
+    <p>
+      Each month, The Jukebox Lounge NC will highlight a member, supporter, or Legacy Member
+      helping grow the community and keep the vibe alive.
+    </p>
+    <span>Spotlight Coming Soon</span>
+  </div>
+</section>
+<section class="section originals-section">
+  <div class="container">
+    <p class="section-kicker">Legacy Members</p>
+    <h2>The Jukebox Circle Originals</h2>
+    <p class="originals-intro">
+      Honoring the members whose support, contributions, and belief in the vision helped build the foundation of The Jukebox Lounge NC.
+    </p>
+
+    <div class="originals-grid">
+      {% set originals = [
+        "Shanay Conaway",
+        "Jace Benefield",
+        "Shatondra Asor-Sallaah",
+        "Jerrod Giles",
+        "Sherry Nichols",
+        "Jaquanna Davis",
+        "DeMarius Nichols",
+        "Taniesa Tart"
+      ] %}
+
+      {% for name in originals %}
+      <div class="original-card">
+        <span class="original-number">{{ "%02d"|format(loop.index) }}</span>
+        <div>
+          <h3>{{ name }}</h3>
+          <p>Jukebox Circle Original</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+</div>
+{% endblock %}
