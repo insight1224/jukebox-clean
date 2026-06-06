@@ -2495,7 +2495,7 @@ def get_live_dashboard_data():
     membership_revenue = float(one("""
         SELECT COALESCE(SUM(amount_cents), 0) / 100.0
         FROM membership_payments
-        WHERE COALESCE(amount, 0) > 0
+        WHERE COALESCE(amount_cents, 0) > 0
     """, default=0.0))
 
     square_logged_revenue = float(one("""
