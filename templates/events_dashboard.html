@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jukebox Lounge NC | Events Dashboard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}?v=event-delete-1">
 </head>
 <body>
   <div class="dashboard-shell">
@@ -26,8 +26,6 @@
         <a href="/admin/dashboard-redesign/messages">Messages</a>
         <a href="/admin/dashboard-redesign/members">Members</a>
         <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
-        <a href="/admin/dashboard-redesign#reports">Reports</a>
-        <a href="/admin/dashboard-redesign#settings">Settings</a>
       </nav>
     </aside>
 
@@ -66,7 +64,7 @@
         </div>
 
         <div class="stat-card">
-          <p>VIP Tickets</p>
+          <p>VIP Booths</p>
           <h3>{{ metrics.vip_tickets }}</h3>
           <span>VIP ticket purchases</span>
         </div>
@@ -95,7 +93,7 @@
           </div>
 
           <div class="revenue-card">
-            <p>VIP Tickets</p>
+            <p>VIP Booths</p>
             <h4>{{ metrics.vip_tickets }}</h4>
             <span>VIP ticket purchases</span>
           </div>
@@ -130,22 +128,64 @@
             <span>Date</span>
             <span>Status</span>
             <span>Tickets</span>
-            <span>Revenue</span>
+            <span>Attendance</span>
             <span>Actions</span>
           </div>
 
           {% for event in events %}
+          {% if event.status_label != "Completed" %}
           <div class="table-row">
             <span>{{ event.name }}</span>
             <span>{{ event.date }}</span>
             <span><span class="badge {{ event.badge_class }}">{{ event.status_label }}</span></span>
             <span>{{ event.total_tickets_sold }} sold</span>
-            <span>${{ "%.2f"|format(event.total_revenue) }}</span>
+            <span>{{ event.estimated_attendance|default(event.total_tickets_sold) }} expected</span>
             <span class="row-actions">
               <button class="js-open-event" type="button" data-event-target="event-modal-{{ loop.index }}" data-event-name="{{ event.name }}">Open</button>
               <button class="js-open-guest-list" type="button" data-guest-target="guest-list-modal-{{ loop.index }}" data-guest-event-name="{{ event.name }}">Guest List</button>
+              <button class="js-edit-event-setup" type="button" data-event-name="{{ event.name }}">Edit Setup</button>
+              <button class="js-delete-event-setup delete-button" type="button" data-event-name="{{ event.name }}">Delete</button>
             </span>
           </div>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </section>
+
+      <section class="section-panel" id="past-events">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Past Events</p>
+            <h3>Completed Event History</h3>
+            <p>Review completed events, final ticket counts, attendance, and guest records.</p>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-row table-head">
+            <span>Event</span>
+            <span>Date</span>
+            <span>Status</span>
+            <span>Tickets</span>
+            <span>Attendance</span>
+            <span>Actions</span>
+          </div>
+
+          {% for event in events %}
+          {% if event.status_label == "Completed" %}
+          <div class="table-row past-event-row">
+            <span>{{ event.name }}</span>
+            <span>{{ event.date }}</span>
+            <span><span class="badge {{ event.badge_class }}">{{ event.status_label }}</span></span>
+            <span>{{ event.total_tickets_sold }} sold</span>
+            <span>{{ event.estimated_attendance|default(event.total_tickets_sold) }} attended/expected</span>
+            <span class="row-actions">
+              <button class="js-open-event" type="button" data-event-target="event-modal-{{ loop.index }}" data-event-name="{{ event.name }}">Open</button>
+              <button class="js-open-guest-list" type="button" data-guest-target="guest-list-modal-{{ loop.index }}" data-guest-event-name="{{ event.name }}">Guest List</button>
+              <button class="js-edit-event-setup" type="button" data-event-name="{{ event.name }}">Edit Setup</button>
+            </span>
+          </div>
+          {% endif %}
           {% endfor %}
         </div>
       </section>
@@ -197,20 +237,20 @@
           </div>
         </div>
 
-        <form class="form-grid">
-          <select>
-            <option>Select Event</option>
+        <form class="form-grid" id="ticketSaleForm">
+          <select id="ticketSaleEvent">
+            <option value="">Select Event</option>
             {% for event in events %}
-            <option>{{ event.name }}</option>
+            <option value="{{ event.name }}">{{ event.name }}</option>
             {% endfor %}
           </select>
 
-          <input type="text" placeholder="Customer name" />
-          <input type="text" placeholder="Ticket type" />
-          <input type="number" placeholder="Quantity" />
+          <input id="ticketSaleCustomer" type="text" placeholder="Customer name" />
+          <input id="ticketSaleType" type="text" placeholder="Ticket type" />
+          <input id="ticketSaleQuantity" type="number" min="0" step="1" placeholder="Quantity" />
 
-          <select>
-            <option>Payment Method / Source</option>
+          <select id="ticketSaleSource">
+            <option value="">Payment Method / Source</option>
             <option>Cash</option>
             <option>Card</option>
             <option>Cash App</option>
@@ -221,10 +261,11 @@
             <option>Other</option>
           </select>
 
-          <input type="number" placeholder="Amount paid" />
-          <input type="text" placeholder="Staff / notes" />
+          <input id="ticketSaleAmount" type="number" min="0" step="0.01" placeholder="Amount paid" />
+          <input id="ticketSaleNotes" type="text" placeholder="Staff / notes" />
 
-          <button class="btn primary" type="button">Save Ticket Sale</button>
+          <button class="btn primary" type="button" id="saveTicketSaleButton">Save Ticket Sale</button>
+          <div class="note-preview" id="ticketSaleStatus">Ticket sale entries save to revenue tracking.</div>
         </form>
       </section>
 
@@ -255,15 +296,15 @@
               </div>
 
               <div>
-                <p>Event Date</p>
-                <strong>{{ event.date }}</strong>
-                <span>Scheduled date</span>
+                <p>Checked In</p>
+                <strong class="js-event-checked-in-kpi">{{ event.checkin_progress_label|default("0 of 0") }}</strong>
+                <span>Actual attendance count</span>
               </div>
 
               <div>
-                <p>Ticket Types</p>
-                <strong>{{ event.tickets|length }}</strong>
-                <span>Categories tracked</span>
+                <p>Not Checked In</p>
+                <strong class="js-event-not-checked-in-kpi">{{ event.not_checked_in_count|default(0) }}</strong>
+                <span>Expected guests remaining</span>
               </div>
 
               <div>
@@ -433,6 +474,7 @@
               <div class="guest-card checkin-guest"
                 data-checked-in="{{ guest.checked_in_count or 0 }}"
                 data-total-guests="{{ guest.quantity or 1 }}"
+                data-ticket-ids="{{ guest.ticket_ids|default([guest.ticket_id])|join(',') }}"
               >
                 <div>
                   <h4>{{ guest.name }}</h4>
@@ -493,9 +535,9 @@
         <div class="event-modal small-modal">
           <div class="event-modal-header">
             <div>
-              <p class="eyebrow">Add Event</p>
-              <h3>Add New Event</h3>
-              <p>Create a preview event and add it to the upcoming event list.</p>
+              <p class="eyebrow" id="addEventModalEyebrow">Event Setup</p>
+              <h3 id="addEventModalTitle">Add New Event</h3>
+              <p id="addEventModalDescription">Create or update event setup, ticket rules, Square names, and Eventbrite mapping.</p>
             </div>
             <button class="event-modal-close" type="button" id="addEventModalClose">Close</button>
           </div>
@@ -540,15 +582,15 @@
             <div class="setup-builder-block">
               <div class="setup-builder-heading">
                 <div>
-                  <p class="eyebrow">Square Mapping</p>
+                  <p class="eyebrow">Square Item / Link Mapping</p>
                   <h4>Square Ticket Names</h4>
                 </div>
-                <button class="btn secondary" type="button" id="addSquareMappingButton">Add Square Name</button>
+                <button class="btn secondary" type="button" id="addSquareMappingButton">Add Square Item / Link</button>
               </div>
 
               <div id="squareMappingsList" class="setup-list">
                 <div class="setup-row square-mapping-row">
-                  <input type="text" placeholder="Square item name, ex: R&B Night - VIP" data-field="square_item_name" />
+                  <input type="text" placeholder="Square item/link identifier, ex: Juneteenth Celebration - General Admission" data-field="square_item_name" />
                   <input type="text" placeholder="Dashboard ticket type, ex: VIP Section" data-field="ticket_type" />
                 </div>
               </div>
@@ -697,26 +739,252 @@
       card.setAttribute("data-checked-in", safeCount);
       card.querySelector(".checked-count").textContent = safeCount;
 
+      card.classList.remove("fully-checked-in", "partially-checked-in");
+
       if (safeCount >= totalGuests) {
         card.classList.add("fully-checked-in");
-      } else {
-        card.classList.remove("fully-checked-in");
+      } else if (safeCount > 0) {
+        card.classList.add("partially-checked-in");
+      }
+    }
+
+    function updateEventCheckinKpis(card) {
+      const checkinContent = card.closest(".checkin-modal-content");
+
+      if (!checkinContent || !checkinContent.id) {
+        return;
+      }
+
+      const eventModalId = checkinContent.id.replace("checkin-modal-", "event-modal-");
+      const eventContent = document.getElementById(eventModalId);
+
+      if (!eventContent) {
+        return;
+      }
+
+      const cards = checkinContent.querySelectorAll(".checkin-guest");
+      let checkedInTotal = 0;
+      let attendanceTotal = 0;
+
+      cards.forEach((guestCard) => {
+        checkedInTotal += Number(guestCard.getAttribute("data-checked-in") || 0);
+        attendanceTotal += Number(guestCard.getAttribute("data-total-guests") || 0);
+      });
+
+      const checkedKpi = eventContent.querySelector(".js-event-checked-in-kpi");
+      const notCheckedKpi = eventContent.querySelector(".js-event-not-checked-in-kpi");
+
+      if (checkedKpi) {
+        checkedKpi.textContent = `${checkedInTotal} of ${attendanceTotal}`;
+      }
+
+      if (notCheckedKpi) {
+        notCheckedKpi.textContent = Math.max(attendanceTotal - checkedInTotal, 0);
+      }
+    }
+
+    async function saveCheckinGuestCard(card, newCheckedInCount) {
+      const totalGuests = Number(card.getAttribute("data-total-guests"));
+      const safeCount = Math.max(0, Math.min(newCheckedInCount, totalGuests));
+      const ticketIds = (card.getAttribute("data-ticket-ids") || "")
+        .split(",")
+        .map((ticketId) => ticketId.trim())
+        .filter(Boolean);
+
+      if (!ticketIds.length) {
+        alert("No ticket ID found for this guest.");
+        return;
+      }
+
+      const buttons = card.querySelectorAll("button");
+      buttons.forEach((button) => button.disabled = true);
+
+      try {
+        const response = await fetch("/api/event-ticket-checkin", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            ticket_ids: ticketIds,
+            checked_in_count: safeCount
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "Unable to save check-in.");
+        }
+
+        updateCheckinGuestCard(card, result.checked_in_count);
+        updateEventCheckinKpis(card);
+      } catch (error) {
+        alert(error.message || "Unable to save check-in.");
+      } finally {
+        buttons.forEach((button) => button.disabled = false);
       }
     }
 
     document.querySelectorAll(".checkin-guest").forEach((card) => {
+      updateCheckinGuestCard(card, Number(card.getAttribute("data-checked-in") || 0));
+
       card.querySelector(".js-checkin-one").addEventListener("click", () => {
-        updateCheckinGuestCard(card, Number(card.getAttribute("data-checked-in")) + 1);
+        saveCheckinGuestCard(card, Number(card.getAttribute("data-checked-in")) + 1);
       });
 
       card.querySelector(".js-checkin-all").addEventListener("click", () => {
-        updateCheckinGuestCard(card, Number(card.getAttribute("data-total-guests")));
+        saveCheckinGuestCard(card, Number(card.getAttribute("data-total-guests")));
       });
 
       card.querySelector(".js-checkin-undo").addEventListener("click", () => {
-        updateCheckinGuestCard(card, Number(card.getAttribute("data-checked-in")) - 1);
+        saveCheckinGuestCard(card, Number(card.getAttribute("data-checked-in")) - 1);
       });
     });
+
+    document.querySelectorAll(".js-delete-event-setup").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const eventName = button.getAttribute("data-event-name") || "";
+
+        if (!eventName) {
+          alert("No event selected.");
+          return;
+        }
+
+        const confirmed = confirm(
+          "Delete " + eventName + "? This only works if the event has no tickets, revenue, or expenses attached."
+        );
+
+        if (!confirmed) return;
+
+        button.disabled = true;
+        const originalText = button.textContent;
+        button.textContent = "Deleting...";
+
+        try {
+          const response = await fetch("/api/events/" + encodeURIComponent(eventName) + "/delete", {
+            method: "POST"
+          });
+
+          const responseText = await response.text();
+          let result = {};
+
+          try {
+            result = JSON.parse(responseText);
+          } catch (error) {
+            throw new Error("Server returned an HTML error page. Check the Flask terminal.");
+          }
+
+          if (!response.ok || !result.ok) {
+            throw new Error(result.error || "Unable to delete event.");
+          }
+
+          window.location.reload();
+        } catch (error) {
+          alert(error.message || "Unable to delete event.");
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      });
+    });
+
+    const saveTicketSaleButton = document.getElementById("saveTicketSaleButton");
+    const ticketSaleEvent = document.getElementById("ticketSaleEvent");
+    const ticketSaleCustomer = document.getElementById("ticketSaleCustomer");
+    const ticketSaleType = document.getElementById("ticketSaleType");
+    const ticketSaleQuantity = document.getElementById("ticketSaleQuantity");
+    const ticketSaleSource = document.getElementById("ticketSaleSource");
+    const ticketSaleAmount = document.getElementById("ticketSaleAmount");
+    const ticketSaleNotes = document.getElementById("ticketSaleNotes");
+    const ticketSaleStatus = document.getElementById("ticketSaleStatus");
+
+    if (saveTicketSaleButton) {
+      saveTicketSaleButton.addEventListener("click", async () => {
+        const eventName = (ticketSaleEvent?.value || "").trim();
+        const customer = (ticketSaleCustomer?.value || "").trim();
+        const ticketType = (ticketSaleType?.value || "").trim();
+        const source = (ticketSaleSource?.value || "").trim();
+        const notes = (ticketSaleNotes?.value || "").trim();
+        const quantity = Number(ticketSaleQuantity?.value || 0);
+        const amount = Number(ticketSaleAmount?.value || 0);
+
+        if (!eventName) {
+          alert("Please select an event.");
+          return;
+        }
+
+        if (!source) {
+          alert("Please select a payment method/source.");
+          return;
+        }
+
+        if (amount <= 0 && source.toLowerCase() !== "comp") {
+          alert("Please enter an amount paid.");
+          return;
+        }
+
+        saveTicketSaleButton.disabled = true;
+        saveTicketSaleButton.textContent = "Saving...";
+        if (ticketSaleStatus) {
+          ticketSaleStatus.textContent = "Saving ticket sale...";
+        }
+
+        const combinedNotes = [
+          customer ? `Customer: ${customer}` : "",
+          ticketType ? `Ticket Type: ${ticketType}` : "",
+          notes ? `Notes: ${notes}` : ""
+        ].filter(Boolean).join(" | ");
+
+        try {
+          const response = await fetch("/api/event-cash-revenue", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              event_name: eventName,
+              category: source,
+              amount,
+              quantity,
+              notes: combinedNotes
+            })
+          });
+
+          const responseText = await response.text();
+          let result = {};
+
+          try {
+            result = JSON.parse(responseText);
+          } catch (parseError) {
+            throw new Error("Server returned an HTML error page instead of JSON. Check the Flask terminal for the real error.");
+          }
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Unable to save ticket sale.");
+          }
+
+          if (ticketSaleStatus) {
+            ticketSaleStatus.textContent = "Ticket sale saved. Refreshing totals...";
+          }
+
+          ticketSaleCustomer.value = "";
+          ticketSaleType.value = "";
+          ticketSaleQuantity.value = "";
+          ticketSaleAmount.value = "";
+          ticketSaleNotes.value = "";
+
+          window.location.reload();
+        } catch (error) {
+          alert(error.message || "Unable to save ticket sale.");
+          if (ticketSaleStatus) {
+            ticketSaleStatus.textContent = "Ticket sale could not be saved.";
+          }
+        } finally {
+          saveTicketSaleButton.disabled = false;
+          saveTicketSaleButton.textContent = "Save Ticket Sale";
+        }
+      });
+    }
 
     const eventNoteModalOverlay = document.getElementById("eventNoteModalOverlay");
     const eventNoteModalClose = document.getElementById("eventNoteModalClose");
@@ -773,6 +1041,7 @@
     const newEventbriteEventName = document.getElementById("newEventbriteEventName");
 
     function openAddEventModal() {
+      resetEventSetupModal();
       addEventModalOverlay.classList.add("active");
     }
 
@@ -783,24 +1052,119 @@
       addEventModalOverlay.classList.remove("active");
     });
 
-    addTicketRuleButton.addEventListener("click", () => {
+    function createTicketRuleRow(ticketType = "", guestsPerTicket = 1) {
       const row = document.createElement("div");
       row.className = "setup-row ticket-rule-row";
       row.innerHTML = `
         <input type="text" placeholder="Ticket type, ex: General Admission" data-field="ticket_type" />
         <input type="number" min="1" step="1" value="1" placeholder="Guests" data-field="guests_per_ticket" />
       `;
-      ticketRulesList.appendChild(row);
-    });
 
-    addSquareMappingButton.addEventListener("click", () => {
+      row.querySelector('[data-field="ticket_type"]').value = ticketType;
+      row.querySelector('[data-field="guests_per_ticket"]').value = guestsPerTicket || 1;
+
+      return row;
+    }
+
+    function createSquareMappingRow(squareItemName = "", ticketType = "") {
       const row = document.createElement("div");
       row.className = "setup-row square-mapping-row";
       row.innerHTML = `
-        <input type="text" placeholder="Square item name, ex: R&B Night - VIP" data-field="square_item_name" />
+        <input type="text" placeholder="Square item/link identifier, ex: Juneteenth Celebration - General Admission" data-field="square_item_name" />
         <input type="text" placeholder="Dashboard ticket type, ex: VIP Section" data-field="ticket_type" />
       `;
-      squareMappingsList.appendChild(row);
+
+      row.querySelector('[data-field="square_item_name"]').value = squareItemName;
+      row.querySelector('[data-field="ticket_type"]').value = ticketType;
+
+      return row;
+    }
+
+    function resetEventSetupModal() {
+      document.getElementById("addEventModalEyebrow").textContent = "Event Setup";
+      document.getElementById("addEventModalTitle").textContent = "Add New Event";
+      document.getElementById("addEventModalDescription").textContent = "Create or update event setup, ticket rules, Square names, and Eventbrite mapping.";
+
+      newEventName.disabled = false;
+      newEventName.value = "";
+      newEventDate.value = "";
+      newEventStatus.value = "Upcoming";
+      newEventbriteEventId.value = "";
+      newEventbriteEventName.value = "";
+
+      ticketRulesList.innerHTML = "";
+      ticketRulesList.appendChild(createTicketRuleRow());
+
+      squareMappingsList.innerHTML = "";
+      squareMappingsList.appendChild(createSquareMappingRow());
+
+      saveNewEventButton.textContent = "Save Event Setup";
+      saveNewEventButton.disabled = false;
+    }
+
+    async function openEditEventSetup(eventName) {
+      resetEventSetupModal();
+
+      document.getElementById("addEventModalEyebrow").textContent = "Edit Event";
+      document.getElementById("addEventModalTitle").textContent = "Edit Event Setup";
+      document.getElementById("addEventModalDescription").textContent = "Update ticket rules, Square mappings, Eventbrite mapping, date, or status.";
+
+      addEventModalOverlay.classList.add("active");
+
+      try {
+        const response = await fetch(`/api/events/setup-details?name=${encodeURIComponent(eventName)}`);
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "Unable to load event setup.");
+        }
+
+        const event = result.event;
+
+        newEventName.value = event.name || "";
+        newEventName.disabled = true;
+        newEventDate.value = event.event_date || "";
+        newEventStatus.value = event.status || "Upcoming";
+        newEventbriteEventId.value = event.eventbrite_event_id || "";
+        newEventbriteEventName.value = event.eventbrite_event_name || "";
+
+        ticketRulesList.innerHTML = "";
+        if (event.ticket_rules && event.ticket_rules.length) {
+          event.ticket_rules.forEach((rule) => {
+            ticketRulesList.appendChild(createTicketRuleRow(rule.ticket_type, rule.guests_per_ticket));
+          });
+        } else {
+          ticketRulesList.appendChild(createTicketRuleRow());
+        }
+
+        squareMappingsList.innerHTML = "";
+        if (event.square_mappings && event.square_mappings.length) {
+          event.square_mappings.forEach((mapping) => {
+            squareMappingsList.appendChild(createSquareMappingRow(mapping.square_item_name, mapping.ticket_type));
+          });
+        } else {
+          squareMappingsList.appendChild(createSquareMappingRow());
+        }
+
+        saveNewEventButton.textContent = "Update Event Setup";
+      } catch (error) {
+        alert(error.message || "Unable to load event setup.");
+        addEventModalOverlay.classList.remove("active");
+      }
+    }
+
+    document.querySelectorAll(".js-edit-event-setup").forEach((button) => {
+      button.addEventListener("click", () => {
+        openEditEventSetup(button.getAttribute("data-event-name"));
+      });
+    });
+
+    addTicketRuleButton.addEventListener("click", () => {
+      ticketRulesList.appendChild(createTicketRuleRow());
+    });
+
+    addSquareMappingButton.addEventListener("click", () => {
+      squareMappingsList.appendChild(createSquareMappingRow());
     });
 
     function collectTicketRules() {

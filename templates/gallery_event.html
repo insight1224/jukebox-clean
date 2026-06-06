@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} Gallery | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='gallery.css') }}">
+
+<section class="gallery-hero compact-gallery-hero">
+  <div class="gallery-hero-inner">
+    <p class="gallery-kicker">Event Gallery</p>
+    <h1>{{ title }}</h1>
+    <p>{{ subtitle }}</p>
+  </div>
+
+</section>
+
+<section class="gallery-section compact-gallery-section">
+  <div class="gallery-panel carousel-panel">
+    <a class="gallery-back-link" href="/gallery">← Back to Gallery</a>
+
+    <div class="event-recap">
+      <p class="section-kicker">Event Recap</p>
+      <h1>{{ title }}</h1>
+
+      <p>
+        Battle of the DJs brought together music lovers, DJs, and supporters for
+        an unforgettable night of competition, energy, and community.
+      </p>
+
+      <p>
+        Guests enjoyed curated DJ sets, crowd interaction, and an atmosphere built
+        around great music and grown vibes. The event showcased local talent while
+        creating memorable moments throughout the night.
+      </p>
+
+      <div class="event-highlights">
+        <span>🎧 DJ Performances</span>
+        <span>🔥 Crowd Energy</span>
+        <span>🎶 Feel-Good Music</span>
+        <span>📸 Photo Moments</span>
+        <span>🤝 Community</span>
+      </div>
+    </div>
+
+
+    <div class="gallery-tabs">
+      <button class="gallery-tab active" type="button" data-target="photoCarousel">Photos</button>
+      <button class="gallery-tab" type="button" data-target="videoCarousel">Videos</button>
+    </div>
+
+    <div class="media-carousel active" id="photoCarousel">
+      <button class="carousel-arrow prev" type="button" data-carousel="photoCarousel">‹</button>
+
+      <div class="carousel-track">
+        {% for image in images %}
+        <div class="carousel-slide {% if loop.first %}active{% endif %}">
+          <img src="{{ url_for('static', filename=image) }}" alt="{{ title }} photo">
+        </div>
+        {% endfor %}
+      </div>
+
+      <button class="carousel-arrow next" type="button" data-carousel="photoCarousel">›</button>
+      <p class="carousel-count"><span class="current">1</span> / <span class="total">{{ images|length }}</span></p>
+
+      {% if not images %}
+      <p class="gallery-subtitle">Photos coming soon.</p>
+      {% endif %}
+    </div>
+
+    <div class="media-carousel" id="videoCarousel">
+      <button class="carousel-arrow prev" type="button" data-carousel="videoCarousel">‹</button>
+
+      <div class="carousel-track">
+        {% for video in videos %}
+        <div class="carousel-slide {% if loop.first %}active{% endif %}">
+          <video controls preload="metadata">
+            <source src="{{ url_for('static', filename=video) }}">
+            Your browser does not support this video.
+          </video>
+        </div>
+        {% endfor %}
+      </div>
+
+      <button class="carousel-arrow next" type="button" data-carousel="videoCarousel">›</button>
+      <p class="carousel-count"><span class="current">1</span> / <span class="total">{{ videos|length }}</span></p>
+
+      {% if not videos %}
+      <p class="gallery-subtitle">Videos coming soon.</p>
+      {% endif %}
+    </div>
+
+    <div class="event-next-cta">
+      <h2>Ready for the Next JBL Experience?</h2>
+      <p>Don't just watch the recap — join us for the next event.</p>
+      <a href="/events" class="membership-btn">View Upcoming Events</a>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  function setupCarousel(carouselId) {
+    const carousel = document.getElementById(carouselId);
+    if (!carousel) return;
+
+    const slides = carousel.querySelectorAll(".carousel-slide");
+    const current = carousel.querySelector(".current");
+    const total = carousel.querySelector(".total");
+    let index = 0;
+
+    if (total) total.textContent = slides.length || 0;
+    if (current) current.textContent = slides.length ? 1 : 0;
+
+    function showSlide(nextIndex) {
+      if (!slides.length) return;
+
+      slides[index].classList.remove("active");
+      const activeVideo = slides[index].querySelector("video");
+      if (activeVideo) activeVideo.pause();
+
+      index = (nextIndex + slides.length) % slides.length;
+
+      slides[index].classList.add("active");
+      if (current) current.textContent = index + 1;
+    }
+
+    carousel.querySelectorAll(".carousel-arrow").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        showSlide(btn.classList.contains("next") ? index + 1 : index - 1);
+      });
+    });
+  }
+
+  setupCarousel("photoCarousel");
+  setupCarousel("videoCarousel");
+
+  document.querySelectorAll(".gallery-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".gallery-tab").forEach((btn) => btn.classList.remove("active"));
+      document.querySelectorAll(".media-carousel").forEach((carousel) => carousel.classList.remove("active"));
+
+      tab.classList.add("active");
+      document.getElementById(tab.dataset.target).classList.add("active");
+    });
+  });
+</script>
+{% endblock %}

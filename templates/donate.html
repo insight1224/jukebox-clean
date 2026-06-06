@@ -1,20 +1,58 @@
 {% extends "base.html" %}
-{% block title %}Donate | The Jukebox Lounge NC{% endblock %}
+{% block title %}Giving Back | The Jukebox Lounge NC{% endblock %}
 
 {% block content %}
-<section class="page-hero">
-  <div class="container">
-    <h1>Giving Back Through the Vibe</h1>
+<section class="donate-page">
+  <div class="donate-hero">
+    <img class="jbl-gives-back-image" src="{{ url_for('static', filename='images/jbl-gives-back.png') }}" alt="JBL Gives Back">
+    <p class="section-kicker">Community Giving</p>
+    <h1>Good Music. Good People. Greater Impact.</h1>
     <p>
-      The Jukebox Lounge NC proudly partners with local nonprofits and community organizations.
-      Through select events and experiences, a percentage of proceeds is donated back to organizations
-      making a real impact in our community.
+      The Jukebox Lounge NC believes the vibe should reach beyond the room. As we grow,
+      we are committed to partnering with local nonprofits and community organizations
+      that are making a real difference.
     </p>
-    <p>
-      Every ticket, every gathering, and every celebration helps us create space for music, connection,
-      culture, and community support.
-    </p>
-    <a class="btn" href="/contact">Partner With Us</a>
   </div>
+
+  <div class="donate-grid">
+    <article class="donate-card featured">
+      <span>01</span>
+      <h2>Event-Based Giving</h2>
+      <p>
+        For select events, The Jukebox Lounge NC will partner with nonprofit organizations
+        and contribute a percentage of proceeds back to their mission.
+      </p>
+    </article>
+
+    <article class="donate-card">
+      <span>02</span>
+      <h2>Community Partnerships</h2>
+      <p>
+        We are looking to build meaningful partnerships with organizations focused on
+        culture, youth, families, wellness, creativity, and community impact.
+      </p>
+    </article>
+
+    <article class="donate-card">
+      <span>03</span>
+      <h2>More Than Nightlife</h2>
+      <p>
+        Our goal is to create experiences that bring people together while also supporting
+        the community that helps make those experiences possible.
+      </p>
+    </article>
+  </div>
+
+  <section class="donate-callout">
+    <div>
+      <p class="section-kicker">Coming Soon</p>
+      <h2>Donation & Partnership Information</h2>
+      <p>
+        More details will be added soon, including featured nonprofit partners, donation
+        opportunities, sponsorship options, and upcoming give-back events.
+      </p>
+    </div>
+    <a class="donate-coming-soon" href="https://square.link/u/ID0FmLak" target="_blank" rel="noopener noreferrer">Donate Now</a>
+  </section>
 </section>
 {% endblock %}

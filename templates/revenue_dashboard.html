@@ -37,8 +37,6 @@
         <a href="/admin/dashboard-redesign/messages">Messages</a>
         <a href="/admin/dashboard-redesign/members">Members</a>
         <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
-        <a href="/admin/dashboard-redesign#reports">Reports</a>
-        <a href="/admin/dashboard-redesign#settings">Settings</a>
       </nav>
     </aside>
 
@@ -60,6 +58,8 @@
 
         <div class="topbar-actions">
           <button class="btn secondary js-export-revenue-report" type="button" id="exportRevenueOverview">Export Report</button>
+          <a class="btn primary" href="/admin/dashboard-redesign/income-summary" target="_blank">Income Summary Report</a>
+
         </div>
       </header>
 
@@ -86,7 +86,7 @@
           </div>
 
           <div class="revenue-card">
-            <p>VIP Tickets</p>
+            <p>VIP Booths</p>
             <h4>{{ metrics.vip_tickets }}</h4>
             <span>VIP ticket purchases</span>
           </div>
@@ -122,18 +122,18 @@
             <h4>{{ event.name }}</h4>
 
             <div class="breakdown-row">
-              <span>Tickets Sold</span>
-              <strong>{{ event.total_tickets_sold }}</strong>
+              <span>Total Revenue</span>
+              <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
             </div>
 
             <div class="breakdown-row">
-              <span>Revenue</span>
-              <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+              <span>Total Expenses</span>
+              <strong>${{ "%.2f"|format(event.expense_total|default(0)) }}</strong>
             </div>
 
             <div class="breakdown-row">
-              <span>Ticket Types</span>
-              <strong>{{ event.tickets|length }}</strong>
+              <span>Net Profit</span>
+              <strong>${{ "%.2f"|format((event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0))) }}</strong>
             </div>
           </button>
           {% endfor %}
@@ -181,18 +181,18 @@
             <h4>{{ event.name }}</h4>
 
             <div class="breakdown-row">
-              <span>Tickets Sold</span>
-              <strong>{{ event.total_tickets_sold }}</strong>
+              <span>Total Revenue</span>
+              <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
             </div>
 
             <div class="breakdown-row">
-              <span>Revenue</span>
-              <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+              <span>Total Expenses</span>
+              <strong>${{ "%.2f"|format(event.expense_total|default(0)) }}</strong>
             </div>
 
             <div class="breakdown-row">
               <span>Net Profit</span>
-              <strong>${{ "%.2f"|format(event.total_revenue - past_expenses_total) }}</strong>
+              <strong>${{ "%.2f"|format((event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0))) }}</strong>
             </div>
           </button>
           {% else %}
@@ -229,13 +229,13 @@
           <div class="revenue-card">
             <p>Monthly Revenue</p>
             <h4>${{ "%.2f"|format(member_stats.monthly_revenue) }}</h4>
-            <span>Paid membership revenue</span>
+            <span>Expected recurring revenue</span>
           </div>
 
           <div class="revenue-card">
             <p>Annual Projection</p>
             <h4>${{ "%.2f"|format(member_stats.annual_projection) }}</h4>
-            <span>Based on monthly revenue</span>
+            <span>Expected annual recurring revenue</span>
           </div>
         </div>
 
@@ -336,7 +336,7 @@
             <div class="event-detail-stats">
               <div>
                 <p>Total Revenue</p>
-                <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
                 <span>Event ticket revenue</span>
               </div>
               <div>
@@ -346,7 +346,7 @@
               </div>
               <div>
                 <p>Net Profit</p>
-                <strong>${{ "%.2f"|format(event.net_profit) }}</strong>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue) - event.expense_total|default(0)) }}</strong>
                 <span>Revenue after expenses</span>
               </div>
               <div>
@@ -378,7 +378,7 @@
               </div>
 
               <div class="event-detail-panel">
-                <h5>Cash Revenue</h5>
+                <h5>Other Revenue</h5>
                 {% for cash in event.cash_revenue %}
                 <div class="breakdown-row stacked-breakdown-row expense-action-row">
                   <span>
@@ -386,7 +386,7 @@
                     {% if cash.notes %}
                     <small>{{ cash.notes }}</small>
                     {% endif %}
-                    <small>{{ cash.quantity }} tickets</small>
+                    {% if cash.quantity and cash.quantity > 0 %}<small>{{ cash.quantity }} tickets</small>{% endif %}
                   </span>
                   <strong>${{ "%.2f"|format(cash.amount) }}</strong>
                   <div class="expense-row-actions">
@@ -461,7 +461,7 @@
             <div class="event-detail-stats">
               <div>
                 <p>Total Revenue</p>
-                <strong>${{ "%.2f"|format(event.total_revenue) }}</strong>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
                 <span>Event ticket revenue</span>
               </div>
               <div>
@@ -471,7 +471,7 @@
               </div>
               <div>
                 <p>Net Profit</p>
-                <strong>${{ "%.2f"|format(event.net_profit) }}</strong>
+                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue) - event.expense_total|default(0)) }}</strong>
                 <span>Revenue after expenses</span>
               </div>
               <div>
@@ -503,7 +503,7 @@
               </div>
 
               <div class="event-detail-panel">
-                <h5>Cash Revenue</h5>
+                <h5>Other Revenue</h5>
                 {% for cash in event.cash_revenue %}
                 <div class="breakdown-row stacked-breakdown-row expense-action-row">
                   <span>
@@ -511,7 +511,7 @@
                     {% if cash.notes %}
                     <small>{{ cash.notes }}</small>
                     {% endif %}
-                    <small>{{ cash.quantity }} tickets</small>
+                    {% if cash.quantity and cash.quantity > 0 %}<small>{{ cash.quantity }} tickets</small>{% endif %}
                   </span>
                   <strong>${{ "%.2f"|format(cash.amount) }}</strong>
                   <div class="expense-row-actions">
@@ -651,6 +651,14 @@
 
           <form class="expense-form">
             <label>
+              Expense Type
+              <select id="expenseType">
+                <option value="event">Event Expense</option>
+                <option value="business">Non-Event Business Expense</option>
+              </select>
+            </label>
+
+            <label id="expenseEventWrap">
               Event
               <select id="expenseEvent">
                 <option>Select Event</option>
@@ -661,32 +669,45 @@
               </select>
             </label>
 
-            <label>
-              Expense Category
-              <select id="expenseCategory">
-                <option>Select Category</option>
-                <option>Staff</option>
-                <option>DJ / Performer</option>
-                <option>Security</option>
-                <option>Supplies</option>
-                <option>Marketing</option>
-                <option>Decor</option>
-                <option>Food / Catering</option>
-                <option>Other</option>
-              </select>
-            </label>
+            <div id="expenseRows" class="expense-rows">
+              <div class="expense-entry-row">
+                <div class="expense-row-header">
+                  <strong>Expense 1</strong>
+                  <button class="btn ghost removeExpenseRow" type="button" style="display:none;">Remove</button>
+                </div>
 
-            <label>
-              Amount
-              <input id="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
-            </label>
+                <div class="expense-row-grid">
+                  <label>
+                    Expense Category
+                    <select class="expenseCategory">
+                      <option>Select Category</option>
+                      <option>Venue</option>
+                      <option>Staff</option>
+                      <option>DJ / Performer</option>
+                      <option>Security</option>
+                      <option>Supplies</option>
+                      <option>Marketing</option>
+                      <option>Decor</option>
+                      <option>Food / Catering</option>
+                      <option>Other</option>
+                    </select>
+                  </label>
 
-            <label>
-              Notes
-              <textarea id="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
-            </label>
+                  <label>
+                    Amount
+                    <input class="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+                  </label>
+                </div>
 
-            <button class="btn primary" type="button" id="expenseSave">Save Expense</button>
+                <label class="expense-notes-field">
+                  Notes
+                  <textarea class="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
+                </label>
+              </div>
+            </div>
+
+            <button class="btn ghost" type="button" id="addExpenseRow">+ Add Another Expense</button>
+            <button class="btn primary" type="button" id="expenseSave">Save All Expenses</button>
 
             <div class="expense-preview">
               <h4>Saved Expenses Preview</h4>
@@ -869,10 +890,11 @@
     const expenseModalOverlay = document.getElementById("expenseModalOverlay");
     const expenseModalClose = document.getElementById("expenseModalClose");
     const expenseSave = document.getElementById("expenseSave");
+    const expenseType = document.getElementById("expenseType");
+    const expenseEventWrap = document.getElementById("expenseEventWrap");
     const expenseEvent = document.getElementById("expenseEvent");
-    const expenseCategory = document.getElementById("expenseCategory");
-    const expenseAmount = document.getElementById("expenseAmount");
-    const expenseNotes = document.getElementById("expenseNotes");
+    const expenseRows = document.getElementById("expenseRows");
+    const addExpenseRowButton = document.getElementById("addExpenseRow");
     const expenseSavedList = document.getElementById("expenseSavedList");
     const expenseTotal = document.getElementById("expenseTotal");
     const netProfitTotal = document.getElementById("netProfitTotal");
@@ -1000,53 +1022,201 @@
       });
     }
 
+    const eventExpenseCategories = [
+      "Venue",
+      "Staff",
+      "DJ / Performer",
+      "Security",
+      "Supplies",
+      "Marketing",
+      "Decor",
+      "Food / Catering",
+      "Other"
+    ];
+
+    const businessExpenseCategories = [
+      "Website Maintenance",
+      "Software / Subscriptions",
+      "Accounting / Bookkeeping",
+      "Marketing",
+      "Administrative",
+      "Contractor / Support",
+      "Supplies",
+      "Other Business Expense"
+    ];
+
+    function getExpenseCategoryOptions() {
+      const selectedExpenseType = expenseType ? expenseType.value : "event";
+      const categories = selectedExpenseType === "business" ? businessExpenseCategories : eventExpenseCategories;
+
+      return [
+        '<option>Select Category</option>',
+        ...categories.map((category) => `<option>${category}</option>`)
+      ].join("");
+    }
+
+    function syncExpenseCategoryOptions() {
+      document.querySelectorAll(".expenseCategory").forEach((select) => {
+        const currentValue = select.value;
+        select.innerHTML = getExpenseCategoryOptions();
+
+        const stillExists = Array.from(select.options).some((option) => option.value === currentValue);
+        if (stillExists) {
+          select.value = currentValue;
+        }
+      });
+    }
+
+    function createExpenseRow() {
+      if (!expenseRows) return;
+
+      const row = document.createElement("div");
+      row.className = "expense-entry-row";
+      const expenseNumber = expenseRows.querySelectorAll(".expense-entry-row").length + 1;
+
+      row.innerHTML = `
+        <div class="expense-row-header">
+          <strong>Expense ${expenseNumber}</strong>
+          <button class="btn ghost removeExpenseRow" type="button">Remove</button>
+        </div>
+
+        <div class="expense-row-grid">
+          <label>
+            Expense Category
+            <select class="expenseCategory">
+              <option>Select Category</option>
+              <option>Venue</option>
+              <option>Staff</option>
+              <option>DJ / Performer</option>
+              <option>Security</option>
+              <option>Supplies</option>
+              <option>Marketing</option>
+              <option>Decor</option>
+              <option>Food / Catering</option>
+              <option>Other</option>
+            </select>
+          </label>
+
+          <label>
+            Amount
+            <input class="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+          </label>
+        </div>
+
+        <label class="expense-notes-field">
+          Notes
+          <textarea class="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
+        </label>
+      `;
+
+      expenseRows.appendChild(row);
+    }
+
+    function syncExpenseTypeDisplay() {
+      if (!expenseType || !expenseEventWrap) return;
+
+      const isBusinessExpense = expenseType.value === "business";
+      expenseEventWrap.style.display = isBusinessExpense ? "none" : "";
+      syncExpenseCategoryOptions();
+    }
+
+    if (expenseType) {
+      expenseType.addEventListener("change", syncExpenseTypeDisplay);
+      syncExpenseTypeDisplay();
+    }
+
+    if (addExpenseRowButton) {
+      addExpenseRowButton.addEventListener("click", createExpenseRow);
+    }
+
+    if (expenseRows) {
+      expenseRows.addEventListener("click", (event) => {
+        const removeButton = event.target.closest(".removeExpenseRow");
+        if (!removeButton) return;
+
+        const rows = expenseRows.querySelectorAll(".expense-entry-row");
+        if (rows.length <= 1) return;
+
+        removeButton.closest(".expense-entry-row").remove();
+      });
+    }
+
     if (expenseSave) {
       expenseSave.addEventListener("click", async () => {
-        const eventName = expenseEvent.value;
-        const category = expenseCategory.value;
-        const amount = Number(expenseAmount.value || 0);
-        const notes = expenseNotes.value.trim();
+        const selectedExpenseType = expenseType ? expenseType.value : "event";
+        const isBusinessExpense = selectedExpenseType === "business";
+        const eventName = expenseEvent ? expenseEvent.value : "";
 
-        if (!eventName || eventName === "Select Event") {
+        if (!isBusinessExpense && (!eventName || eventName === "Select Event")) {
           alert("Please select an event.");
           return;
         }
 
-        if (!category || category === "Select Category") {
-          alert("Please select an expense category.");
-          return;
-        }
+        const rows = Array.from(document.querySelectorAll(".expense-entry-row"));
+        const expenses = [];
 
-        if (!amount || amount <= 0) {
-          alert("Please enter an expense amount.");
-          return;
-        }
+        for (const row of rows) {
+          const category = row.querySelector(".expenseCategory")?.value || "";
+          const amount = Number(row.querySelector(".expenseAmount")?.value || 0);
+          const notes = row.querySelector(".expenseNotes")?.value.trim() || "";
 
-        const originalText = expenseSave.textContent;
-        expenseSave.disabled = true;
-        expenseSave.textContent = "Saving...";
+          if (!category || category === "Select Category") {
+            alert("Please select an expense category for each row.");
+            return;
+          }
 
-        try {
-          const response = await fetch("/api/event-expenses", {
-            method: "POST",
-            credentials: "same-origin",
-            headers: {
-              "Accept": "application/json",
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
+          if (!amount || amount <= 0) {
+            alert("Please enter an expense amount for each row.");
+            return;
+          }
+
+          if (isBusinessExpense) {
+            expenses.push({
+              category: category,
+              amount: amount,
+              notes: notes,
+              expense_date: new Date().toISOString().slice(0, 10),
+              payment_method: "Other"
+            });
+          } else {
+            expenses.push({
               event_name: eventName,
               category: category,
               amount: amount,
               notes: notes,
               payment_method: "Other"
-            })
-          });
+            });
+          }
+        }
 
-          const result = await response.json();
+        if (!expenses.length) {
+          alert("Please add at least one expense.");
+          return;
+        }
 
-          if (!response.ok || result.status !== "ok") {
-            throw new Error(result.error || "Could not save expense.");
+        const originalText = expenseSave.textContent;
+        expenseSave.disabled = true;
+        expenseSave.textContent = `Saving ${expenses.length} expenses...`;
+
+        try {
+          const url = isBusinessExpense ? "/api/business-expenses" : "/api/event-expenses";
+
+          for (const expense of expenses) {
+            const response = await fetch(url, {
+              method: "POST",
+              credentials: "same-origin",
+              headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify(expense)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || result.status !== "ok") {
+              throw new Error(result.error || "Could not save one of the expenses.");
+            }
           }
 
           expenseSave.textContent = "Saved!";
@@ -1056,88 +1226,11 @@
           }, 700);
         } catch (error) {
           console.error(error);
-          alert(error.message || "Could not save expense.");
+          alert(error.message || "Could not save expenses.");
           expenseSave.disabled = false;
           expenseSave.textContent = originalText;
         }
       });
-    }
-
-    const financialEditModalOverlay = document.getElementById("financialEditModalOverlay");
-    const financialEditClose = document.getElementById("financialEditClose");
-    const financialEditSave = document.getElementById("financialEditSave");
-    const financialEditType = document.getElementById("financialEditType");
-    const financialEditId = document.getElementById("financialEditId");
-    const financialEditEventName = document.getElementById("financialEditEventName");
-    const financialEditCategory = document.getElementById("financialEditCategory");
-    const financialEditQuantity = document.getElementById("financialEditQuantity");
-    const financialEditQuantityWrap = document.getElementById("financialEditQuantityWrap");
-    const financialEditAmount = document.getElementById("financialEditAmount");
-    const financialEditNotes = document.getElementById("financialEditNotes");
-    const financialEditEyebrow = document.getElementById("financialEditEyebrow");
-    const financialEditTitle = document.getElementById("financialEditTitle");
-    const financialEditDescription = document.getElementById("financialEditDescription");
-
-    const financialDeleteModalOverlay = document.getElementById("financialDeleteModalOverlay");
-    const financialDeleteClose = document.getElementById("financialDeleteClose");
-    const financialDeleteCancel = document.getElementById("financialDeleteCancel");
-    const financialDeleteConfirm = document.getElementById("financialDeleteConfirm");
-    const financialDeleteTitle = document.getElementById("financialDeleteTitle");
-    const financialDeleteDescription = document.getElementById("financialDeleteDescription");
-    const financialDeleteItemName = document.getElementById("financialDeleteItemName");
-    const financialDeleteItemAmount = document.getElementById("financialDeleteItemAmount");
-
-    let pendingDelete = null;
-
-    function openFinancialEditModal(type, button) {
-      const isCash = type === "cash";
-
-      financialEditType.value = type;
-      financialEditId.value = button.getAttribute(isCash ? "data-cash-id" : "data-expense-id") || "";
-      financialEditEventName.value = button.getAttribute("data-event-name") || "";
-      financialEditCategory.value = button.getAttribute("data-category") || "";
-      financialEditAmount.value = button.getAttribute("data-amount") || "";
-      financialEditNotes.value = button.getAttribute("data-notes") || "";
-      financialEditQuantity.value = button.getAttribute("data-quantity") || "0";
-
-      financialEditQuantityWrap.style.display = isCash ? "block" : "none";
-      financialEditEyebrow.textContent = isCash ? "Edit Cash Revenue" : "Edit Expense";
-      financialEditTitle.textContent = isCash ? "Edit Cash Revenue" : "Edit Expense";
-      financialEditDescription.textContent = isCash
-        ? "Update the cash amount, category, notes, or number of tickets sold."
-        : "Update the expense amount, category, or notes.";
-
-      financialEditModalOverlay.classList.add("active");
-    }
-
-    function openFinancialDeleteModal(type, button) {
-      const isCash = type === "cash";
-      pendingDelete = {
-        type,
-        id: button.getAttribute(isCash ? "data-cash-id" : "data-expense-id") || ""
-      };
-
-      const row = button.closest(".breakdown-row");
-      const label = row?.querySelector("span")?.textContent.trim().replace(/\s+/g, " ") || "Selected item";
-      const amount = row?.querySelector("strong")?.textContent.trim() || "";
-
-      financialDeleteTitle.textContent = isCash ? "Delete Cash Revenue?" : "Delete Expense?";
-      financialDeleteDescription.textContent = isCash
-        ? "This will remove the cash entry and update the event revenue totals."
-        : "This will remove the expense and update the event profit totals.";
-      financialDeleteItemName.textContent = label;
-      financialDeleteItemAmount.textContent = amount;
-
-      financialDeleteModalOverlay.classList.add("active");
-    }
-
-    function closeFinancialEditModal() {
-      financialEditModalOverlay.classList.remove("active");
-    }
-
-    function closeFinancialDeleteModal() {
-      financialDeleteModalOverlay.classList.remove("active");
-      pendingDelete = null;
     }
 
     document.querySelectorAll(".js-edit-expense").forEach((button) => {
@@ -1346,7 +1439,7 @@
       const rows = [
         ["Section", "Label", "Value", "Notes"],
         ["Events & Tickets", "Tickets Sold", "187", "Excludes VIP tickets"],
-        ["Events & Tickets", "VIP Tickets", "6", "VIP ticket purchases"],
+        ["Events & Tickets", "VIP Booths", "6", "VIP ticket purchases"],
         ["Events & Tickets", "Ticket Revenue", "$4,515.15", "Ticket sales only"],
         ["Past Events", "Battle of the DJs Revenue", "$4,503.15", "Completed event revenue"],
         ["Past Events", "Battle of the DJs Expenses", "$800.00", "Completed event expenses"],

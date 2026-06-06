@@ -15,6 +15,12 @@
         </div>
 
         <form method="POST" action="{{ url_for('vendor_signup') }}">
+            <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+                <label>Website</label>
+                <input type="text" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            <input type="hidden" name="form_started_at" class="form-started-at" value="">
+
 
             <div class="field">
                 <label>Name</label>

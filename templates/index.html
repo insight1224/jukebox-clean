@@ -148,12 +148,53 @@
 
 </section>
 
+
+<section class="testimonials-section">
+  <div class="testimonials-wrap">
+    <p class="section-kicker">What People Are Saying</p>
+    <h2>The Vibe Speaks for Itself</h2>
+
+    <div class="testimonial-grid">
+      <article class="testimonial-card">
+        <p>“The vibe was grown, classy, and exactly what Durham needed.”</p>
+        <span>— JBL Guest</span>
+      </article>
+
+      <article class="testimonial-card">
+        <p>“Great music, great crowd, and such a welcoming atmosphere.”</p>
+        <span>— Event Attendee</span>
+      </article>
+
+      <article class="testimonial-card">
+        <p>“The Jukebox Lounge NC feels like more than an event — it feels like a community.”</p>
+        <span>— Jukebox Supporter</span>
+      </article>
+    </div>
+  </div>
+</section>
+
+
+
+<section class="featured-partners-section">
+  <div class="featured-partners-wrap">
+    <p class="section-kicker">Community Partners</p>
+    <h2>Proudly Partnering With</h2>
+    <p>Partner spotlight coming soon.</p>
+    <a href="/sponsors" class="partner-link-btn">Become a Partner</a>
+  </div>
+</section>
 <!-- VIP -->
 <section class="vip">
     <div class="vip-box">
         <h2>Join the VIP Email List</h2>
 
         <form action="/vip" method="POST">
+            <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+                <label>Website</label>
+                <input type="text" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            <input type="hidden" name="form_started_at" class="form-started-at" value="">
+
             <input type="text" name="name" placeholder="Full Name" required>
             <input type="email" name="email" placeholder="Email Address" required>
             <input type="text" name="phone" placeholder="Phone (optional)">

@@ -24,6 +24,12 @@
   </p>
 
 <form action="/join-membership" method="POST" class="membership-form">
+            <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+                <label>Website</label>
+                <input type="text" name="website" tabindex="-1" autocomplete="off">
+            </div>
+            <input type="hidden" name="form_started_at" class="form-started-at" value="">
+
 
   <input type="text" name="name" placeholder="Your Name" class="membership-input" required>
 
@@ -31,11 +37,29 @@
 
 </form>
   <a href="https://square.link/u/fgiSNspy" class="membership-btn" target="_blank" rel="noopener noreferrer">👉 Lock in now and grow with the vibe</a>
-<p style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
+<a href="https://square.link/u/L5FK7Cb0" target="_blank" rel="noopener noreferrer"
+   class="membership-donation-btn"
+   target="_blank"
+   rel="noopener noreferrer">
+   ❤️ Make a One-Time Donation
+</a>
+  <p style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
   Secure checkout powered by Square
 </p>
 </section>
 
+
+<section class="member-spotlight-section">
+  <div class="member-spotlight-card">
+    <p class="section-kicker">Member Spotlight</p>
+    <h2>Jukebox Circle Member Spotlight</h2>
+    <p>
+      Each month, The Jukebox Lounge NC will highlight a member, supporter, or Legacy Member
+      helping grow the community and keep the vibe alive.
+    </p>
+    <span>Spotlight Coming Soon</span>
+  </div>
+</section>
 <section class="section originals-section">
   <div class="container">
     <p class="section-kicker">Legacy Members</p>
@@ -46,13 +70,14 @@
 
     <div class="originals-grid">
       {% set originals = [
-        "Original Member 1",
-        "Original Member 2",
-        "Original Member 3",
-        "Original Member 4",
-        "Original Member 5",
-        "Original Member 6",
-        "Original Member 7"
+        "Shanay Conaway",
+        "Jace Benefield",
+        "Shatondra Asor-Sallaah",
+        "Jerrod Giles",
+        "Sherry Nichols",
+        "Jaquanna Davis",
+        "DeMarius Nichols",
+        "Taniesa Tart"
       ] %}
 
       {% for name in originals %}
