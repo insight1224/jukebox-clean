@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Merch | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+
+<style>
+  .merch-page-section {
+    padding: 60px 24px !important;
+  }
+
+  .merch-page-section .merch-grid {
+    max-width: 1080px !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 22px !important;
+    width: 100% !important;
+  }
+
+  .merch-page-section .merch-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    background: rgba(255,255,255,0.045) !important;
+    border: 1px solid rgba(218,180,84,0.3) !important;
+    border-radius: 20px !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .merch-page-section .merch-image-wrap {
+    width: 100% !important;
+    height: 210px !important;
+    min-height: 210px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #111 !important;
+  }
+
+  .merch-page-section .merch-image-wrap img {
+    width: 100% !important;
+    height: 210px !important;
+    object-fit: contain !important;
+    padding: 10px !important;
+    display: block !important;
+  }
+
+  .merch-page-section .merch-card-body {
+    padding: 18px !important;
+    text-align: left !important;
+  }
+
+  .merch-page-section .merch-card-body h3 {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+    margin: 8px 0 !important;
+  }
+
+  .merch-page-section .merch-price {
+    font-size: 1rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  .merch-page-section .merch-details {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 0 16px !important;
+    font-size: 0.88rem !important;
+    display: grid !important;
+    gap: 5px !important;
+  }
+
+  .merch-page-section .merch-card form {
+    margin-top: auto !important;
+  }
+
+  .merch-page-section .merch-card button {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    padding: 11px 14px !important;
+    font-size: 0.9rem !important;
+  }
+
+  @media (max-width: 950px) {
+    .merch-page-section .merch-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .merch-page-section .merch-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+</style>
+
+<section class="page-hero merch-hero">
+  <div class="page-hero-content">
+    <p class="eyebrow">Jukebox Merch</p>
+    <h1>Rep The Jukebox Lounge NC</h1>
+    <p>
+      Shop limited Jukebox Lounge NC merch, event tees, and Bull City-inspired pieces.
+    </p>
+  </div>
+</section>
+
+<section class="merch-page-section">
+  <div class="section-heading">
+    <p class="eyebrow">Merch Collection</p>
+    <h2>Available Designs</h2>
+    <p>Choose your favorite design and complete your order through our secure checkout.</p>
+  </div>
+
+  <div class="merch-grid">
+    {% for item in merch_items %}
+    <article class="merch-card">
+      <div class="merch-image-wrap">
+        <img src="{{ url_for('static', filename=item.image) }}" alt="{{ item.name }}">
+      </div>
+
+      <div class="merch-card-body">
+        <p class="eyebrow">{{ item.color }}</p>
+        <h3>{{ item.name }}</h3>
+        <strong class="merch-price">{{ item.price }}</strong>
+
+        <ul>
+          {% for detail in item.details %}
+          <li>{{ detail }}</li>
+          {% endfor %}
+        </ul>
+
+        <div class="merch-coming-soon">Coming Soon</div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
