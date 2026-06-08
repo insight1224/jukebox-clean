@@ -513,15 +513,17 @@
       });
     });
 
-    eventModalClose.addEventListener("click", () => {
-      eventModalOverlay.classList.remove("active");
-    });
-
-    eventModalOverlay.addEventListener("click", (event) => {
-      if (event.target === eventModalOverlay) {
+    if (eventModalClose && eventModalOverlay) {
+      eventModalClose.addEventListener("click", () => {
         eventModalOverlay.classList.remove("active");
-      }
-    });
+      });
+
+      eventModalOverlay.addEventListener("click", (event) => {
+        if (event.target === eventModalOverlay) {
+          eventModalOverlay.classList.remove("active");
+        }
+      });
+    }
         const checkinModalOverlay = document.getElementById("checkinModalOverlay");
     const checkinModalClose = document.getElementById("checkinModalClose");
     const checkinModalTitle = document.getElementById("checkinModalTitle");
