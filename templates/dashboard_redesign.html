@@ -547,15 +547,17 @@
       });
     });
 
-    checkinModalClose.addEventListener("click", () => {
-      checkinModalOverlay.classList.remove("active");
-    });
-
-    checkinModalOverlay.addEventListener("click", (event) => {
-      if (event.target === checkinModalOverlay) {
+    if (checkinModalClose && checkinModalOverlay) {
+      checkinModalClose.addEventListener("click", () => {
         checkinModalOverlay.classList.remove("active");
-      }
-    });
+      });
+
+      checkinModalOverlay.addEventListener("click", (event) => {
+        if (event.target === checkinModalOverlay) {
+          checkinModalOverlay.classList.remove("active");
+        }
+      });
+    }
         const guestListModalOverlay = document.getElementById("guestListModalOverlay");
     const guestListModalClose = document.getElementById("guestListModalClose");
     const guestListModalTitle = document.getElementById("guestListModalTitle");
