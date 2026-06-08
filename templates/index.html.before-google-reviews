@@ -154,9 +154,21 @@
     <p class="section-kicker">What People Are Saying</p>
     <h2>The Vibe Speaks for Itself</h2>
 
-    <div class="google-reviews-embed">
-      <div class="sk-ww-google-reviews" data-embed-id="25687546"></div>
-      <script src="https://widgets.sociablekit.com/google-reviews/widget.js" defer></script>
+    <div class="testimonial-grid">
+      <article class="testimonial-card">
+        <p>“The vibe was grown, classy, and exactly what Durham needed.”</p>
+        <span>— JBL Guest</span>
+      </article>
+
+      <article class="testimonial-card">
+        <p>“Great music, great crowd, and such a welcoming atmosphere.”</p>
+        <span>— Event Attendee</span>
+      </article>
+
+      <article class="testimonial-card">
+        <p>“The Jukebox Lounge NC feels like more than an event — it feels like a community.”</p>
+        <span>— Jukebox Supporter</span>
+      </article>
     </div>
   </div>
 </section>

@@ -2187,3 +2187,50 @@ body.flash {
     grid-template-columns: 1fr;
   }
 }
+
+/* Google Reviews embed section cleanup */
+.google-reviews-embed {
+  width: min(100%, 1120px);
+  margin: 40px auto 0;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.google-reviews-embed iframe,
+.google-reviews-embed > div {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.testimonials-section .google-reviews-embed {
+  display: flex;
+  justify-content: center;
+}
+
+.testimonials-section {
+  padding-bottom: 90px;
+}
+
+@media (max-width: 800px) {
+  .google-reviews-embed {
+    margin-top: 28px;
+  }
+}
+
+/* Soften Google Reviews widget wrapper */
+.google-reviews-embed {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.google-reviews-embed > div {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}

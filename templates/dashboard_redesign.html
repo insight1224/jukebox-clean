@@ -710,15 +710,17 @@
       vipNotePreview.textContent = activeVipNoteName + ": " + note;
     });
 
-    vipNoteModalClose.addEventListener("click", () => {
-      vipNoteModalOverlay.classList.remove("active");
-    });
-
-    vipNoteModalOverlay.addEventListener("click", (event) => {
-      if (event.target === vipNoteModalOverlay) {
+    if (vipNoteModalClose && vipNoteModalOverlay) {
+      vipNoteModalClose.addEventListener("click", () => {
         vipNoteModalOverlay.classList.remove("active");
-      }
-    });
+      });
+
+      vipNoteModalOverlay.addEventListener("click", (event) => {
+        if (event.target === vipNoteModalOverlay) {
+          vipNoteModalOverlay.classList.remove("active");
+        }
+      });
+    }
         const archivedMessagesModalOverlay = document.getElementById("archivedMessagesModalOverlay");
     const archivedMessagesClose = document.getElementById("archivedMessagesClose");
     const viewArchivedMessages = document.getElementById("viewArchivedMessages");
