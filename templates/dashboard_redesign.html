@@ -583,15 +583,17 @@
       });
     });
 
-    guestListModalClose.addEventListener("click", () => {
-      guestListModalOverlay.classList.remove("active");
-    });
-
-    guestListModalOverlay.addEventListener("click", (event) => {
-      if (event.target === guestListModalOverlay) {
+    if (guestListModalClose && guestListModalOverlay) {
+      guestListModalClose.addEventListener("click", () => {
         guestListModalOverlay.classList.remove("active");
-      }
-    });
+      });
+
+      guestListModalOverlay.addEventListener("click", (event) => {
+        if (event.target === guestListModalOverlay) {
+          guestListModalOverlay.classList.remove("active");
+        }
+      });
+    }
         function updateCheckinGuestCard(card, newCheckedInCount) {
       const totalGuests = Number(card.getAttribute("data-total-guests"));
       const safeCount = Math.max(0, Math.min(newCheckedInCount, totalGuests));
