@@ -399,7 +399,7 @@
     const syncSquareStatus = document.getElementById("syncSquareStatus");
 
     if (syncSquareButton) {
-      syncSquareButton.addEventListener("click", async () => {
+      syncSquareButton?.addEventListener("click", async () => {
         const originalText = syncSquareButton.textContent;
         syncSquareButton.disabled = true;
         syncSquareButton.textContent = "Syncing...";
@@ -447,7 +447,7 @@
     const syncEventbriteStatus = document.getElementById("syncEventbriteStatus");
 
     if (syncEventbriteButton) {
-      syncEventbriteButton.addEventListener("click", async () => {
+      syncEventbriteButton?.addEventListener("click", async () => {
         const originalText = syncEventbriteButton.textContent;
         syncEventbriteButton.disabled = true;
         syncEventbriteButton.textContent = "Syncing...";
@@ -514,11 +514,11 @@
     });
 
     if (eventModalClose && eventModalOverlay) {
-      eventModalClose.addEventListener("click", () => {
+      eventModalClose?.addEventListener("click", () => {
         eventModalOverlay.classList.remove("active");
       });
 
-      eventModalOverlay.addEventListener("click", (event) => {
+      eventModalOverlay?.addEventListener("click", (event) => {
         if (event.target === eventModalOverlay) {
           eventModalOverlay.classList.remove("active");
         }
@@ -550,11 +550,11 @@
     });
 
     if (checkinModalClose && checkinModalOverlay) {
-      checkinModalClose.addEventListener("click", () => {
+      checkinModalClose?.addEventListener("click", () => {
         checkinModalOverlay.classList.remove("active");
       });
 
-      checkinModalOverlay.addEventListener("click", (event) => {
+      checkinModalOverlay?.addEventListener("click", (event) => {
         if (event.target === checkinModalOverlay) {
           checkinModalOverlay.classList.remove("active");
         }
@@ -586,11 +586,11 @@
     });
 
     if (guestListModalClose && guestListModalOverlay) {
-      guestListModalClose.addEventListener("click", () => {
+      guestListModalClose?.addEventListener("click", () => {
         guestListModalOverlay.classList.remove("active");
       });
 
-      guestListModalOverlay.addEventListener("click", (event) => {
+      guestListModalOverlay?.addEventListener("click", (event) => {
         if (event.target === guestListModalOverlay) {
           guestListModalOverlay.classList.remove("active");
         }
@@ -625,17 +625,17 @@
       const checkInAllButton = card.querySelector(".js-checkin-all");
       const undoButton = card.querySelector(".js-checkin-undo");
 
-      checkInOneButton.addEventListener("click", () => {
+      checkInOneButton?.addEventListener("click", () => {
         const currentCount = Number(card.getAttribute("data-checked-in"));
         updateCheckinGuestCard(card, currentCount + 1);
       });
 
-      checkInAllButton.addEventListener("click", () => {
+      checkInAllButton?.addEventListener("click", () => {
         const totalGuests = Number(card.getAttribute("data-total-guests"));
         updateCheckinGuestCard(card, totalGuests);
       });
 
-      undoButton.addEventListener("click", () => {
+      undoButton?.addEventListener("click", () => {
         const currentCount = Number(card.getAttribute("data-checked-in"));
         updateCheckinGuestCard(card, currentCount - 1);
       });
@@ -665,11 +665,11 @@
       });
     });
 
-    vipViewModalClose.addEventListener("click", () => {
+    vipViewModalClose?.addEventListener("click", () => {
       vipViewModalOverlay.classList.remove("active");
     });
 
-    vipViewModalOverlay.addEventListener("click", (event) => {
+    vipViewModalOverlay?.addEventListener("click", (event) => {
       if (event.target === vipViewModalOverlay) {
         vipViewModalOverlay.classList.remove("active");
       }
@@ -699,7 +699,7 @@
       });
     });
 
-    vipNoteSave.addEventListener("click", () => {
+    vipNoteSave?.addEventListener("click", () => {
       const note = vipNoteText.value.trim();
 
       if (!note) {
@@ -711,11 +711,11 @@
     });
 
     if (vipNoteModalClose && vipNoteModalOverlay) {
-      vipNoteModalClose.addEventListener("click", () => {
+      vipNoteModalClose?.addEventListener("click", () => {
         vipNoteModalOverlay.classList.remove("active");
       });
 
-      vipNoteModalOverlay.addEventListener("click", (event) => {
+      vipNoteModalOverlay?.addEventListener("click", (event) => {
         if (event.target === vipNoteModalOverlay) {
           vipNoteModalOverlay.classList.remove("active");
         }
@@ -776,15 +776,15 @@
       });
     });
 
-    viewArchivedMessages.addEventListener("click", () => {
+    viewArchivedMessages?.addEventListener("click", () => {
       archivedMessagesModalOverlay.classList.add("active");
     });
 
-    archivedMessagesClose.addEventListener("click", () => {
+    archivedMessagesClose?.addEventListener("click", () => {
       archivedMessagesModalOverlay.classList.remove("active");
     });
 
-    archivedMessagesModalOverlay.addEventListener("click", (event) => {
+    archivedMessagesModalOverlay?.addEventListener("click", (event) => {
       if (event.target === archivedMessagesModalOverlay) {
         archivedMessagesModalOverlay.classList.remove("active");
       }
@@ -818,7 +818,7 @@
     }
 
     if (viewAllMessages) {
-      viewAllMessages.addEventListener("click", () => {
+      viewAllMessages?.addEventListener("click", () => {
         allMessagesList.innerHTML = "";
 
         const activeRows = document.querySelectorAll("#messages-leads .message-row");
@@ -848,13 +848,13 @@
     }
 
     if (allMessagesClose) {
-      allMessagesClose.addEventListener("click", () => {
+      allMessagesClose?.addEventListener("click", () => {
         allMessagesModalOverlay.classList.remove("active");
       });
     }
 
     if (allMessagesModalOverlay) {
-      allMessagesModalOverlay.addEventListener("click", (event) => {
+      allMessagesModalOverlay?.addEventListener("click", (event) => {
         if (event.target === allMessagesModalOverlay) {
           allMessagesModalOverlay.classList.remove("active");
         }
@@ -872,13 +872,13 @@
     });
 
     if (messageDetailClose) {
-      messageDetailClose.addEventListener("click", () => {
+      messageDetailClose?.addEventListener("click", () => {
         messageDetailModalOverlay.classList.remove("active");
       });
     }
 
     if (messageDetailModalOverlay) {
-      messageDetailModalOverlay.addEventListener("click", (event) => {
+      messageDetailModalOverlay?.addEventListener("click", (event) => {
         if (event.target === messageDetailModalOverlay) {
           messageDetailModalOverlay.classList.remove("active");
         }
@@ -909,19 +909,19 @@
     }
 
     if (addExpenseButton) {
-      addExpenseButton.addEventListener("click", () => {
+      addExpenseButton?.addEventListener("click", () => {
         expenseModalOverlay.classList.add("active");
       });
     }
 
     if (expenseModalClose) {
-      expenseModalClose.addEventListener("click", () => {
+      expenseModalClose?.addEventListener("click", () => {
         expenseModalOverlay.classList.remove("active");
       });
     }
 
     if (expenseModalOverlay) {
-      expenseModalOverlay.addEventListener("click", (event) => {
+      expenseModalOverlay?.addEventListener("click", (event) => {
         if (event.target === expenseModalOverlay) {
           expenseModalOverlay.classList.remove("active");
         }
@@ -929,7 +929,7 @@
     }
 
     if (expenseSave) {
-      expenseSave.addEventListener("click", () => {
+      expenseSave?.addEventListener("click", () => {
         const eventName = expenseEvent.value;
         const category = expenseCategory.value;
         const amount = Number(expenseAmount.value || 0);
@@ -1053,13 +1053,13 @@
     });
 
     if (memberListModalClose) {
-      memberListModalClose.addEventListener("click", () => {
+      memberListModalClose?.addEventListener("click", () => {
         memberListModalOverlay.classList.remove("active");
       });
     }
 
     if (memberListModalOverlay) {
-      memberListModalOverlay.addEventListener("click", (event) => {
+      memberListModalOverlay?.addEventListener("click", (event) => {
         if (event.target === memberListModalOverlay) {
           memberListModalOverlay.classList.remove("active");
         }
@@ -1146,7 +1146,7 @@
     });
 
     if (viewApplicationLog) {
-      viewApplicationLog.addEventListener("click", () => {
+      viewApplicationLog?.addEventListener("click", () => {
         applicationLogList.innerHTML = "";
 
         const activeRows = document.querySelectorAll("#applications .application-log-row");
@@ -1182,13 +1182,13 @@
     });
 
     if (applicationDetailClose) {
-      applicationDetailClose.addEventListener("click", () => {
+      applicationDetailClose?.addEventListener("click", () => {
         applicationDetailModalOverlay.classList.remove("active");
       });
     }
 
     if (applicationDetailModalOverlay) {
-      applicationDetailModalOverlay.addEventListener("click", (event) => {
+      applicationDetailModalOverlay?.addEventListener("click", (event) => {
         if (event.target === applicationDetailModalOverlay) {
           applicationDetailModalOverlay.classList.remove("active");
         }
@@ -1196,13 +1196,13 @@
     }
 
     if (applicationLogClose) {
-      applicationLogClose.addEventListener("click", () => {
+      applicationLogClose?.addEventListener("click", () => {
         applicationLogModalOverlay.classList.remove("active");
       });
     }
 
     if (applicationLogModalOverlay) {
-      applicationLogModalOverlay.addEventListener("click", (event) => {
+      applicationLogModalOverlay?.addEventListener("click", (event) => {
         if (event.target === applicationLogModalOverlay) {
           applicationLogModalOverlay.classList.remove("active");
         }
@@ -1362,19 +1362,19 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (addNewEventButton) {
-      addNewEventButton.addEventListener("click", () => {
+      addNewEventButton?.addEventListener("click", () => {
         addEventModalOverlay.classList.add("active");
       });
     }
 
     if (addEventModalClose) {
-      addEventModalClose.addEventListener("click", () => {
+      addEventModalClose?.addEventListener("click", () => {
         addEventModalOverlay.classList.remove("active");
       });
     }
 
     if (addEventModalOverlay) {
-      addEventModalOverlay.addEventListener("click", (event) => {
+      addEventModalOverlay?.addEventListener("click", (event) => {
         if (event.target === addEventModalOverlay) {
           addEventModalOverlay.classList.remove("active");
         }
@@ -1382,7 +1382,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (saveNewEventButton) {
-      saveNewEventButton.addEventListener("click", () => {
+      saveNewEventButton?.addEventListener("click", () => {
         const eventName = newEventName.value.trim();
         const eventDate = newEventDate.value.trim() || "Upcoming";
         const tickets = Number(newEventTickets.value || 0);
@@ -1478,19 +1478,19 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (addVipPackageButton) {
-      addVipPackageButton.addEventListener("click", () => {
+      addVipPackageButton?.addEventListener("click", () => {
         addVipPackageModalOverlay.classList.add("active");
       });
     }
 
     if (addVipPackageModalClose) {
-      addVipPackageModalClose.addEventListener("click", () => {
+      addVipPackageModalClose?.addEventListener("click", () => {
         addVipPackageModalOverlay.classList.remove("active");
       });
     }
 
     if (addVipPackageModalOverlay) {
-      addVipPackageModalOverlay.addEventListener("click", (event) => {
+      addVipPackageModalOverlay?.addEventListener("click", (event) => {
         if (event.target === addVipPackageModalOverlay) {
           addVipPackageModalOverlay.classList.remove("active");
         }
@@ -1498,7 +1498,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (saveVipPackageButton) {
-      saveVipPackageButton.addEventListener("click", () => {
+      saveVipPackageButton?.addEventListener("click", () => {
         const eventName = vipPackageEvent.value;
         const vipName = vipPackageName.value.trim();
         const packageType = vipPackageType.value;
@@ -1697,13 +1697,13 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     });
 
     if (addMemberModalClose) {
-      addMemberModalClose.addEventListener("click", () => {
+      addMemberModalClose?.addEventListener("click", () => {
         addMemberModalOverlay.classList.remove("active");
       });
     }
 
     if (addMemberModalOverlay) {
-      addMemberModalOverlay.addEventListener("click", (event) => {
+      addMemberModalOverlay?.addEventListener("click", (event) => {
         if (event.target === addMemberModalOverlay) {
           addMemberModalOverlay.classList.remove("active");
         }
@@ -1711,7 +1711,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (saveManualMemberButton) {
-      saveManualMemberButton.addEventListener("click", () => {
+      saveManualMemberButton?.addEventListener("click", () => {
         const name = manualMemberName.value.trim();
         const email = manualMemberEmail.value.trim();
         const status = manualMemberStatus.value;
@@ -1848,13 +1848,13 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     });
 
     if (deleteMemberModalClose) {
-      deleteMemberModalClose.addEventListener("click", () => {
+      deleteMemberModalClose?.addEventListener("click", () => {
         deleteMemberModalOverlay.classList.remove("active");
       });
     }
 
     if (deleteMemberModalOverlay) {
-      deleteMemberModalOverlay.addEventListener("click", (event) => {
+      deleteMemberModalOverlay?.addEventListener("click", (event) => {
         if (event.target === deleteMemberModalOverlay) {
           deleteMemberModalOverlay.classList.remove("active");
         }
@@ -1869,7 +1869,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     const searchResultsList = document.getElementById("searchResultsList");
 
     if (createEventTopButton) {
-      createEventTopButton.addEventListener("click", () => {
+      createEventTopButton?.addEventListener("click", () => {
         if (addEventModalOverlay) {
           addEventModalOverlay.classList.add("active");
         }
@@ -1991,7 +1991,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (dashboardSearch) {
-      dashboardSearch.addEventListener("keydown", (event) => {
+      dashboardSearch?.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
           renderSearchResults(dashboardSearch.value);
           searchResultsModalOverlay.classList.add("active");
@@ -2000,13 +2000,13 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (searchResultsClose) {
-      searchResultsClose.addEventListener("click", () => {
+      searchResultsClose?.addEventListener("click", () => {
         searchResultsModalOverlay.classList.remove("active");
       });
     }
 
     if (searchResultsModalOverlay) {
-      searchResultsModalOverlay.addEventListener("click", (event) => {
+      searchResultsModalOverlay?.addEventListener("click", (event) => {
         if (event.target === searchResultsModalOverlay) {
           searchResultsModalOverlay.classList.remove("active");
         }
@@ -2091,7 +2091,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     });
 
     if (eventNoteSave) {
-      eventNoteSave.addEventListener("click", () => {
+      eventNoteSave?.addEventListener("click", () => {
         const note = eventNoteText.value.trim();
 
         if (!note) {
@@ -2104,13 +2104,13 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (eventNoteModalClose) {
-      eventNoteModalClose.addEventListener("click", () => {
+      eventNoteModalClose?.addEventListener("click", () => {
         eventNoteModalOverlay.classList.remove("active");
       });
     }
 
     if (eventNoteModalOverlay) {
-      eventNoteModalOverlay.addEventListener("click", (event) => {
+      eventNoteModalOverlay?.addEventListener("click", (event) => {
         if (event.target === eventNoteModalOverlay) {
           eventNoteModalOverlay.classList.remove("active");
         }
@@ -2166,13 +2166,13 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     });
 
     if (vipListModalClose) {
-      vipListModalClose.addEventListener("click", () => {
+      vipListModalClose?.addEventListener("click", () => {
         vipListModalOverlay.classList.remove("active");
       });
     }
 
     if (vipListModalOverlay) {
-      vipListModalOverlay.addEventListener("click", (event) => {
+      vipListModalOverlay?.addEventListener("click", (event) => {
         if (event.target === vipListModalOverlay) {
           vipListModalOverlay.classList.remove("active");
         }
@@ -2210,14 +2210,14 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     });
 
     if (guestUploadModalClose) {
-      guestUploadModalClose.addEventListener("click", () => {
+      guestUploadModalClose?.addEventListener("click", () => {
         guestUploadModalOverlay.classList.remove("active");
         guestListModalOverlay.classList.add("active");
       });
     }
 
     if (guestUploadModalOverlay) {
-      guestUploadModalOverlay.addEventListener("click", (event) => {
+      guestUploadModalOverlay?.addEventListener("click", (event) => {
         if (event.target === guestUploadModalOverlay) {
           guestUploadModalOverlay.classList.remove("active");
           guestListModalOverlay.classList.add("active");
@@ -2239,7 +2239,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (saveManualGuestsButton) {
-      saveManualGuestsButton.addEventListener("click", () => {
+      saveManualGuestsButton?.addEventListener("click", () => {
         const activeContent = document.getElementById(activeGuestListContentId);
 
         if (!activeContent) {
@@ -2351,7 +2351,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (exportEventRevenueButton) {
-      exportEventRevenueButton.addEventListener("click", downloadEventRevenueEverything);
+      exportEventRevenueButton?.addEventListener("click", downloadEventRevenueEverything);
     }
 </script>
 
@@ -2459,7 +2459,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (manualUploadGuestsButton) {
-      manualUploadGuestsButton.addEventListener("click", () => {
+      manualUploadGuestsButton?.addEventListener("click", () => {
         const activeGuestList = getActiveGuestListContent();
 
         if (!activeGuestList) {
@@ -2484,7 +2484,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (guestUploadModalClose) {
-      guestUploadModalClose.addEventListener("click", () => {
+      guestUploadModalClose?.addEventListener("click", () => {
         if (guestUploadModalOverlay) {
           guestUploadModalOverlay.classList.remove("active");
         }
@@ -2496,7 +2496,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
     }
 
     if (saveManualGuestsButton) {
-      saveManualGuestsButton.addEventListener("click", () => {
+      saveManualGuestsButton?.addEventListener("click", () => {
         const activeGuestList = getActiveGuestListContent();
 
         if (!activeGuestList) {
