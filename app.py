@@ -780,12 +780,32 @@ def canonical_ticket_type_from_payment(payment):
 
 
 def normalize_event_name(value):
-    raw = (value or "").strip().lower()
+    raw_original = (value or "").strip()
+    raw = raw_original.lower()
+
+    if not raw:
+        return ""
+
     if "quiet storm" in raw:
         return "Quiet Storm"
-    if raw in ("the quiet storm live", "part 2 - the quiet storm live"):
-        return "Quiet Storm"
-    return "Battle of the DJs"
+
+    if "juneteenth" in raw:
+        return "Juneteenth Celebration"
+
+    if "battle of the djs" in raw or "battle of djs" in raw:
+        return "Battle of the DJs"
+
+    # Preserve exact known dashboard event names.
+    known_events = {
+        "quiet storm": "Quiet Storm",
+        "juneteenth celebration": "Juneteenth Celebration",
+        "battle of the djs": "Battle of the DJs",
+    }
+    if raw in known_events:
+        return known_events[raw]
+
+    # Unknown events should stay unknown instead of defaulting to Battle.
+    return ""
 
 
 def event_name_from_payment(payment):
@@ -1544,24 +1564,12 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
 
             if mapping:
                 ticket_name = (mapping.get("ticket_type") or "").strip()
-                line_event_name = normalize_event_name(mapping.get("event_name") or event_name)
+                line_event_name = (mapping.get("event_name") or event_name or "").strip()
                 print(f"[ticket-create] mapped by Square setup: {mapping}")
             else:
                 ticket_name = line_item_ticket_name(item)
 
             if not ticket_name:
-                continue
-
-            if not line_event_name:
-                print(f"[ticket-create] unmapped line item saved for payment {payment_id}")
-                log_unmapped_square_payment(
-                    cursor,
-                    payment,
-                    unit_amount_cents if 'unit_amount_cents' in locals() else amount_cents,
-                    buyer_email,
-                    "Missing event mapping",
-                    item,
-                )
                 continue
 
             quantity = parse_line_item_quantity(item)
@@ -1574,6 +1582,18 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                     unit_amount_cents = int(base_money)
                 except Exception:
                     unit_amount_cents = int(amount_cents or 0) // max(1, quantity)
+
+            if not line_event_name:
+                print(f"[ticket-create] unmapped line item saved for payment {payment_id}")
+                log_unmapped_square_payment(
+                    cursor,
+                    payment,
+                    unit_amount_cents,
+                    buyer_email,
+                    "Missing event mapping",
+                    item,
+                )
+                continue
 
             print(f"Creating {quantity} tickets for payment {payment_id}")
             for _ in range(quantity):
@@ -1623,7 +1643,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     payment_mapping = square_mapping_for_payment(cursor, payment)
 
     if payment_mapping:
-        event_name = normalize_event_name(payment_mapping.get("event_name") or event_name)
+        event_name = (payment_mapping.get("event_name") or event_name or "").strip()
         ticket_name = (payment_mapping.get("ticket_type") or "").strip()
         print(f"[ticket-create] mapped payment by Square setup: {payment_mapping}")
     else:
@@ -2601,7 +2621,9 @@ def get_live_dashboard_data():
         FROM square_payment_log
     """, default=0.0))
 
-    tips_other_revenue = 77.95
+    # Tips are not currently pulled from Square payment details.
+    # Keep this at 0.0 until Square tip amounts are synced directly.
+    tips_other_revenue = 0.0
     total_revenue = ticket_revenue + membership_revenue
     square_total_collected = total_revenue + tips_other_revenue
 
@@ -2902,10 +2924,48 @@ def eventbrite_sync_attendees(dry_run=True, include_details=True):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
+    cursor.execute("""
+        SELECT event_name, eventbrite_event_id, eventbrite_event_name
+        FROM eventbrite_event_mappings
+    """)
+    eventbrite_mappings = cursor.fetchall()
+
+    eventbrite_event_id_map = {}
+    eventbrite_event_name_map = {}
+
+    for mapped_event_name, mapped_event_id, mapped_eventbrite_name in eventbrite_mappings:
+        clean_event_name = (mapped_event_name or "").strip()
+        clean_event_id = (mapped_event_id or "").strip()
+        clean_eventbrite_name = (mapped_eventbrite_name or "").strip().lower()
+
+        if clean_event_name and clean_event_id:
+            eventbrite_event_id_map[clean_event_id] = clean_event_name
+
+        if clean_event_name and clean_eventbrite_name:
+            eventbrite_event_name_map[clean_eventbrite_name] = clean_event_name
+
+    has_eventbrite_mappings = bool(eventbrite_event_id_map or eventbrite_event_name_map)
+
     for event in events:
         event_id = (event.get("id") or "").strip()
         raw_event_name = ((event.get("name") or {}).get("text") or "").strip()
-        event_name = normalize_eventbrite_event_name(raw_event_name)
+        raw_event_key = raw_event_name.lower()
+
+        if event_id in eventbrite_event_id_map:
+            event_name = eventbrite_event_id_map[event_id]
+        elif raw_event_key in eventbrite_event_name_map:
+            event_name = eventbrite_event_name_map[raw_event_key]
+        elif has_eventbrite_mappings:
+            summary["skipped"] += 1
+            if include_details and len(summary["details"]) < 150:
+                summary["details"].append({
+                    "event_id": event_id,
+                    "event_name": raw_event_name,
+                    "category": "skipped_unmapped_eventbrite_event",
+                })
+            continue
+        else:
+            event_name = normalize_eventbrite_event_name(raw_event_name)
 
         if not event_id:
             continue
@@ -3026,17 +3086,60 @@ def eventbrite_sync():
 
 
 
+
+
 @app.route("/admin/unmapped-square", methods=["GET", "POST"])
 @requires_auth
 def admin_unmapped_square():
+    from html import escape
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS square_unmapped_payments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_id TEXT NOT NULL,
+            line_uid TEXT,
+            amount_cents INTEGER DEFAULT 0,
+            email TEXT,
+            reason TEXT,
+            item_name TEXT,
+            variation_name TEXT,
+            catalog_object_id TEXT,
+            variation_catalog_object_id TEXT,
+            receipt_number TEXT,
+            status TEXT DEFAULT 'Unmapped',
+            resolved_event_name TEXT,
+            resolved_ticket_type TEXT,
+            resolved_at TEXT,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(payment_id, line_uid)
+        )
+    """)
+    conn.commit()
+
     if request.method == "POST":
         unmapped_id = (request.form.get("unmapped_id") or "").strip()
-        event_name = normalize_event_name(request.form.get("event_name") or "")
+        submitted_event_name = (request.form.get("event_name") or "").strip()
+        cur.execute("""
+            SELECT name
+            FROM events
+            WHERE name IS NOT NULL
+              AND TRIM(name) <> ''
+            ORDER BY event_date DESC, name ASC
+        """)
+        event_name_choices = {
+            (row["name"] or "").strip(): (row["name"] or "").strip()
+            for row in cur.fetchall()
+            if (row["name"] or "").strip()
+        }
+        event_name = event_name_choices.get(submitted_event_name, "")
         ticket_type = (request.form.get("ticket_type") or "").strip()
+
+        guest_name = (request.form.get("guest_name") or "Guest").strip()
+        guest_email = (request.form.get("guest_email") or "").strip().lower()
 
         if unmapped_id and event_name and ticket_type:
             cur.execute("""
@@ -3051,8 +3154,8 @@ def admin_unmapped_square():
                 payment_id = row["payment_id"]
                 line_uid = row["line_uid"] or "manual"
                 amount_cents = int(row["amount_cents"] or 0)
-                email = (row["email"] or "no-email@example.com").strip().lower()
-                name = "Guest"
+                email = (guest_email or row["email"] or "no-email@example.com").strip().lower()
+                name = guest_name or "Guest"
                 ticket_id = generate_ticket(payment_id, row["id"])
                 payment_ref = f"{payment_id}:{line_uid}:{row['id']}"
                 checkin_url = f"{BASE_URL}/checkin/{ticket_id}"
@@ -3100,91 +3203,250 @@ def admin_unmapped_square():
         ORDER BY created_at DESC, id DESC
     """)
     rows = cur.fetchall()
+
+    cur.execute("""
+        SELECT COUNT(*) AS resolved_count
+        FROM square_unmapped_payments
+        WHERE LOWER(COALESCE(status, '')) = 'resolved'
+    """)
+    resolved_count = int((cur.fetchone() or {"resolved_count": 0})["resolved_count"] or 0)
+
+    cur.execute("""
+        SELECT name
+        FROM events
+        WHERE name IS NOT NULL
+          AND TRIM(name) <> ''
+        ORDER BY event_date DESC, name ASC
+    """)
+    event_options = [
+        (row["name"] or "").strip()
+        for row in cur.fetchall()
+        if (row["name"] or "").strip()
+    ]
+
+    cur.execute("""
+        SELECT DISTINCT ticket_type
+        FROM event_ticket_rules
+        WHERE ticket_type IS NOT NULL
+          AND TRIM(ticket_type) <> ''
+        ORDER BY ticket_type ASC
+    """)
+    ticket_options = [
+        (row["ticket_type"] or "").strip()
+        for row in cur.fetchall()
+        if (row["ticket_type"] or "").strip()
+    ] or ["Early Bird", "General Admission", "VIP Section", "Custom VIP"]
+
     conn.close()
 
-    event_options = ["Battle of the DJs", "Quiet Storm", "Juneteenth Celebration"]
-    ticket_options = ["Early Bird", "General Admission", "VIP Section", "Custom VIP"]
+    logo_url = url_for("static", filename="images/logo-home-new.png")
+    css_url = url_for("static", filename="dashboard-redesign.css")
 
-    html = """
-    <!doctype html>
-    <html>
-    <head>
-      <title>Unmapped Square Tickets</title>
-      <style>
-        body { font-family: Arial, sans-serif; background:#111; color:#f5f0df; padding:30px; }
-        h1 { color:#d6b25e; }
-        table { width:100%; border-collapse:collapse; margin-top:20px; background:#1a1a1a; }
-        th, td { padding:12px; border-bottom:1px solid #333; text-align:left; vertical-align:top; }
-        th { color:#d6b25e; }
-        select, button { padding:8px; border-radius:8px; border:1px solid #555; }
-        button { background:#d6b25e; color:#111; font-weight:bold; cursor:pointer; }
-        .muted { color:#bbb; font-size:13px; }
-        a { color:#d6b25e; }
-      </style>
-    </head>
-    <body>
-      <h1>Unmapped Square Tickets</h1>
-      <p><a href="/dashboard">Back to Dashboard</a></p>
-    """
+    rows_html = ""
 
     if not rows:
-        html += "<p>No unmapped Square tickets right now.</p>"
-    else:
-        html += """
-        <table>
-          <thead>
-            <tr>
-              <th>Payment</th>
-              <th>Item</th>
-              <th>Amount</th>
-              <th>Email</th>
-              <th>Resolve</th>
-            </tr>
-          </thead>
-          <tbody>
+        rows_html = """
+          <div class="section-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">All Clear</p>
+                <h3>No unmapped Square tickets right now.</h3>
+                <p>Any future Square payments that cannot be matched to an event will appear here instead of being added to the wrong event.</p>
+              </div>
+            </div>
+          </div>
         """
+    else:
+        table_rows = ""
 
         for row in rows:
             item_label = row["item_name"] or row["catalog_object_id"] or "Unknown item"
             amount = f"${(int(row['amount_cents'] or 0) / 100):.2f}"
 
-            event_select = "<select name='event_name'>" + "".join(
-                f"<option value='{event}'>{event}</option>" for event in event_options
+            event_select = "<select name='event_name' required><option value='' disabled selected>Select event</option>" + "".join(
+                f"<option value='{escape(event, quote=True)}'>{escape(event)}</option>" for event in event_options
             ) + "</select>"
 
-            ticket_select = "<select name='ticket_type'>" + "".join(
-                f"<option value='{ticket}'>{ticket}</option>" for ticket in ticket_options
+            ticket_select = "<select name='ticket_type' required><option value='' disabled selected>Select ticket type</option>" + "".join(
+                f"<option value='{escape(ticket, quote=True)}'>{escape(ticket)}</option>" for ticket in ticket_options
             ) + "</select>"
 
-            html += f"""
-            <tr>
-              <td>
-                <strong>{row['payment_id']}</strong><br>
-                <span class="muted">Receipt: {row['receipt_number'] or ''}</span><br>
-                <span class="muted">Reason: {row['reason'] or ''}</span>
-              </td>
-              <td>
-                {item_label}<br>
-                <span class="muted">Variation: {row['variation_name'] or ''}</span><br>
-                <span class="muted">Catalog ID: {row['catalog_object_id'] or ''}</span>
-              </td>
-              <td>{amount}</td>
-              <td>{row['email'] or ''}</td>
-              <td>
-                <form method="POST">
-                  <input type="hidden" name="unmapped_id" value="{row['id']}">
-                  {event_select}
-                  {ticket_select}
-                  <button type="submit">Create Ticket</button>
-                </form>
-              </td>
-            </tr>
+            table_rows += f"""
+              <tr>
+                <td>
+                  <strong>{escape(row['payment_id'] or '')}</strong><br>
+                  <span class="muted">Receipt: {escape(row['receipt_number'] or '')}</span><br>
+                  <span class="muted">Reason: {escape(row['reason'] or '')}</span>
+                </td>
+                <td>
+                  {escape(item_label)}<br>
+                  <span class="muted">Variation: {escape(row['variation_name'] or '')}</span><br>
+                  <span class="muted">Catalog ID: {escape(row['catalog_object_id'] or '')}</span>
+                </td>
+                <td>{amount}</td>
+                <td>{escape(row['email'] or '')}</td>
+                <td>
+                  <form method="POST" class="unmapped-resolve-form">
+                    <input type="hidden" name="unmapped_id" value="{row['id']}">
+                    <input type="text" name="guest_name" placeholder="Guest name" required>
+                    <input type="email" name="guest_email" value="{escape(row['email'] or '', quote=True)}" placeholder="Guest email">
+                    {event_select}
+                    {ticket_select}
+                    <button class="btn primary" type="submit">Create Ticket</button>
+                  </form>
+                </td>
+              </tr>
             """
 
-        html += "</tbody></table>"
+        rows_html = f"""
+          <section class="section-panel">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Review Needed</p>
+                <h3>Unmapped Square Tickets</h3>
+                <p>Choose the correct event and ticket type, then create the ticket.</p>
+              </div>
+            </div>
 
-    html += "</body></html>"
-    return html
+            <div class="table-wrap">
+              <table class="unmapped-table">
+                <thead>
+                  <tr>
+                    <th>Payment</th>
+                    <th>Square Item</th>
+                    <th>Amount</th>
+                    <th>Email</th>
+                    <th>Resolve</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {table_rows}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        """
+
+    return f"""
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Unmapped Tickets</title>
+  <link rel="stylesheet" href="{css_url}">
+  <style>
+    .unmapped-table {{
+      width: 100%;
+      border-collapse: collapse;
+    }}
+
+    .unmapped-table th,
+    .unmapped-table td {{
+      padding: 14px 12px;
+      border-bottom: 1px solid rgba(214, 178, 94, 0.16);
+      text-align: left;
+      vertical-align: top;
+    }}
+
+    .unmapped-table th {{
+      color: var(--gold);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }}
+
+    .unmapped-resolve-form {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }}
+
+    .unmapped-resolve-form select,
+    .unmapped-resolve-form input {{
+      background: rgba(255,255,255,0.06);
+      color: var(--cream);
+      border: 1px solid rgba(214, 178, 94, 0.3);
+      border-radius: 999px;
+      padding: 10px 12px;
+    }}
+
+    .unmapped-resolve-form input::placeholder {{
+      color: rgba(245, 240, 223, 0.55);
+    }}
+
+    .table-wrap {{
+      overflow-x: auto;
+    }}
+  </style>
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img src="{logo_url}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Admin Preview</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/admin/dashboard-redesign">Dashboard</a>
+        <a href="/admin/dashboard-redesign/events">Events</a>
+        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
+        <a href="/admin/dashboard-redesign/messages">Messages</a>
+        <a href="/admin/dashboard-redesign/members">Members</a>
+        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/admin/unmapped-square" class="active">Unmapped Tickets</a>
+      </nav>
+    </aside>
+
+    <main class="main-content" id="top">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Square Mapping Queue</p>
+          <h2>Unmapped Tickets</h2>
+          <p class="subtext">Review Square payments that did not clearly match an event before they become tickets.</p>
+        </div>
+
+        <div class="topbar-actions">
+          <a class="btn secondary" href="/admin/dashboard-redesign">Back to Dashboard</a>
+          <a class="btn primary" href="/admin/dashboard-redesign/events">Events</a>
+        </div>
+      </header>
+
+      <section class="stats-grid">
+        <div class="stat-card">
+          <p>Needs Review</p>
+          <h3>{len(rows)}</h3>
+          <span>Unmapped Square items</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Resolved</p>
+          <h3>{resolved_count}</h3>
+          <span>Manually mapped tickets</span>
+        </div>
+
+        <div class="stat-card">
+          <p>Status</p>
+          <h3>Safe</h3>
+          <span>Unknown tickets no longer default to Battle</span>
+        </div>
+      </section>
+
+      {rows_html}
+    </main>
+  </div>
+</body>
+</html>
+"""
+
+
 
 
 # -------------------------

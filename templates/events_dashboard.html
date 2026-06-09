@@ -26,6 +26,7 @@
         <a href="/admin/dashboard-redesign/messages">Messages</a>
         <a href="/admin/dashboard-redesign/members">Members</a>
         <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+              <a href="/admin/unmapped-square">Unmapped Tickets</a>
       </nav>
     </aside>
 
@@ -582,15 +583,15 @@
             <div class="setup-builder-block">
               <div class="setup-builder-heading">
                 <div>
-                  <p class="eyebrow">Square Item / Link Mapping</p>
-                  <h4>Square Ticket Names</h4>
+                  <p class="eyebrow">Square Mapping</p>
+                  <h4>Square Item Names or Catalog IDs</h4>
                 </div>
-                <button class="btn secondary" type="button" id="addSquareMappingButton">Add Square Item / Link</button>
+                <button class="btn secondary" type="button" id="addSquareMappingButton">Add Square Mapping</button>
               </div>
 
               <div id="squareMappingsList" class="setup-list">
                 <div class="setup-row square-mapping-row">
-                  <input type="text" placeholder="Square item/link identifier, ex: Juneteenth Celebration - General Admission" data-field="square_item_name" />
+                  <input type="text" placeholder="Square item name or catalog ID, ex: Juneteenth Celebration - General Admission" data-field="square_item_name" />
                   <input type="text" placeholder="Dashboard ticket type, ex: VIP Section" data-field="ticket_type" />
                 </div>
               </div>
@@ -1070,7 +1071,7 @@
       const row = document.createElement("div");
       row.className = "setup-row square-mapping-row";
       row.innerHTML = `
-        <input type="text" placeholder="Square item/link identifier, ex: Juneteenth Celebration - General Admission" data-field="square_item_name" />
+        <input type="text" placeholder="Square item name or catalog ID, ex: Juneteenth Celebration - General Admission" data-field="square_item_name" />
         <input type="text" placeholder="Dashboard ticket type, ex: VIP Section" data-field="ticket_type" />
       `;
 
