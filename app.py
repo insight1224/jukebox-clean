@@ -324,9 +324,15 @@ def init_db():
         payment_id TEXT PRIMARY KEY,
         category TEXT,
         amount_cents INTEGER,
+        tip_cents INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    cursor.execute("PRAGMA table_info(square_payment_log)")
+    square_payment_log_columns = [row[1] for row in cursor.fetchall()]
+    if "tip_cents" not in square_payment_log_columns:
+        cursor.execute("ALTER TABLE square_payment_log ADD COLUMN tip_cents INTEGER DEFAULT 0")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS square_unmapped_payments (
@@ -1823,13 +1829,20 @@ def already_logged_payment(cursor, payment_id):
     return cursor.fetchone() is not None
 
 
-def log_square_payment(cursor, payment_id, category, amount_cents):
+def square_tip_cents(payment):
+    try:
+        return int(((payment or {}).get("tip_money") or {}).get("amount") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def log_square_payment(cursor, payment_id, category, amount_cents, tip_cents=0):
     cursor.execute(
         """
-        INSERT OR IGNORE INTO square_payment_log (payment_id, category, amount_cents)
-        VALUES (?, ?, ?)
+        INSERT OR IGNORE INTO square_payment_log (payment_id, category, amount_cents, tip_cents)
+        VALUES (?, ?, ?, ?)
         """,
-        (payment_id, category, amount_cents),
+        (payment_id, category, amount_cents, tip_cents),
     )
 
 
@@ -2369,6 +2382,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
                     payment_id,
                     "ticket" if (ticket_hit or ticket_created) else "membership",
                     amount_cents,
+                    square_tip_cents(payment),
                 )
             counts["processed"] += 1
             counts["tickets"] += 1 if (ticket_hit or ticket_created) else 0
@@ -2621,9 +2635,11 @@ def get_live_dashboard_data():
         FROM square_payment_log
     """, default=0.0))
 
-    # Tips are not currently pulled from Square payment details.
-    # Keep this at 0.0 until Square tip amounts are synced directly.
-    tips_other_revenue = 0.0
+    tips_other_revenue = float(one("""
+        SELECT COALESCE(SUM(tip_cents), 0) / 100.0
+        FROM square_payment_log
+    """, default=0.0))
+
     total_revenue = ticket_revenue + membership_revenue
     square_total_collected = total_revenue + tips_other_revenue
 
@@ -4560,7 +4576,7 @@ def square_webhook():
     membership_hit = apply_membership_from_square(cursor, payment, amount_cents, note_blob, email)
 
     if payment_id and not is_duplicate_payment and (ticket_hit or membership_hit or ticket_ids):
-        log_square_payment(cursor, payment_id, "ticket", amount_cents)
+        log_square_payment(cursor, payment_id, "ticket", amount_cents, square_tip_cents(payment))
         conn.commit()
         conn.close()
         return "ok", 200
@@ -5897,6 +5913,7 @@ def run_backfill():
                 payment_id,
                 "ticket" if (ticket_hit or ticket_ids) else "membership",
                 amount_cents,
+                square_tip_cents(payment),
             )
             created += 1
 
