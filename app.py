@@ -245,9 +245,27 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         email TEXT,
         amount REAL,
-        status TEXT DEFAULT 'Active'
+        status TEXT DEFAULT 'Active',
+        name TEXT,
+        payment_id TEXT,
+        source TEXT DEFAULT 'square',
+        membership_group TEXT DEFAULT 'Circle',
+        started_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    cursor.execute("PRAGMA table_info(memberships)")
+    membership_columns = [row[1] for row in cursor.fetchall()]
+    membership_missing_columns = {
+        "name": "TEXT",
+        "payment_id": "TEXT",
+        "source": "TEXT DEFAULT 'square'",
+        "membership_group": "TEXT DEFAULT 'Circle'",
+        "started_at": "TEXT DEFAULT CURRENT_TIMESTAMP",
+    }
+    for column_name, column_type in membership_missing_columns.items():
+        if column_name not in membership_columns:
+            cursor.execute(f"ALTER TABLE memberships ADD COLUMN {column_name} {column_type}")
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS membership_payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
