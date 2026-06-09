@@ -329,6 +329,28 @@ def init_db():
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS square_unmapped_payments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        payment_id TEXT NOT NULL,
+        line_uid TEXT,
+        amount_cents INTEGER DEFAULT 0,
+        email TEXT,
+        reason TEXT,
+        item_name TEXT,
+        variation_name TEXT,
+        catalog_object_id TEXT,
+        variation_catalog_object_id TEXT,
+        receipt_number TEXT,
+        status TEXT DEFAULT 'Unmapped',
+        resolved_event_name TEXT,
+        resolved_ticket_type TEXT,
+        resolved_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(payment_id, line_uid)
+    )
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS event_expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         event_name TEXT NOT NULL,
@@ -1493,8 +1515,10 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     print("[ticket-create] called")
     payment_id = (payment.get("id") or "").strip()
     event_name = normalize_event_name(event_name_from_payment(payment))
+    # Do not default unknown Square payments to Battle of the DJs.
+    # If Square cannot map the line item/payment to an event, skip it instead of mislabeling it.
     if not event_name:
-        event_name = "Battle of the DJs"
+        event_name = ""
     if not payment_id:
         print("[ticket-create] skip insert: missing payment_id")
         return []
@@ -1526,6 +1550,18 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                 ticket_name = line_item_ticket_name(item)
 
             if not ticket_name:
+                continue
+
+            if not line_event_name:
+                print(f"[ticket-create] unmapped line item saved for payment {payment_id}")
+                log_unmapped_square_payment(
+                    cursor,
+                    payment,
+                    unit_amount_cents if 'unit_amount_cents' in locals() else amount_cents,
+                    buyer_email,
+                    "Missing event mapping",
+                    item,
+                )
                 continue
 
             quantity = parse_line_item_quantity(item)
@@ -1596,6 +1632,11 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     print(f"[ticket-create] payment_id={payment_id} amount_cents={amount_cents} mapped_ticket={ticket_name} event_name={event_name}")
     if not ticket_name:
         print("[ticket-create] skip insert: missing ticket mapping")
+        return []
+
+    if not event_name:
+        print("[ticket-create] unmapped payment saved: missing event mapping")
+        log_unmapped_square_payment(cursor, payment, amount_cents, buyer_email, "Missing event mapping", None)
         return []
     quantity = extract_quantity_from_payment(payment)
     unit_amount_cents = int(amount_cents or 0) // max(1, quantity)
@@ -1712,6 +1753,47 @@ def load_customer_tickets(cursor, include_checked_in=False, target_email=None):
             }
         )
     return grouped
+
+
+
+
+
+def log_unmapped_square_payment(cursor, payment, amount_cents, email="", reason="Missing event mapping", item=None):
+    payment = payment or {}
+    item = item or {}
+    payment_id = (payment.get("id") or "").strip()
+    if not payment_id:
+        return
+
+    line_uid = (item.get("uid") or "payment").strip()
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO square_unmapped_payments (
+            payment_id,
+            line_uid,
+            amount_cents,
+            email,
+            reason,
+            item_name,
+            variation_name,
+            catalog_object_id,
+            variation_catalog_object_id,
+            receipt_number
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            payment_id,
+            line_uid,
+            int(amount_cents or 0),
+            (email or payment.get("buyer_email_address") or "").strip().lower(),
+            reason,
+            (item.get("name") or "").strip(),
+            (item.get("variation_name") or "").strip(),
+            (item.get("catalog_object_id") or "").strip(),
+            (item.get("variation_catalog_object_id") or "").strip(),
+            (payment.get("receipt_number") or "").strip(),
+        ),
+    )
 
 
 def already_logged_payment(cursor, payment_id):
@@ -2449,10 +2531,19 @@ def get_live_dashboard_data():
           AND COALESCE(archived, 0) = 0
     """))
 
-    total_tickets_sold = int(one("""
+    online_tickets_sold = int(one("""
         SELECT COUNT(*)
         FROM event_tickets
     """))
+
+    cash_tickets_sold = int(one("""
+        SELECT COALESCE(SUM(quantity), 0)
+        FROM event_cash_revenue
+        WHERE LOWER(COALESCE(category, '')) LIKE '%cash%'
+           OR LOWER(COALESCE(category, '')) LIKE '%door%'
+    """, default=0))
+
+    total_tickets_sold = online_tickets_sold + cash_tickets_sold
 
     vip_tickets = int(one("""
         SELECT COUNT(*)
@@ -2470,7 +2561,7 @@ def get_live_dashboard_data():
         LEFT JOIN event_ticket_rules etr
           ON LOWER(TRIM(et.event_name)) = LOWER(TRIM(etr.event_name))
          AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
-    """, default=0))
+    """, default=0)) + cash_tickets_sold
 
     checked_in = int(one("""
         SELECT SUM(
@@ -2487,10 +2578,17 @@ def get_live_dashboard_data():
          AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
     """, default=0))
 
-    ticket_revenue = float(one("""
+    online_ticket_revenue = float(one("""
         SELECT SUM(COALESCE(amount_cents, 0)) / 100.0
         FROM event_tickets
     """, default=0.0))
+
+    cash_ticket_revenue = float(one("""
+        SELECT COALESCE(SUM(amount_cents), 0) / 100.0
+        FROM event_cash_revenue
+    """, default=0.0))
+
+    ticket_revenue = online_ticket_revenue + cash_ticket_revenue
 
     membership_revenue = float(one("""
         SELECT COALESCE(SUM(amount_cents), 0) / 100.0
@@ -2923,6 +3021,170 @@ def eventbrite_sync():
         **summary,
     }, 200
 
+
+
+
+
+
+@app.route("/admin/unmapped-square", methods=["GET", "POST"])
+@requires_auth
+def admin_unmapped_square():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    if request.method == "POST":
+        unmapped_id = (request.form.get("unmapped_id") or "").strip()
+        event_name = normalize_event_name(request.form.get("event_name") or "")
+        ticket_type = (request.form.get("ticket_type") or "").strip()
+
+        if unmapped_id and event_name and ticket_type:
+            cur.execute("""
+                SELECT *
+                FROM square_unmapped_payments
+                WHERE id = ?
+                  AND LOWER(COALESCE(status, '')) = 'unmapped'
+            """, (unmapped_id,))
+            row = cur.fetchone()
+
+            if row:
+                payment_id = row["payment_id"]
+                line_uid = row["line_uid"] or "manual"
+                amount_cents = int(row["amount_cents"] or 0)
+                email = (row["email"] or "no-email@example.com").strip().lower()
+                name = "Guest"
+                ticket_id = generate_ticket(payment_id, row["id"])
+                payment_ref = f"{payment_id}:{line_uid}:{row['id']}"
+                checkin_url = f"{BASE_URL}/checkin/{ticket_id}"
+                qr_url = f"{BASE_URL}/qr/{ticket_id}"
+
+                cur.execute("SELECT 1 FROM event_tickets WHERE ticket_id = ? OR payment_id = ?", (ticket_id, payment_ref))
+                exists = cur.fetchone()
+
+                if not exists:
+                    cur.execute("""
+                        INSERT INTO event_tickets (
+                            name, email, ticket_type, amount_cents, ticket_id, status,
+                            payment_id, checkin_url, qr_url, event_name, checked_in
+                        ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?, 0)
+                    """, (
+                        name,
+                        email,
+                        ticket_type,
+                        amount_cents,
+                        ticket_id,
+                        payment_ref,
+                        checkin_url,
+                        qr_url,
+                        event_name,
+                    ))
+
+                cur.execute("""
+                    UPDATE square_unmapped_payments
+                    SET status = 'Resolved',
+                        resolved_event_name = ?,
+                        resolved_ticket_type = ?,
+                        resolved_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                """, (event_name, ticket_type, unmapped_id))
+
+                conn.commit()
+
+        conn.close()
+        return redirect("/admin/unmapped-square")
+
+    cur.execute("""
+        SELECT *
+        FROM square_unmapped_payments
+        WHERE LOWER(COALESCE(status, '')) = 'unmapped'
+        ORDER BY created_at DESC, id DESC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    event_options = ["Battle of the DJs", "Quiet Storm", "Juneteenth Celebration"]
+    ticket_options = ["Early Bird", "General Admission", "VIP Section", "Custom VIP"]
+
+    html = """
+    <!doctype html>
+    <html>
+    <head>
+      <title>Unmapped Square Tickets</title>
+      <style>
+        body { font-family: Arial, sans-serif; background:#111; color:#f5f0df; padding:30px; }
+        h1 { color:#d6b25e; }
+        table { width:100%; border-collapse:collapse; margin-top:20px; background:#1a1a1a; }
+        th, td { padding:12px; border-bottom:1px solid #333; text-align:left; vertical-align:top; }
+        th { color:#d6b25e; }
+        select, button { padding:8px; border-radius:8px; border:1px solid #555; }
+        button { background:#d6b25e; color:#111; font-weight:bold; cursor:pointer; }
+        .muted { color:#bbb; font-size:13px; }
+        a { color:#d6b25e; }
+      </style>
+    </head>
+    <body>
+      <h1>Unmapped Square Tickets</h1>
+      <p><a href="/dashboard">Back to Dashboard</a></p>
+    """
+
+    if not rows:
+        html += "<p>No unmapped Square tickets right now.</p>"
+    else:
+        html += """
+        <table>
+          <thead>
+            <tr>
+              <th>Payment</th>
+              <th>Item</th>
+              <th>Amount</th>
+              <th>Email</th>
+              <th>Resolve</th>
+            </tr>
+          </thead>
+          <tbody>
+        """
+
+        for row in rows:
+            item_label = row["item_name"] or row["catalog_object_id"] or "Unknown item"
+            amount = f"${(int(row['amount_cents'] or 0) / 100):.2f}"
+
+            event_select = "<select name='event_name'>" + "".join(
+                f"<option value='{event}'>{event}</option>" for event in event_options
+            ) + "</select>"
+
+            ticket_select = "<select name='ticket_type'>" + "".join(
+                f"<option value='{ticket}'>{ticket}</option>" for ticket in ticket_options
+            ) + "</select>"
+
+            html += f"""
+            <tr>
+              <td>
+                <strong>{row['payment_id']}</strong><br>
+                <span class="muted">Receipt: {row['receipt_number'] or ''}</span><br>
+                <span class="muted">Reason: {row['reason'] or ''}</span>
+              </td>
+              <td>
+                {item_label}<br>
+                <span class="muted">Variation: {row['variation_name'] or ''}</span><br>
+                <span class="muted">Catalog ID: {row['catalog_object_id'] or ''}</span>
+              </td>
+              <td>{amount}</td>
+              <td>{row['email'] or ''}</td>
+              <td>
+                <form method="POST">
+                  <input type="hidden" name="unmapped_id" value="{row['id']}">
+                  {event_select}
+                  {ticket_select}
+                  <button type="submit">Create Ticket</button>
+                </form>
+              </td>
+            </tr>
+            """
+
+        html += "</tbody></table>"
+
+    html += "</body></html>"
+    return html
 
 
 # -------------------------
@@ -6903,7 +7165,7 @@ def admin_dashboard_revenue():
     metrics["cash_revenue"] = total_cash_revenue
     metrics["business_expenses"] = business_expenses_total
     metrics["total_expenses"] = total_expenses + business_expenses_total
-    metrics["gross_revenue_with_cash"] = float(metrics.get("square_total_collected", 0) or 0) + total_cash_revenue
+    metrics["gross_revenue_with_cash"] = float(metrics.get("square_total_collected", 0) or 0)
     metrics["net_profit"] = metrics["gross_revenue_with_cash"] - metrics["total_expenses"]
 
     originals_count = int(metrics.get("active_memberships", 0) or 0)
@@ -6924,7 +7186,7 @@ def admin_dashboard_revenue():
     metrics.setdefault("total_expenses", 0.0)
     metrics.setdefault(
         "gross_revenue_with_cash",
-        float(metrics.get("square_total_collected", 0) or 0) + float(metrics.get("cash_revenue", 0) or 0),
+        float(metrics.get("square_total_collected", 0) or 0),
     )
     metrics.setdefault(
         "net_profit",
