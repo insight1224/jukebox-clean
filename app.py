@@ -7076,6 +7076,14 @@ def admin_dashboard_events():
 
         event["cash_revenue_total"] = cash_total
         event["cash_ticket_quantity"] = cash_quantity
+
+        # Events page should show total attendance/tickets including cash/door sales.
+        base_ticket_count = int(event.get("total_tickets_sold") or 0)
+        base_estimated_attendance = int(event.get("estimated_attendance") or base_ticket_count or 0)
+        event["online_ticket_count"] = base_ticket_count
+        event["total_tickets_sold"] = base_ticket_count + cash_quantity
+        event["estimated_attendance"] = base_estimated_attendance + cash_quantity
+
         event["total_revenue_with_cash"] = float(event.get("total_revenue", 0) or 0) + cash_total
         event["net_profit"] = event["total_revenue_with_cash"]
 
