@@ -120,10 +120,49 @@ def clean_event_name(name):
 
     return mapping.get(name, name.title())
 
+def auth_profiles():
+    return {
+        "admin": {
+            "label": "Owner / Admin",
+            "username": os.getenv("ADMIN_USERNAME", "admin"),
+            "password": os.getenv("ADMIN_PASSWORD", "jukebox123"),
+        },
+        "manager": {
+            "label": "Manager",
+            "username": os.getenv("MANAGER_USERNAME", "manager"),
+            "password": os.getenv("MANAGER_PASSWORD", ""),
+        },
+        "door": {
+            "label": "Door Staff",
+            "username": os.getenv("DOOR_USERNAME", "door"),
+            "password": os.getenv("DOOR_PASSWORD", ""),
+        },
+        "bookkeeper": {
+            "label": "Bookkeeper",
+            "username": os.getenv("BOOKKEEPER_USERNAME", "bookkeeper"),
+            "password": os.getenv("BOOKKEEPER_PASSWORD", ""),
+        },
+    }
+
+
+def get_auth_role(username, password):
+    username = (username or "").strip()
+    password = password or ""
+
+    for role, profile in auth_profiles().items():
+        profile_user = (profile.get("username") or "").strip()
+        profile_pass = profile.get("password") or ""
+
+        # Only active profiles can log in. A blank password disables that role.
+        if profile_user and profile_pass and username == profile_user and password == profile_pass:
+            return role
+
+    return None
+
+
 def check_auth(username, password):
-    admin_user = os.getenv("ADMIN_USERNAME", "admin")
-    admin_pass = os.getenv("ADMIN_PASSWORD", "jukebox123")
-    return username == admin_user and password == admin_pass
+    return get_auth_role(username, password) is not None
+
 
 def authenticate():
     return Response(
@@ -131,14 +170,31 @@ def authenticate():
         {"WWW-Authenticate": 'Basic realm="Login Required"'}
     )
 
+
+def requires_roles(*allowed_roles):
+    def decorator(f):
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            auth = request.authorization
+            if not auth:
+                return authenticate()
+
+            role = get_auth_role(auth.username, auth.password)
+            if not role:
+                return authenticate()
+
+            if allowed_roles and role not in allowed_roles:
+                return Response("Access denied", 403)
+
+            request.auth_role = role
+            return f(*args, **kwargs)
+        return decorated
+    return decorator
+
+
 def requires_auth(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        auth = request.authorization
-        if not auth or not check_auth(auth.username, auth.password):
-            return authenticate()
-        return f(*args, **kwargs)
-    return decorated
+    # Full dashboard access. Door Staff is intentionally excluded here.
+    return requires_roles("admin", "manager")(f)
 
 def render_thank_you_safe(title, message):
     try:
@@ -3882,6 +3938,7 @@ def contact():
 
 
 @app.route("/checkin")
+@requires_roles("admin", "manager", "door")
 def checkin_page():
     message = request.args.get("msg", "").strip()
     conn = sqlite3.connect(DB_PATH)
@@ -3933,6 +3990,7 @@ def checkin_page():
 
 
 @app.route("/checkin/add", methods=["POST"])
+@requires_roles("admin", "manager", "door")
 def add_attendee_manual():
     event_name = (request.form.get("event_name") or "").strip() or "Battle of the DJs"
     customer_name = (request.form.get("customer_name") or "").strip()
@@ -3966,12 +4024,14 @@ def add_attendee_manual():
 
 
 @app.route("/checkin/<int:id>")
+@requires_roles("admin", "manager", "door")
 def checkin_attendee(id):
     update_attendee_checkin_count(id, 1)
     return redirect("/checkin")
 
 
 @app.route("/reset-checkin/<int:id>")
+@requires_roles("admin", "manager", "door")
 def reset_checkin(id):
     update_attendee_checkin_count(id, -1)
     return redirect("/checkin")
@@ -4028,6 +4088,7 @@ def update_attendee_checkin_count(attendee_id, delta):
 
 
 @app.route("/checkin-action/<int:id>", methods=["POST"])
+@requires_roles("admin", "manager", "door")
 def checkin_action(id):
     action = (request.form.get("action") or "").strip().lower()
     delta = 1 if action == "checkin" else -1 if action == "undo" else 0
@@ -6169,6 +6230,7 @@ def resend_customer_tickets(email):
 
 
 @app.route('/scan')
+@requires_roles("admin", "manager", "door")
 def scan():
     return render_template('scan.html')
 
@@ -6701,7 +6763,7 @@ def api_delete_event_cash_revenue(cash_id):
 
 
 @app.route("/api/event-ticket-checkin", methods=["POST"])
-@requires_auth
+@requires_roles("admin", "manager", "door")
 def api_event_ticket_checkin():
     data = request.get_json(silent=True) or {}
 
