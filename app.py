@@ -2343,15 +2343,24 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
         if not payment_id:
             continue
 
-        if (not full_resync) and already_logged_payment(cursor, payment_id):
-            counts["duplicates"] += 1
-            continue
-
         status = (payment.get("status") or "").strip().upper()
         if status != "COMPLETED":
             continue
 
         amount_cents = int(payment.get("amount_money", {}).get("amount") or 0)
+
+        if (not full_resync) and already_logged_payment(cursor, payment_id):
+            if not dry_run:
+                cursor.execute(
+                    """
+                    UPDATE square_payment_log
+                    SET amount_cents = ?, tip_cents = ?
+                    WHERE payment_id = ?
+                    """,
+                    (amount_cents, square_tip_cents(payment), payment_id),
+                )
+            counts["duplicates"] += 1
+            continue
         note_blob = " ".join(
             str(part).strip().lower()
             for part in (
