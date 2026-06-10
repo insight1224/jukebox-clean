@@ -2696,18 +2696,11 @@ def get_live_dashboard_data():
 
     cur.execute("""
         SELECT COALESCE(event_name, 'Unknown') AS event_name,
-               CASE
-                 WHEN payment_id LIKE 'eventbrite:%' THEN 'Eventbrite'
-                 WHEN LOWER(COALESCE(ticket_type, '')) = 'general admission'
-                      AND COALESCE(amount_cents, 0) = 2000
-                      AND COALESCE(event_name, '') = 'Battle of the DJs'
-                   THEN 'General Admission'
-                 ELSE COALESCE(ticket_type, 'Ticket') || ' - Square'
-               END AS source_name,
+               COALESCE(ticket_type, 'Ticket') AS source_name,
                COUNT(*) AS quantity,
                SUM(COALESCE(amount_cents, 0)) / 100.0 AS revenue
         FROM event_tickets
-        GROUP BY COALESCE(event_name, 'Unknown'), source_name
+        GROUP BY COALESCE(event_name, 'Unknown'), COALESCE(ticket_type, 'Ticket')
         ORDER BY event_name, source_name
     """)
     source_rows = cur.fetchall()
