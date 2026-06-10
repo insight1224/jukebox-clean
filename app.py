@@ -2701,7 +2701,7 @@ def get_live_dashboard_data():
                  WHEN LOWER(COALESCE(ticket_type, '')) = 'general admission'
                       AND COALESCE(amount_cents, 0) = 2000
                       AND COALESCE(event_name, '') = 'Battle of the DJs'
-                   THEN 'Door'
+                   THEN 'General Admission'
                  ELSE COALESCE(ticket_type, 'Ticket') || ' - Square'
                END AS source_name,
                COUNT(*) AS quantity,
@@ -7427,7 +7427,7 @@ def admin_dashboard_revenue():
         if ticket_cash_total > 0:
             event.setdefault("revenue_sources", [])
             event["revenue_sources"].append({
-                "name": "Door",
+                "name": "General Admission",
                 "quantity": ticket_cash_quantity,
                 "revenue": ticket_cash_total,
             })
