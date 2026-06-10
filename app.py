@@ -271,14 +271,22 @@ def init_db():
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS membership_payments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        membership_id INTEGER,
         name TEXT,
         email TEXT,
+        amount REAL DEFAULT 0,
         amount_cents INTEGER DEFAULT 0,
         payment_id TEXT UNIQUE,
         source TEXT DEFAULT 'square',
+        paid_at TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    ensure_column("membership_payments", "membership_id", "INTEGER")
+    ensure_column("membership_payments", "amount", "REAL DEFAULT 0")
+    ensure_column("membership_payments", "amount_cents", "INTEGER DEFAULT 0")
+    ensure_column("membership_payments", "paid_at", "TEXT")
 
     ensure_column("memberships", "name", "TEXT")
     ensure_column("memberships", "payment_id", "TEXT")
@@ -1946,13 +1954,14 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
             name,
             email,
             amount,
+            amount_cents,
             payment_id,
             source,
             paid_at
         )
-        VALUES (?, ?, ?, ?, ?, 'square', COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP))
+        VALUES (?, ?, ?, ?, ?, ?, 'square', COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP))
         """,
-        (membership_id, name, clean_email, amount_dollars, payment_id, paid_at),
+        (membership_id, name, clean_email, amount_dollars, amount_cents, payment_id, paid_at),
     )
 
     return True
