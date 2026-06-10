@@ -1845,8 +1845,12 @@ def square_tip_cents(payment):
 def log_square_payment(cursor, payment_id, category, amount_cents, tip_cents=0):
     cursor.execute(
         """
-        INSERT OR IGNORE INTO square_payment_log (payment_id, category, amount_cents, tip_cents)
+        INSERT INTO square_payment_log (payment_id, category, amount_cents, tip_cents)
         VALUES (?, ?, ?, ?)
+        ON CONFLICT(payment_id) DO UPDATE SET
+            category = excluded.category,
+            amount_cents = excluded.amount_cents,
+            tip_cents = excluded.tip_cents
         """,
         (payment_id, category, amount_cents, tip_cents),
     )
