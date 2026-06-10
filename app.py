@@ -806,31 +806,9 @@ def canonical_ticket_type_from_payment(payment):
 
 
 def normalize_event_name(value):
-    raw_original = (value or "").strip()
-    raw = raw_original.lower()
-
-    if not raw:
-        return ""
-
-    if "quiet storm" in raw:
-        return "Quiet Storm"
-
-    if "juneteenth" in raw:
-        return "Juneteenth Celebration"
-
-    if "battle of the djs" in raw or "battle of djs" in raw:
-        return "Battle of the DJs"
-
-    # Preserve exact known dashboard event names.
-    known_events = {
-        "quiet storm": "Quiet Storm",
-        "juneteenth celebration": "Juneteenth Celebration",
-        "battle of the djs": "Battle of the DJs",
-    }
-    if raw in known_events:
-        return known_events[raw]
-
-    # Unknown events should stay unknown instead of defaulting to Battle.
+    # Do not auto-match old event names from Square notes.
+    # Square sync should only import events that are explicitly created and mapped
+    # in the dashboard Square Mapping section.
     return ""
 
 
