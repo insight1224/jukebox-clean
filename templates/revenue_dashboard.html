@@ -920,6 +920,105 @@
       });
     }
 
+    const financialEditModalOverlay = document.getElementById("financialEditModalOverlay");
+    const financialEditClose = document.getElementById("financialEditClose");
+    const financialEditSave = document.getElementById("financialEditSave");
+    const financialEditType = document.getElementById("financialEditType");
+    const financialEditId = document.getElementById("financialEditId");
+    const financialEditEventName = document.getElementById("financialEditEventName");
+    const financialEditCategory = document.getElementById("financialEditCategory");
+    const financialEditQuantityWrap = document.getElementById("financialEditQuantityWrap");
+    const financialEditQuantity = document.getElementById("financialEditQuantity");
+    const financialEditAmount = document.getElementById("financialEditAmount");
+    const financialEditNotes = document.getElementById("financialEditNotes");
+    const financialEditTitle = document.getElementById("financialEditTitle");
+    const financialEditEyebrow = document.getElementById("financialEditEyebrow");
+    const financialEditDescription = document.getElementById("financialEditDescription");
+
+    const financialDeleteModalOverlay = document.getElementById("financialDeleteModalOverlay");
+    const financialDeleteClose = document.getElementById("financialDeleteClose");
+    const financialDeleteCancel = document.getElementById("financialDeleteCancel");
+    const financialDeleteConfirm = document.getElementById("financialDeleteConfirm");
+    const financialDeleteTitle = document.getElementById("financialDeleteTitle");
+    const financialDeleteDescription = document.getElementById("financialDeleteDescription");
+    const financialDeleteItemName = document.getElementById("financialDeleteItemName");
+    const financialDeleteItemAmount = document.getElementById("financialDeleteItemAmount");
+
+    let pendingDelete = null;
+
+    function openFinancialEditModal(type, button) {
+      const isCash = type === "cash";
+      const id = isCash ? button.dataset.cashId : button.dataset.expenseId;
+
+      financialEditType.value = type;
+      financialEditId.value = id || "";
+      financialEditEventName.value = button.dataset.eventName || "";
+      financialEditCategory.value = button.dataset.category || "";
+      financialEditQuantity.value = button.dataset.quantity || 0;
+      financialEditAmount.value = button.dataset.amount || 0;
+      financialEditNotes.value = button.dataset.notes || "";
+
+      if (financialEditTitle) financialEditTitle.textContent = isCash ? "Edit Revenue" : "Edit Expense";
+      if (financialEditEyebrow) financialEditEyebrow.textContent = isCash ? "Cash / Other Revenue" : "Expense Entry";
+      if (financialEditDescription) {
+        financialEditDescription.textContent = isCash
+          ? "Update the saved revenue amount, category, notes, or ticket quantity."
+          : "Update the saved expense amount, category, or notes.";
+      }
+
+      if (financialEditQuantityWrap) {
+        financialEditQuantityWrap.style.display = isCash ? "" : "none";
+      }
+
+      if (financialEditModalOverlay) {
+        financialEditModalOverlay.classList.add("active");
+      }
+    }
+
+    function closeFinancialEditModal() {
+      if (financialEditModalOverlay) {
+        financialEditModalOverlay.classList.remove("active");
+      }
+      if (financialEditSave) {
+        financialEditSave.disabled = false;
+        financialEditSave.textContent = "Save Changes";
+      }
+    }
+
+    function openFinancialDeleteModal(type, button) {
+      const isCash = type === "cash";
+      const id = isCash ? button.dataset.cashId : button.dataset.expenseId;
+      const row = button.closest(".expense-action-row");
+      const label = row ? (row.querySelector("span")?.innerText || "Selected item") : "Selected item";
+      const amount = row ? (row.querySelector("strong")?.innerText || "$0.00") : "$0.00";
+
+      pendingDelete = { type, id };
+
+      if (financialDeleteTitle) financialDeleteTitle.textContent = isCash ? "Delete Revenue?" : "Delete Expense?";
+      if (financialDeleteDescription) {
+        financialDeleteDescription.textContent = isCash
+          ? "This will remove this saved revenue entry from the event totals."
+          : "This will remove this saved expense from the event totals.";
+      }
+      if (financialDeleteItemName) financialDeleteItemName.textContent = label.trim();
+      if (financialDeleteItemAmount) financialDeleteItemAmount.textContent = amount.trim();
+
+      if (financialDeleteModalOverlay) {
+        financialDeleteModalOverlay.classList.add("active");
+      }
+    }
+
+    function closeFinancialDeleteModal() {
+      pendingDelete = null;
+      if (financialDeleteModalOverlay) {
+        financialDeleteModalOverlay.classList.remove("active");
+      }
+      if (financialDeleteConfirm) {
+        financialDeleteConfirm.disabled = false;
+        financialDeleteConfirm.textContent = "Delete";
+      }
+    }
+
     if (addCashRevenueButton) {
       addCashRevenueButton.addEventListener("click", () => {
         if (cashRevenueModalOverlay) {
