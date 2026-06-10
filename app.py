@@ -7405,6 +7405,28 @@ def admin_dashboard_revenue():
         other_cash_total = sum(float(item.get("amount", 0) or 0) for item in other_cash_rows)
         event_cash_total = ticket_cash_total + other_cash_total
 
+        # Add cash/door ticket sales into the left-side Ticket Breakdown as General Admission.
+        if ticket_cash_total > 0 or ticket_cash_quantity > 0:
+            general_admission_ticket = None
+            for ticket in event.get("tickets", []) or []:
+                if (ticket.get("name") or "").strip().lower() in {"general admission", "general admissions"}:
+                    general_admission_ticket = ticket
+                    break
+
+            if general_admission_ticket:
+                general_admission_ticket["quantity"] = int(general_admission_ticket.get("quantity", 0) or 0) + ticket_cash_quantity
+                general_admission_ticket["estimated_attendance"] = int(general_admission_ticket.get("estimated_attendance", 0) or 0) + ticket_cash_quantity
+                general_admission_ticket["revenue"] = float(general_admission_ticket.get("revenue", 0) or 0) + ticket_cash_total
+            else:
+                event.setdefault("tickets", [])
+                event["tickets"].append({
+                    "name": "General Admission",
+                    "quantity": ticket_cash_quantity,
+                    "estimated_attendance": ticket_cash_quantity,
+                    "price": 0,
+                    "revenue": ticket_cash_total,
+                })
+
         # Bottom-left box: other/non-ticket revenue only
         event["cash_revenue"] = other_cash_rows
 
