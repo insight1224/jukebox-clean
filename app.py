@@ -250,7 +250,8 @@ def init_db():
         payment_id TEXT,
         source TEXT DEFAULT 'square',
         membership_group TEXT DEFAULT 'Circle',
-        started_at TEXT DEFAULT CURRENT_TIMESTAMP
+        started_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        last_payment_at TEXT
     )
     """)
 
@@ -262,6 +263,7 @@ def init_db():
         "source": "TEXT DEFAULT 'square'",
         "membership_group": "TEXT DEFAULT 'Circle'",
         "started_at": "TEXT",
+        "last_payment_at": "TEXT",
     }
     for column_name, column_type in membership_missing_columns.items():
         if column_name not in membership_columns:
