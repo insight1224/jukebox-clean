@@ -13,3 +13,4 @@ square_report_300.json
 transactions-2026-01-01-2027-01-01.csv
 app.py.backup
 database.backup-before-square-sync.db
+database.db
