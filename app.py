@@ -2701,7 +2701,7 @@ def get_live_dashboard_data():
                  WHEN LOWER(COALESCE(ticket_type, '')) = 'general admission'
                       AND COALESCE(amount_cents, 0) = 2000
                       AND COALESCE(event_name, '') = 'Battle of the DJs'
-                   THEN 'Door - Square'
+                   THEN 'Door'
                  ELSE COALESCE(ticket_type, 'Ticket') || ' - Square'
                END AS source_name,
                COUNT(*) AS quantity,
@@ -7427,10 +7427,27 @@ def admin_dashboard_revenue():
         if ticket_cash_total > 0:
             event.setdefault("revenue_sources", [])
             event["revenue_sources"].append({
-                "name": "Door - Cash",
+                "name": "Door",
                 "quantity": ticket_cash_quantity,
                 "revenue": ticket_cash_total,
             })
+
+    # Merge duplicate revenue rows with the same display name.
+    # Example: Door Square + Door Cash should display as one Door total.
+    for event in events:
+        merged_sources = {}
+        for source in event.get("revenue_sources", []) or []:
+            name = (source.get("name") or "Revenue").strip()
+            if name not in merged_sources:
+                merged_sources[name] = {
+                    "name": name,
+                    "quantity": 0,
+                    "revenue": 0.0,
+                }
+            merged_sources[name]["quantity"] += int(source.get("quantity", 0) or 0)
+            merged_sources[name]["revenue"] += float(source.get("revenue", 0) or 0)
+
+        event["revenue_sources"] = list(merged_sources.values())
 
     past_event_names = {
         row.get("name")
