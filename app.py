@@ -149,6 +149,7 @@ def get_auth_role(username, password):
     username = (username or "").strip()
     password = password or ""
 
+    # 1) Backup/admin logins from Render environment variables.
     for role, profile in auth_profiles().items():
         profile_user = (profile.get("username") or "").strip()
         profile_pass = profile.get("password") or ""
@@ -156,6 +157,29 @@ def get_auth_role(username, password):
         # Only active profiles can log in. A blank password disables that role.
         if profile_user and profile_pass and username == profile_user and password == profile_pass:
             return role
+
+    # 2) Staff accounts created inside the dashboard.
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT role
+            FROM staff_users
+            WHERE LOWER(TRIM(username)) = LOWER(TRIM(?))
+              AND password = ?
+              AND COALESCE(active, 1) = 1
+            LIMIT 1
+            """,
+            (username, password),
+        )
+        row = cursor.fetchone()
+        conn.close()
+
+        if row and row[0]:
+            return str(row[0]).strip().lower()
+    except Exception as exc:
+        print("[auth] staff user lookup failed:", exc)
 
     return None
 
@@ -271,6 +295,19 @@ def init_db():
         existing = [row[1] for row in cursor.fetchall()]
         if column_name not in existing:
             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_def}")
+
+    # STAFF USERS
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS staff_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        username TEXT UNIQUE,
+        password TEXT,
+        role TEXT DEFAULT 'door',
+        active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
 
     # LEADS
     cursor.execute("""
@@ -6333,6 +6370,26 @@ def admin_dashboard_redesign():
         """
     )
     membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
+
+    cursor.execute(
+        """
+        SELECT id, name, username, role, active, created_at
+        FROM staff_users
+        ORDER BY active DESC, name COLLATE NOCASE ASC
+        """
+    )
+    staff_users = [
+        {
+            "id": row[0],
+            "name": row[1],
+            "username": row[2],
+            "role": row[3],
+            "active": int(row[4] or 0),
+            "created_at": row[5],
+        }
+        for row in cursor.fetchall()
+    ]
+
     cursor.execute(
         """
         SELECT
@@ -6383,8 +6440,67 @@ def admin_dashboard_redesign():
         dashboard_overview=dashboard_overview,
         square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
+        staff_users=staff_users,
     )
 
+
+
+@app.route("/api/staff-users", methods=["POST"])
+@requires_roles("admin")
+def api_create_staff_user():
+    data = request.get_json(silent=True) or request.form
+
+    name = (data.get("name") or "").strip()
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
+    role = (data.get("role") or "door").strip().lower()
+
+    allowed_roles = {"admin", "manager", "door", "bookkeeper"}
+    if role not in allowed_roles:
+        return {"status": "error", "error": "Invalid role."}, 400
+
+    if not name or not username or not password:
+        return {"status": "error", "error": "Name, username, and password are required."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO staff_users (name, username, password, role, active)
+            VALUES (?, ?, ?, ?, 1)
+            """,
+            (name, username, password, role),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        conn.close()
+        return {"status": "error", "error": "That username already exists."}, 400
+
+    staff_id = cursor.lastrowid
+    conn.close()
+
+    return {"status": "ok", "staff_id": staff_id}, 200
+
+
+@app.route("/api/staff-users/<int:staff_id>/deactivate", methods=["POST"])
+@requires_roles("admin")
+def api_deactivate_staff_user(staff_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE staff_users
+        SET active = 0
+        WHERE id = ?
+        """,
+        (staff_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    return {"status": "ok", "staff_id": staff_id}, 200
 
 
 @app.route("/api/business-revenue", methods=["POST"])

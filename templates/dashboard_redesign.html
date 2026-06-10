@@ -277,96 +277,122 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Settings</p>
-            <h3>Dashboard Settings</h3>
-            <p>Manage event defaults, notification preferences, dashboard access, and website form routing.</p>
+            <h3>Staff Access</h3>
+            <p>Create staff logins and control what each person can access.</p>
           </div>
-          <button class="btn primary">Save Settings</button>
         </div>
 
-        <div class="settings-grid">
-          <div class="settings-card">
-            <h4>Event Defaults</h4>
-            <p>Set default check-in behavior, VIP guest counts, and door sale payment methods.</p>
+        <div class="settings-grid staff-only-settings-grid">
+          <div class="staff-settings-layout">
+            <div class="staff-settings-panel">
+              <h4>Access Profiles</h4>
+              <p class="staff-settings-intro">
+                Use these roles to decide what each staff member should be able to do inside the dashboard.
+              </p>
 
-            <label>
-              Default VIP Guest Count
-              <input type="number" value="6" />
-            </label>
+              <div class="staff-role-list">
+                <div class="staff-role-card">
+                  <div>
+                    <strong>Owner / Admin</strong>
+                    <span>Full dashboard access</span>
+                  </div>
+                  <small>Can access dashboard, events, revenue, members, messages, contact log, settings, and check-in.</small>
+                </div>
 
-            <label>
-              Default Event Status
-              <select>
-                <option>Upcoming</option>
-                <option>Live</option>
-                <option>Completed</option>
-              </select>
-            </label>
-          </div>
+                <div class="staff-role-card">
+                  <div>
+                    <strong>Manager</strong>
+                    <span>Operations access</span>
+                  </div>
+                  <small>Can access daily operations, event management, guest lists, members, messages, and check-in.</small>
+                </div>
 
-          <div class="settings-card">
-            <h4>Website Form Routing</h4>
-            <p>Choose how website submissions should appear inside the dashboard.</p>
+                <div class="staff-role-card">
+                  <div>
+                    <strong>Door Staff</strong>
+                    <span>Check-in only</span>
+                  </div>
+                  <small>Can only access guest lists, QR scanning, and check-in tools.</small>
+                </div>
 
-            <label>
-              General Contact Forms
-              <select>
-                <option>Messages & Leads</option>
-                <option>Archive Only</option>
-              </select>
-            </label>
+                <div class="staff-role-card">
+                  <div>
+                    <strong>Bookkeeper</strong>
+                    <span>Revenue-focused access</span>
+                  </div>
+                  <small>Can access revenue, expenses, memberships, ticket sales, and reporting tools.</small>
+                </div>
+              </div>
 
-            <label>
-              DJ / Band / Vendor Forms
-              <select>
-                <option>Contacts</option>
-                <option>Messages & Leads</option>
-              </select>
-            </label>
-          </div>
+              <div class="settings-note">
+                <strong>Tip:</strong>
+                Create a separate login for each staff member so access stays organized and easy to manage.
+              </div>
+            </div>
 
-          <div class="settings-card">
-            <h4>Notifications</h4>
-            <p>Preview settings for alerting the client when new submissions come in.</p>
+            <div class="staff-settings-actions">
+              <div class="staff-settings-panel">
+                <h4>Create Staff Login</h4>
 
-            <label class="checkbox-line">
-              <input type="checkbox" checked />
-              Email client when a new VIP inquiry comes in
-            </label>
+                <form class="staff-user-form" id="staffUserForm">
+                  <label>
+                    Staff Name
+                    <input type="text" id="staffName" placeholder="Example: Jasmine Smith" required />
+                  </label>
 
-            <label class="checkbox-line">
-              <input type="checkbox" checked />
-              Email client when a new application comes in
-            </label>
+                  <label>
+                    Username
+                    <input type="text" id="staffUsername" placeholder="Example: jasmine" required />
+                  </label>
 
-            <label class="checkbox-line">
-              <input type="checkbox" />
-              Send daily dashboard summary
-            </label>
-          </div>
+                  <label>
+                    Temporary Password
+                    <input type="text" id="staffPassword" placeholder="Example: Door123!" required />
+                  </label>
 
-          <div class="settings-card">
-            <h4>Admin Access</h4>
-            <p>Placeholder for future staff/admin permissions.</p>
+                  <label>
+                    Role
+                    <select id="staffRole" required>
+                      <option value="manager">Manager</option>
+                      <option value="door">Door Staff</option>
+                      <option value="bookkeeper">Bookkeeper</option>
+                      <option value="admin">Owner / Admin</option>
+                    </select>
+                  </label>
 
-            <label>
-              Staff Role
-              <select>
-                <option>Owner</option>
-                <option>Manager</option>
-                <option>Door Staff</option>
-                <option>Bookkeeper</option>
-              </select>
-            </label>
+                  <button class="btn primary" type="submit">Add Staff User</button>
+                  <div class="form-status" id="staffUserStatus"></div>
+                </form>
+              </div>
 
-            <label>
-              Access Level
-              <select>
-                <option>Full Dashboard</option>
-                <option>Check-In Only</option>
-                <option>Sales Only</option>
-                <option>View Only</option>
-              </select>
-            </label>
+              <div class="staff-settings-panel staff-user-list">
+                <h5>Current Staff Users</h5>
+
+                {% if staff_users %}
+                  {% for staff in staff_users %}
+                  <div class="staff-user-row">
+                    <div>
+                      <strong>{{ staff.name }}</strong>
+                      <span>@{{ staff.username }}</span>
+                      <small>{{ staff.role|title }}{% if not staff.active %} · Inactive{% endif %}</small>
+                    </div>
+
+                    {% if staff.active %}
+                    <button class="btn secondary js-deactivate-staff" type="button" data-staff-id="{{ staff.id }}">
+                      Deactivate
+                    </button>
+                    {% else %}
+                    <span class="status-pill muted">Inactive</span>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="empty-state">
+                    <p>No staff users created yet.</p>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -2553,6 +2579,78 @@ const addNewEventButton = document.getElementById("addNewEventButton");
         }
       });
     }
+
+    const staffUserForm = document.getElementById("staffUserForm");
+    const staffUserStatus = document.getElementById("staffUserStatus");
+
+    if (staffUserForm) {
+      staffUserForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const payload = {
+          name: document.getElementById("staffName")?.value.trim() || "",
+          username: document.getElementById("staffUsername")?.value.trim() || "",
+          password: document.getElementById("staffPassword")?.value.trim() || "",
+          role: document.getElementById("staffRole")?.value || "door"
+        };
+
+        if (staffUserStatus) {
+          staffUserStatus.textContent = "Adding staff user...";
+        }
+
+        try {
+          const response = await fetch("/api/staff-users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Could not add staff user.");
+          }
+
+          if (staffUserStatus) {
+            staffUserStatus.textContent = "Staff user added successfully.";
+          }
+
+          window.location.reload();
+        } catch (error) {
+          if (staffUserStatus) {
+            staffUserStatus.textContent = error.message || "Could not add staff user.";
+          }
+        }
+      });
+    }
+
+    document.querySelectorAll(".js-deactivate-staff").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const staffId = button.dataset.staffId;
+
+        if (!staffId) return;
+
+        if (!confirm("Deactivate this staff user? They will no longer be able to log in.")) {
+          return;
+        }
+
+        try {
+          const response = await fetch(`/api/staff-users/${staffId}/deactivate`, {
+            method: "POST"
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(result.error || "Could not deactivate staff user.");
+          }
+
+          window.location.reload();
+        } catch (error) {
+          alert(error.message || "Could not deactivate staff user.");
+        }
+      });
+    });
   });
 </script>
 
