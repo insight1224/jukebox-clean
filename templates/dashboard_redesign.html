@@ -42,12 +42,13 @@
           <div class="global-search">
             <span>Search</span>
             <input type="text" id="dashboardSearch" placeholder="Search events, guests, members, messages..." />
+            <button type="button" id="dashboardSearchApply" class="dashboard-search-btn">Apply Search</button>
+            <button type="button" id="dashboardSearchClear" class="dashboard-search-btn clear">Clear Filter</button>
           </div>
 
           <div class="topbar-button-row">
             <button class="btn secondary" type="button" id="syncSquareButton">Sync Square</button>
             <button class="btn secondary" type="button" id="syncEventbriteButton">Sync Eventbrite</button>
-            <button class="btn primary" type="button" id="createEventTopButton">Create Event</button>
           </div>
 
           <span id="syncSquareStatus" class="sync-square-status"></span>
@@ -135,8 +136,8 @@
                   <h4>{{ event.name }}</h4>
                   <p>{{ event.total_tickets_sold }} tickets sold</p>
                 </div>
-                <span class="badge {% if loop.first %}live{% endif %}">
-                  {% if loop.first %}Featured{% else %}Upcoming{% endif %}
+                <span class="badge {{ event.badge_class or 'warning' }}">
+                  {{ event.status_label or "Upcoming" }}
                 </span>
               </div>
 
@@ -1890,6 +1891,8 @@ const addNewEventButton = document.getElementById("addNewEventButton");
 
     const createEventTopButton = document.getElementById("createEventTopButton");
     const dashboardSearch = document.getElementById("dashboardSearch");
+    const dashboardSearchApply = document.getElementById("dashboardSearchApply");
+    const dashboardSearchClear = document.getElementById("dashboardSearchClear");
     const searchResultsModalOverlay = document.getElementById("searchResultsModalOverlay");
     const searchResultsClose = document.getElementById("searchResultsClose");
     const searchResultsTitle = document.getElementById("searchResultsTitle");
@@ -2023,6 +2026,23 @@ const addNewEventButton = document.getElementById("addNewEventButton");
           renderSearchResults(dashboardSearch.value);
           searchResultsModalOverlay.classList.add("active");
         }
+      });
+    }
+
+    if (dashboardSearchApply) {
+      dashboardSearchApply.addEventListener("click", () => {
+        renderSearchResults(dashboardSearch?.value || "");
+        searchResultsModalOverlay?.classList.add("active");
+      });
+    }
+
+    if (dashboardSearchClear) {
+      dashboardSearchClear.addEventListener("click", () => {
+        if (dashboardSearch) {
+          dashboardSearch.value = "";
+        }
+        renderSearchResults("");
+        searchResultsModalOverlay?.classList.remove("active");
       });
     }
 

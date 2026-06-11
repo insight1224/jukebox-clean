@@ -1,74 +1,126 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="membership-page-wrap">
-<link rel="stylesheet" href="{{ url_for('static', filename='base.css') }}">
+
 <link rel="stylesheet" href="{{ url_for('static', filename='membership.css') }}">
 
-<section class="membership-page">
-  <h1>🎧 Join The Jukebox Circle – $10/month</h1>
+<section class="membership-refresh-page">
 
-  <p class="tagline">Become part of the vibe before everyone else.</p>
-
-  <ul class="membership-perks">
-    <li>🎟️ Discounted or complimentary event entry</li>
-    <li>⏰ Early access to tickets & VIP sections</li>
-    <li>🔐 Access to members-only events & experiences</li>
-    <li>🎶 First look at DJs, themes, and upcoming drops</li>
-    <li>🎉 Birthday perks & special surprises</li>
-    <li>📲 Priority updates before the public</li>
-  </ul>
-
-  <p class="membership-note">
-    This is just the beginning. As The Jukebox Lounge grows, so will your perks—think complimentary drinks, VIP upgrades, and exclusive experiences.
-  </p>
-
-<form action="/join-membership" method="POST" class="membership-form">
-            <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
-                <label>Website</label>
-                <input type="text" name="website" tabindex="-1" autocomplete="off">
-            </div>
-            <input type="hidden" name="form_started_at" class="form-started-at" value="">
-
-
-  <input type="text" name="name" placeholder="Your Name" class="membership-input" required>
-
-<input type="email" name="email" placeholder="Your Email" class="membership-input" required>
-
-</form>
-  <a href="https://square.link/u/fgiSNspy" class="membership-btn" target="_blank" rel="noopener noreferrer">👉 Lock in now and grow with the vibe</a>
-<a href="https://square.link/u/L5FK7Cb0" target="_blank" rel="noopener noreferrer"
-   class="membership-donation-btn"
-   target="_blank"
-   rel="noopener noreferrer">
-   ❤️ Make a One-Time Donation
-</a>
-  <p style="margin-top: 10px; font-size: 0.9rem; color: #aaa;">
-  Secure checkout powered by Square
-</p>
-</section>
-
-
-<section class="member-spotlight-section">
-  <div class="member-spotlight-card">
-    <p class="section-kicker">Member Spotlight</p>
-    <h2>Jukebox Circle Member Spotlight</h2>
+  <section class="membership-hero-refresh">
+    <p class="membership-kicker">Jukebox Circle</p>
+    <h1>Become a Member</h1>
     <p>
-      Each month, The Jukebox Lounge NC will highlight a member, supporter, or Legacy Member
-      helping grow the community and keep the vibe alive.
-    </p>
-    <span>Spotlight Coming Soon</span>
-  </div>
-</section>
-<section class="section originals-section">
-  <div class="container">
-    <p class="section-kicker">Legacy Members</p>
-    <h2>The Jukebox Circle Originals</h2>
-    <p class="originals-intro">
-      Honoring the members whose support, contributions, and belief in the vision helped build the foundation of The Jukebox Lounge NC.
+      Join The Jukebox Circle and become part of the vibe before everyone else.
+      Members receive early access, exclusive updates, special perks, and a closer connection
+      to The Jukebox Lounge NC community.
     </p>
 
-    <div class="originals-grid">
+    <div class="membership-hero-actions">
+      <a href="https://square.link/u/fgiSNspy" class="membership-primary-btn" target="_blank" rel="noopener noreferrer">
+        Join for $10/month
+      </a>
+      <a href="/vip" class="membership-secondary-btn">
+        Join VIP List
+      </a>
+    </div>
+
+    <p class="membership-secure-note">Secure checkout powered by Square</p>
+  </section>
+
+  <section class="membership-benefits-section">
+    <div class="membership-section-heading">
+      <p class="membership-kicker">Member Perks</p>
+      <h2>Grow With the Vibe</h2>
+      <p>
+        This is just the beginning. As The Jukebox Lounge grows, so will the perks,
+        experiences, and exclusive opportunities for members.
+      </p>
+    </div>
+
+    <div class="membership-benefit-grid">
+      <article class="membership-benefit-card">
+        <span>01</span>
+        <h3>Event Perks</h3>
+        <p>Discounted or complimentary event entry for select Jukebox Lounge NC experiences.</p>
+      </article>
+
+      <article class="membership-benefit-card">
+        <span>02</span>
+        <h3>Early Access</h3>
+        <p>Get early access to tickets, VIP sections, limited drops, and special announcements.</p>
+      </article>
+
+      <article class="membership-benefit-card">
+        <span>03</span>
+        <h3>Members-Only Experiences</h3>
+        <p>Access to exclusive events, community moments, and members-only opportunities.</p>
+      </article>
+
+      <article class="membership-benefit-card">
+        <span>04</span>
+        <h3>First Look</h3>
+        <p>Be the first to hear about DJs, themes, upcoming events, and lounge updates.</p>
+      </article>
+
+      <article class="membership-benefit-card">
+        <span>05</span>
+        <h3>Birthday Perks</h3>
+        <p>Enjoy birthday surprises, special acknowledgements, and future member-only perks.</p>
+      </article>
+
+      <article class="membership-benefit-card">
+        <span>06</span>
+        <h3>Priority Updates</h3>
+        <p>Stay connected with priority updates before the public gets the news.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="membership-join-section">
+    <div class="membership-join-card">
+      <div>
+        <p class="membership-kicker">Membership</p>
+        <h2>Join The Jukebox Circle</h2>
+        <p>
+          Lock in your membership for $10/month and grow with The Jukebox Lounge NC
+          as the brand, events, community, and member perks continue to expand.
+        </p>
+      </div>
+
+      <div class="membership-price-card">
+        <span class="membership-price-label">Monthly Membership</span>
+        <h3>$10<span>/month</span></h3>
+        <p>Early access, exclusive updates, event perks, and more.</p>
+        <a href="https://square.link/u/fgiSNspy" target="_blank" rel="noopener noreferrer">
+          Lock In Now
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section class="member-spotlight-section-refresh">
+    <div class="member-spotlight-card-refresh">
+      <p class="membership-kicker">Member Spotlight</p>
+      <h2>Jukebox Circle Member Spotlight</h2>
+      <p>
+        Each month, The Jukebox Lounge NC will highlight a member, supporter, or Legacy Member
+        helping grow the community and keep the vibe alive.
+      </p>
+      <span>Spotlight Coming Soon</span>
+    </div>
+  </section>
+
+  <section class="originals-section-refresh">
+    <div class="membership-section-heading">
+      <p class="membership-kicker">Legacy Members</p>
+      <h2>The Jukebox Circle Originals</h2>
+      <p>
+        Honoring the members whose support, contributions, and belief in the vision helped build
+        the foundation of The Jukebox Lounge NC.
+      </p>
+    </div>
+
+    <div class="originals-grid-refresh">
       {% set originals = [
         "Shanay Conaway",
         "Jace Benefield",
@@ -81,16 +133,28 @@
       ] %}
 
       {% for name in originals %}
-      <div class="original-card">
-        <span class="original-number">{{ "%02d"|format(loop.index) }}</span>
+      <article class="original-card-refresh">
+        <span>{{ "%02d"|format(loop.index) }}</span>
         <div>
           <h3>{{ name }}</h3>
           <p>Jukebox Circle Original</p>
         </div>
-      </div>
+      </article>
       {% endfor %}
     </div>
-  </div>
+  </section>
+
+  <section class="membership-donation-refresh">
+    <p class="membership-kicker">Support the Mission</p>
+    <h2>Want to Give Back Too?</h2>
+    <p>
+      Support community-centered events, live entertainment, and the mission behind The Jukebox Lounge NC.
+    </p>
+    <a href="https://square.link/u/L5FK7Cb0" target="_blank" rel="noopener noreferrer">
+      Make a One-Time Donation
+    </a>
+  </section>
+
 </section>
-</div>
+
 {% endblock %}

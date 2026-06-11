@@ -6818,7 +6818,7 @@ def api_event_cash_revenue():
     if not event_name:
         return {"status": "error", "error": "Event is required."}, 400
 
-    if amount_cents <= 0:
+    if category.strip().lower() != "comp" and amount_cents <= 0:
         return {"status": "error", "error": "Amount must be greater than 0."}, 400
 
     conn = sqlite3.connect(DB_PATH)
@@ -6834,6 +6834,44 @@ def api_event_cash_revenue():
 
     conn.commit()
     cash_id = cur.lastrowid
+
+    # Auto-add comps to attendees/check-in list so free guests show up for door staff.
+    if category.strip().lower() == "comp":
+        comp_customer_name = "Comp Guest"
+        comp_ticket_type = "Comp"
+
+        # Pull Customer and Ticket Type from the notes string created by the dashboard.
+        for note_part in (notes or "").split("|"):
+            note_part = note_part.strip()
+            if ":" not in note_part:
+                continue
+
+            note_key, note_value = note_part.split(":", 1)
+            note_key = note_key.strip().lower()
+            note_value = note_value.strip()
+
+            if note_key == "customer" and note_value:
+                comp_customer_name = note_value
+            elif note_key == "ticket type" and note_value:
+                comp_ticket_type = note_value
+
+        comp_quantity = max(1, int(quantity or 1))
+
+        cur.execute(
+            """
+            INSERT INTO attendees (event_name, name, customer_name, ticket_type, quantity, checked_in_count, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                event_name,
+                comp_customer_name,
+                comp_customer_name,
+                comp_ticket_type,
+                comp_quantity,
+                0,
+                "Not Checked In",
+            ),
+        )
     conn.close()
 
     return {
@@ -7937,7 +7975,14 @@ def admin_dashboard_events():
             continue
 
         checked_in = int(row.get("checked_in") or 0) == 1 or str(row.get("status") or "").lower() in ("checked_in", "checked in", "used")
-        source = "Eventbrite" if payment_id.startswith("eventbrite:") else "Square"
+        ticket_id = (row.get("ticket_id") or "").strip()
+
+        if payment_id.startswith("COMP_") or ticket_id.startswith("COMP_"):
+            source = "Comp"
+        elif payment_id.startswith("eventbrite:"):
+            source = "Eventbrite"
+        else:
+            source = "Square"
         guests_per_ticket = ticket_rule_map.get(
             (
                 event_name.strip().lower(),
@@ -8075,6 +8120,40 @@ def admin_dashboard_events():
         event["guests"] = group_guest_rows(guests_by_event.get(event.get("name"), []))
         event["vip_guests"] = group_guest_rows(vip_by_event.get(event.get("name"), []))
         event["checkin_guests"] = group_guest_rows(checkin_by_event.get(event.get("name"), []))
+
+        comp_ticket_count = sum(
+            int(guest.get("quantity", 1) or 1)
+            for guest in event.get("guests", []) or []
+            if (guest.get("source") or "").strip().lower() == "comp"
+        )
+
+        event["comp_ticket_count"] = comp_ticket_count
+        event["guest_list_count"] = comp_ticket_count
+
+        if comp_ticket_count > 0:
+            existing_breakdown_names = {
+                (item.get("name") or "").strip().lower()
+                for item in event.get("ticket_breakdown", []) or []
+            }
+
+            if "comp tickets" not in existing_breakdown_names:
+                event.setdefault("ticket_breakdown", []).append({
+                    "name": "Comp Tickets",
+                    "quantity": comp_ticket_count,
+                    "revenue": 0.0,
+                })
+
+            existing_ticket_names = {
+                (item.get("name") or "").strip().lower()
+                for item in event.get("tickets", []) or []
+            }
+
+            if "comp tickets" not in existing_ticket_names:
+                event.setdefault("tickets", []).append({
+                    "name": "Comp Tickets",
+                    "quantity": comp_ticket_count,
+                    "revenue": 0.0,
+                })
 
         estimated_attendance = int(event.get("estimated_attendance") or event.get("total_tickets_sold") or 0)
         checked_in_count = int(checked_in_count_map.get(event.get("name"), 0) or 0)

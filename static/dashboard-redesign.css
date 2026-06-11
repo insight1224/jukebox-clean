@@ -4824,3 +4824,39 @@ button[data-action="delete"]:hover {
   width: 100%;
 }
 
+
+/* Dashboard search action buttons */
+.global-search {
+  gap: 10px;
+}
+
+.dashboard-search-btn {
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(212, 175, 55, 0.16);
+  color: #f7d978;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dashboard-search-btn.clear {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 248, 231, 0.78);
+  border-color: rgba(255, 248, 231, 0.18);
+}
+
+.dashboard-search-btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 760px) {
+  .global-search {
+    flex-wrap: wrap;
+  }
+
+  .global-search input {
+    width: 100%;
+  }
+}

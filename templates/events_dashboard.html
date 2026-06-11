@@ -101,13 +101,13 @@
 
           <div class="revenue-card">
             <p>Comps / Guest List</p>
-            <h4>0</h4>
+            <h4>{{ events|sum(attribute='comp_ticket_count') }}</h4>
             <span>Free entries, promo, staff, guest list</span>
           </div>
 
           <div class="revenue-card">
             <p>Total Expected Attendance</p>
-            <h4>{{ metrics.total_tickets_sold }}</h4>
+            <h4>{{ events|sum(attribute='estimated_attendance') }}</h4>
             <span>Paid tickets + comps</span>
           </div>
         </div>
@@ -323,6 +323,11 @@
                   <span>{{ ticket.name }}</span>
                   <strong>{{ ticket.quantity }} sold</strong>
                 </div>
+                {% else %}
+                <div class="breakdown-row">
+                  <span>No ticket breakdown yet</span>
+                  <strong>0 sold</strong>
+                </div>
                 {% endfor %}
               </div>
 
@@ -337,8 +342,8 @@
                   <strong>{{ event.status_label }}</strong>
                 </div>
                 <div class="breakdown-row">
-                  <span>Guest List</span>
-                  <strong>{{ event.total_tickets_sold }} guests</strong>
+                  <span>Comps / Guest List</span>
+                  <strong>{{ event.guest_list_count|default(event.comp_ticket_count)|default(0) }} guests</strong>
                 </div>
               </div>
             </div>

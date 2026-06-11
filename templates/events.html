@@ -4,104 +4,107 @@
 
 <link rel="stylesheet" href="{{ url_for('static', filename='events.css') }}">
 
-<!-- HEADER -->
-<section class="section">
-    <h2 class="section-title">Upcoming Events</h2>
-</section>
+<section class="events-page-refresh">
 
-<!-- EVENTS GRID -->
-<div class="premium-row">
+  <section class="events-hero-refresh">
+    <p class="events-kicker">Upcoming Events</p>
+    <h1>Catch the Next Vibe</h1>
+    <p>
+      From live DJs and themed nights to grown-folk experiences and community events,
+      The Jukebox Lounge NC is where good music, good people, and good energy come together.
+    </p>
+  </section>
 
-    {% for event in events %}
-    {% if event.name != "Battle of the DJs" %}
+  <section class="events-list-section">
+    <div class="events-section-heading">
+      <p class="events-kicker">Event Lineup</p>
+      <h2>Upcoming Experiences</h2>
+      <p>Choose your next night out and secure your spot early.</p>
+    </div>
 
-    <!-- CARD -->
-    <div class="premium-card">
-
-        <!-- CLICKABLE CARD -->
-        <a href="{{ url_for('event_detail', event_name=event.name) }}" class="card-link">
-
-            <!-- FLYER -->
+    <div class="events-refresh-grid">
+      {% for event in events %}
+      {% if event.name != "Battle of the DJs" %}
+      <article class="event-refresh-card">
+        <a href="{{ url_for('event_detail', event_name=event.name) }}" class="event-refresh-link">
+          <div class="event-refresh-image">
             {% if event.flyer.startswith('/static/') %}
             <img src="{{ event.flyer }}" alt="{{ event.name }}">
             {% else %}
             <img src="{{ url_for('static', filename=event.flyer) }}" alt="{{ event.name }}">
             {% endif %}
+          </div>
 
-            <!-- OVERLAY -->
-            <div class="premium-overlay">
-                <div class="premium-content">
+          <div class="event-refresh-content">
+            <span class="event-refresh-pill">Limited Availability</span>
 
-                    {% if event.flyer == "/static/images/flyer-juneteenth-finale.png" %}
-                    <h3>Juneteenth Celebration</h3>
-                    <div class="meta">Theme: Grown &amp; Sexy</div>
-                    {% else %}
-                    <h3>{{ event.name }}</h3>
-                    {% if event.name == "Juneteenth Celebration" %}
-                    <div class="meta">Theme: {{ event.ticket_label }}</div>
-                    {% endif %}
-                    {% endif %}
+            {% if event.flyer == "/static/images/flyer-juneteenth-finale.png" %}
+            <h3>Juneteenth Celebration</h3>
+            <p>Theme: Grown &amp; Sexy</p>
+            {% else %}
+            <h3>{{ event.name }}</h3>
+            {% if event.name == "Juneteenth Celebration" %}
+            <p>Theme: {{ event.ticket_label }}</p>
+            {% else %}
+            <p>Tap in for event details, ticket options, and the full vibe.</p>
+            {% endif %}
+            {% endif %}
 
-                    <!-- SAFE META (NO DB DEPENDENCY) -->
-                    <div class="meta">
-                        ⚡ Limited Availability
-                    </div>
-
-                    <!-- BUTTON STYLE -->
-                    <div class="premium-btn">
-                        View Event
-                    </div>
-
-                </div>
-            </div>
-
+            <span class="event-refresh-btn">View Event</span>
+          </div>
         </a>
-
+      </article>
+      {% endif %}
+      {% endfor %}
     </div>
+  </section>
 
-    {% endif %}
-    {% endfor %}
-
-</div>
-
-<!-- PAST EVENTS -->
-<section class="section" style="margin-top:24px;">
-    <h2 class="section-title">Past Events</h2>
-</section>
-
-<div class="premium-row">
-    {% for event in events %}
-    {% if event.name == "Battle of the DJs" %}
-    <div class="premium-card">
-        {% if event.flyer.startswith('/static/') %}
-        <img src="{{ event.flyer }}" alt="{{ event.name }}">
-        {% else %}
-        <img src="{{ url_for('static', filename=event.flyer) }}" alt="{{ event.name }}">
-        {% endif %}
-        <div class="premium-overlay">
-            <div class="premium-content">
-                <h3>{{ event.name }}</h3>
-                <div class="meta">✅ Event Complete</div>
-            </div>
-        </div>
+  <section class="event-interest-refresh">
+    <div>
+      <p class="events-kicker">Tell Us What You Want</p>
+      <h2>What Event Should We Do Next?</h2>
+      <p>
+        Have an idea for a theme night, live performance, DJ set, or community experience?
+        Send it our way.
+      </p>
     </div>
-    {% endif %}
-    {% endfor %}
-</div>
-
-<!-- EVENT REQUEST -->
-<div class="interest-box">
-
-    <h2>What Event Do You Want Next?</h2>
 
     <form method="POST" action="/event-interest">
-
-        <textarea name="event_name" placeholder="Type the event you want to see..." required></textarea>
-
-        <button type="submit">Submit</button>
-
+      <textarea name="event_name" placeholder="Type the event you want to see..." required></textarea>
+      <button type="submit">Submit Event Idea</button>
     </form>
+  </section>
 
-</div>
+  <section class="events-list-section past-events-refresh">
+    <div class="events-section-heading">
+      <p class="events-kicker">Past Events</p>
+      <h2>Previous Vibes</h2>
+      <p>A look back at completed Jukebox Lounge NC experiences.</p>
+    </div>
+
+    <div class="events-refresh-grid">
+      {% for event in events %}
+      {% if event.name == "Battle of the DJs" %}
+      <article class="event-refresh-card past">
+        <div class="event-refresh-image">
+          {% if event.flyer.startswith('/static/') %}
+          <img src="{{ event.flyer }}" alt="{{ event.name }}">
+          {% else %}
+          <img src="{{ url_for('static', filename=event.flyer) }}" alt="{{ event.name }}">
+          {% endif %}
+        </div>
+
+        <div class="event-refresh-content">
+          <span class="event-refresh-pill">Event Complete</span>
+          <h3>{{ event.name }}</h3>
+          <p>Thank you to everyone who came out and supported the vibe.</p>
+        </div>
+      </article>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </section>
+
+</section>
 
 {% endblock %}

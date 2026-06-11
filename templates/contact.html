@@ -1,120 +1,319 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
 {% block content %}
 
-<link rel="stylesheet" href="{{ url_for('static', filename='contact.css') }}">
+<section class="contact-refresh-page">
 
-<section class="section">
-
-    <h2 class="section-title">Connect With Us</h2>
-
-    <p class="contact-subtext">
-        Join our contact lists for DJ/Band opportunities, vendor opportunities, VIP updates, and general announcements from The Jukebox Lounge team.
+  <section class="contact-hero-refresh">
+    <p class="contact-kicker">Connect With Us</p>
+    <h1>Let’s Stay Connected</h1>
+    <p>
+      Whether you’re a DJ, band, vendor, community supporter, or guest with a general question,
+      The Jukebox Lounge NC team would love to hear from you.
     </p>
+  </section>
 
-</section>
-
-<!-- GRID WRAPPER -->
-<div class="contact-grid">
-
-    <!-- DJ APPLICATION -->
-    <div class="contact-box">
-
-        <h3>DJ &amp; Band Contacts</h3>
-
-        <p class="small-text">
-            Join our DJ/Band contact list to share your sound and stay in the loop for upcoming booking opportunities at The Jukebox Lounge.
-        </p>
-
-        <a href="/dj-signup" class="btn primary-cta">
-            Join Contact List
-        </a>
-
-
+  <section class="contact-options-section">
+    <div class="contact-section-heading">
+      <p class="contact-kicker">Opportunities</p>
+      <h2>Choose the Right Contact</h2>
+      <p>
+        Select the best option below so your message gets to the right place.
+      </p>
     </div>
 
-    <!-- VENDOR APPLICATION -->
-    <div class="contact-box">
+    <div class="contact-refresh-grid">
 
+      <article class="contact-refresh-card">
+        <span class="contact-card-number">01</span>
+        <h3>DJ & Band Contacts</h3>
+        <p>
+          Share your sound and stay in the loop for future booking opportunities,
+          entertainment nights, and Jukebox Lounge NC events.
+        </p>
+        <a href="/dj-signup">Join Contact List</a>
+      </article>
+
+      <article class="contact-refresh-card">
+        <span class="contact-card-number">02</span>
         <h3>Vendor Contacts</h3>
+        <p>
+          Tell us about your brand and get considered for future vendor opportunities,
+          pop-ups, and community-centered lounge events.
+        </p>
+        <a href="/vendor-signup">Join Contact List</a>
+      </article>
 
-        <p class="small-text">
-            Join our vendor contact list to tell us about your brand and get considered for future Jukebox Lounge event opportunities.
+      <article class="contact-refresh-card general-contact-card">
+        <span class="contact-card-number">03</span>
+        <h3>General Inquiry</h3>
+        <p>
+          Have a question, private event inquiry, partnership question, or general message?
+          Send it here and our team will follow up.
         </p>
 
-        <a href="/vendor-signup" class="btn primary-cta">
-            Join Contact List
-        </a>
+        <form class="contact-refresh-form" method="POST" action="/contact">
+          <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+            <label>Website</label>
+            <input type="text" name="website" tabindex="-1" autocomplete="off">
+          </div>
+          <input type="hidden" name="form_started_at" class="form-started-at" value="">
 
+          <input type="text" name="name" placeholder="Your Name" required>
+          <input type="email" name="email" placeholder="Your Email" required>
+          <textarea name="message" placeholder="Your Message" required></textarea>
+
+          <button type="submit">Send Message</button>
+        </form>
+      </article>
 
     </div>
+  </section>
 
-    <!-- VIP / CONTACT FORM (CENTER BOX) -->
-    <div class="contact-box vip-box">
-
-    <h3>VIP Email List</h3>
-
-    <form class="contact-form" action="/vip" method="POST">
-            <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
-                <label>Website</label>
-                <input type="text" name="website" tabindex="-1" autocomplete="off">
-            </div>
-            <input type="hidden" name="form_started_at" class="form-started-at" value="">
-
-
-        <input type="text" name="name" placeholder="Full Name" required>
-        <input type="email" name="email" placeholder="Email Address" required>
-        <input type="text" name="phone" placeholder="Phone (optional)">
-
-        <button type="submit">Join VIP List</button>
-
-    </form>
-
-</div>
-    <!-- GENERAL INQUIRY -->
-    <div class="contact-box">
-
-    <h3>General Inquiry</h3>
-
-    <form class="contact-form" method="POST" action="/contact">
-            <div style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
-                <label>Website</label>
-                <input type="text" name="website" tabindex="-1" autocomplete="off">
-            </div>
-            <input type="hidden" name="form_started_at" class="form-started-at" value="">
-
-
-        <input type="text" name="name" placeholder="Your Name" required>
-        <input type="email" name="email" placeholder="Your Email" required>
-        <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
-
-        <button type="submit">Send Message</button>
-
-    </form>
-
-</div>
-
-</div>
-
-<!-- SOCIAL -->
-<div class="social-section">
-    <h3>Follow The Movement</h3>
-
-    <div class="social-links">
-        <a href="https://www.instagram.com/thejukeboxloungenc?igsh=MWZueTV5MTFjZmExbg==" target="_blank" rel="noopener noreferrer">
-            <i class="fab fa-instagram"></i>
-        </a>
-
-        <a href="https://www.tiktok.com/@the.jukebox.loung?_r=1&_t=ZP-95PXl9VsEAR" target="_blank" rel="noopener noreferrer">
-            <i class="fab fa-tiktok"></i>
-        </a>
-
-        <a href="https://www.facebook.com/share/1CVMHqvCVS/?mibextid=wwXIfr" target="_blank" rel="noopener noreferrer">
-            <i class="fab fa-facebook-f"></i>
-        </a>
+  <section class="contact-extra-section">
+    <div>
+      <p class="contact-kicker">Looking for VIP Updates?</p>
+      <h2>Join the VIP List</h2>
+      <p>
+        Want event updates, ticket drops, special offers, and exclusive lounge announcements?
+        Join the dedicated VIP list.
+      </p>
     </div>
-</div>
+    <a href="/vip">Join VIP List</a>
+  </section>
 
 </section>
+
+<style>
+.contact-refresh-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.12), transparent 34%),
+    linear-gradient(135deg, #080706 0%, #171208 55%, #080706 100%);
+  color: #fff8e7;
+}
+
+.contact-hero-refresh {
+  padding: 110px 20px 78px;
+  text-align: center;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.contact-kicker {
+  margin: 0 0 18px;
+  color: #fff3c4;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-size: 0.84rem;
+}
+
+.contact-hero-refresh h1,
+.contact-section-heading h2,
+.contact-extra-section h2 {
+  margin: 0;
+  color: #f7d978;
+  font-size: clamp(2.7rem, 6vw, 5.4rem);
+  line-height: 0.95;
+  letter-spacing: -0.05em;
+}
+
+.contact-hero-refresh p {
+  max-width: 850px;
+  margin: 24px auto 0;
+  color: rgba(255, 248, 231, 0.82);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.contact-options-section {
+  width: min(1210px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 76px 0;
+}
+
+.contact-section-heading {
+  text-align: center;
+  margin-bottom: 34px;
+}
+
+.contact-section-heading h2,
+.contact-extra-section h2 {
+  font-size: clamp(2.2rem, 4.6vw, 4rem);
+}
+
+.contact-section-heading p {
+  margin: 18px auto 0;
+  max-width: 680px;
+  color: rgba(255, 248, 231, 0.74);
+  line-height: 1.65;
+}
+
+.contact-refresh-grid {
+  display: grid;
+  grid-template-columns: 0.9fr 0.9fr 1.2fr;
+  gap: 24px;
+  align-items: stretch;
+}
+
+.contact-refresh-card,
+.contact-extra-section {
+  border-radius: 28px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.14), transparent 38%),
+    rgba(17, 13, 8, 0.92);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+}
+
+.contact-refresh-card {
+  padding: 30px;
+  min-height: 360px;
+  display: flex;
+  flex-direction: column;
+}
+
+.contact-card-number {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 50px;
+  margin-bottom: 34px;
+  border-radius: 999px;
+  background: #d4af37;
+  color: #100c06;
+  font-weight: 900;
+}
+
+.contact-refresh-card h3 {
+  margin: 0;
+  color: #f7d978;
+  font-size: 1.45rem;
+}
+
+.contact-refresh-card p {
+  margin: 14px 0 0;
+  color: rgba(255, 248, 231, 0.78);
+  line-height: 1.6;
+}
+
+.contact-refresh-card a,
+.contact-refresh-form button,
+.contact-extra-section a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin-top: auto;
+  padding: 14px 22px;
+  border-radius: 999px;
+  border: 0;
+  background: #d4af37;
+  color: #100c06;
+  text-decoration: none;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  box-shadow: 0 14px 32px rgba(212, 175, 55, 0.25);
+  cursor: pointer;
+}
+
+.general-contact-card {
+  min-height: auto;
+}
+
+.contact-refresh-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 24px;
+}
+
+.contact-refresh-form input,
+.contact-refresh-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.26);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff8e7;
+  padding: 14px 16px;
+  font: inherit;
+  outline: none;
+}
+
+.contact-refresh-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.contact-refresh-form input::placeholder,
+.contact-refresh-form textarea::placeholder {
+  color: rgba(255, 248, 231, 0.42);
+}
+
+.contact-refresh-form button {
+  width: 100%;
+  margin-top: 4px;
+}
+
+.contact-extra-section {
+  width: min(980px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 42px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 28px;
+  align-items: center;
+}
+
+.contact-extra-section p:not(.contact-kicker) {
+  margin: 18px 0 0;
+  color: rgba(255, 248, 231, 0.76);
+  line-height: 1.7;
+}
+
+.contact-extra-section a {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 1020px) {
+  .contact-refresh-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-refresh-card {
+    min-height: auto;
+  }
+
+  .contact-refresh-card a {
+    margin-top: 24px;
+  }
+
+  .contact-extra-section {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+
+  .contact-extra-section a {
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .contact-hero-refresh {
+    padding: 76px 16px 52px;
+  }
+
+  .contact-options-section,
+  .contact-extra-section {
+    width: min(100% - 28px, 1210px);
+  }
+
+  .contact-refresh-card,
+  .contact-extra-section {
+    padding: 26px;
+  }
+}
+</style>
 
 {% endblock %}
