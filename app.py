@@ -8183,38 +8183,44 @@ def admin_dashboard_events():
                     "revenue": 0.0,
                 })
 
-        ticket_summary = {}
+        existing_ticket_items = event.get("tickets", []) or []
+        has_ticket_breakdown = any(
+            int(ticket.get("quantity", 0) or 0) > 0
+            for ticket in existing_ticket_items
+        )
 
-        for ticket in event.get("tickets", []) or []:
-            ticket_name = (ticket.get("name") or "Ticket").strip()
-            ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(ticket.get("quantity", 0) or 0)
+        # Only rebuild ticket breakdown from guest rows when the event does not already
+        # have a synced ticket breakdown. This fixes setup-only completed events like
+        # Battle of the DJs without doubling normal upcoming events.
+        if not has_ticket_breakdown:
+            ticket_summary = {}
 
-        for guest in event.get("guests", []) or []:
-            ticket_name = (guest.get("ticket_type") or "Ticket").strip()
-            ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(guest.get("quantity", 1) or 1)
+            for guest in event.get("guests", []) or []:
+                ticket_name = (guest.get("ticket_type") or "Ticket").strip()
+                ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(guest.get("quantity", 1) or 1)
 
-        for ticket_name, ticket_quantity in cash_ticket_breakdown_by_event.get(event.get("name"), {}).items():
-            ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(ticket_quantity or 0)
+            for ticket_name, ticket_quantity in cash_ticket_breakdown_by_event.get(event.get("name"), {}).items():
+                ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(ticket_quantity or 0)
 
-        if ticket_summary:
-            event["tickets"] = [
-                {"name": ticket_name, "quantity": ticket_quantity, "revenue": 0.0}
-                for ticket_name, ticket_quantity in sorted(ticket_summary.items())
-                if int(ticket_quantity or 0) > 0
-            ]
+            if ticket_summary:
+                event["tickets"] = [
+                    {"name": ticket_name, "quantity": ticket_quantity, "revenue": 0.0}
+                    for ticket_name, ticket_quantity in sorted(ticket_summary.items())
+                    if int(ticket_quantity or 0) > 0
+                ]
 
         calculated_ticket_count = sum(
             int(ticket.get("quantity", 0) or 0)
             for ticket in event.get("tickets", []) or []
         )
 
-        display_ticket_count = int(
-            calculated_ticket_count
-            or event.get("total_tickets_sold")
+        stored_ticket_count = int(
+            event.get("total_tickets_sold")
             or event.get("total_tickets")
-            or event.get("estimated_attendance")
             or 0
         )
+
+        display_ticket_count = max(stored_ticket_count, calculated_ticket_count)
 
         estimated_attendance = int(
             event.get("estimated_attendance")
