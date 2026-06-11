@@ -7925,14 +7925,42 @@ def admin_dashboard_events():
 
     cash_totals_by_event = {}
     cash_quantity_by_event = {}
+    cash_ticket_breakdown_by_event = {}
 
     for cash_row in cash_rows:
         cash_event_name = cash_row.get("event_name") or "Unknown"
         cash_amount = float(cash_row.get("amount_cents", 0) or 0) / 100.0
         cash_quantity = int(cash_row.get("quantity", 0) or 0)
+        cash_category = (cash_row.get("category") or "").strip().lower()
+        cash_notes = cash_row.get("notes") or ""
 
         cash_totals_by_event[cash_event_name] = cash_totals_by_event.get(cash_event_name, 0.0) + cash_amount
-        cash_quantity_by_event[cash_event_name] = cash_quantity_by_event.get(cash_event_name, 0) + cash_quantity
+
+        counts_as_ticket = (
+            cash_quantity > 0
+            and cash_category != "comp"
+            and "vendor" not in cash_category
+            and "sponsor" not in cash_category
+        )
+
+        if counts_as_ticket:
+            cash_quantity_by_event[cash_event_name] = cash_quantity_by_event.get(cash_event_name, 0) + cash_quantity
+
+            cash_ticket_type = "Cash / Door Tickets"
+            for note_part in cash_notes.split("|"):
+                note_part = note_part.strip()
+                if ":" not in note_part:
+                    continue
+
+                note_key, note_value = note_part.split(":", 1)
+                if note_key.strip().lower() == "ticket type" and note_value.strip():
+                    cash_ticket_type = note_value.strip()
+
+            cash_ticket_breakdown_by_event.setdefault(cash_event_name, {})
+            cash_ticket_breakdown_by_event[cash_event_name][cash_ticket_type] = (
+                cash_ticket_breakdown_by_event[cash_event_name].get(cash_ticket_type, 0)
+                + cash_quantity
+            )
 
     for event in events:
         event_name = event.get("name") or ""
@@ -8155,9 +8183,51 @@ def admin_dashboard_events():
                     "revenue": 0.0,
                 })
 
-        estimated_attendance = int(event.get("estimated_attendance") or event.get("total_tickets_sold") or 0)
+        ticket_summary = {}
+
+        for ticket in event.get("tickets", []) or []:
+            ticket_name = (ticket.get("name") or "Ticket").strip()
+            ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(ticket.get("quantity", 0) or 0)
+
+        for guest in event.get("guests", []) or []:
+            ticket_name = (guest.get("ticket_type") or "Ticket").strip()
+            ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(guest.get("quantity", 1) or 1)
+
+        for ticket_name, ticket_quantity in cash_ticket_breakdown_by_event.get(event.get("name"), {}).items():
+            ticket_summary[ticket_name] = ticket_summary.get(ticket_name, 0) + int(ticket_quantity or 0)
+
+        if ticket_summary:
+            event["tickets"] = [
+                {"name": ticket_name, "quantity": ticket_quantity, "revenue": 0.0}
+                for ticket_name, ticket_quantity in sorted(ticket_summary.items())
+                if int(ticket_quantity or 0) > 0
+            ]
+
+        calculated_ticket_count = sum(
+            int(ticket.get("quantity", 0) or 0)
+            for ticket in event.get("tickets", []) or []
+        )
+
+        display_ticket_count = int(
+            calculated_ticket_count
+            or event.get("total_tickets_sold")
+            or event.get("total_tickets")
+            or event.get("estimated_attendance")
+            or 0
+        )
+
+        estimated_attendance = int(
+            event.get("estimated_attendance")
+            or display_ticket_count
+            or 0
+        )
+
+        if display_ticket_count > estimated_attendance:
+            estimated_attendance = display_ticket_count
+
         checked_in_count = int(checked_in_count_map.get(event.get("name"), 0) or 0)
 
+        event["total_tickets_sold"] = display_ticket_count
         event["estimated_attendance"] = estimated_attendance
         event["checked_in_count"] = checked_in_count
         event["not_checked_in_count"] = max(estimated_attendance - checked_in_count, 0)
