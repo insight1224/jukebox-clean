@@ -7579,6 +7579,38 @@ def admin_dashboard_revenue():
     """)
     cash_rows = [dict(row) for row in cursor.fetchall()]
 
+    cursor.execute("""
+        SELECT COALESCE(event_name, 'Unknown') AS event_name,
+               COALESCE(ticket_type, 'Ticket') AS ticket_type,
+               COUNT(*) AS quantity,
+               COALESCE(SUM(amount_cents), 0) AS amount_cents
+        FROM event_tickets
+        GROUP BY COALESCE(event_name, 'Unknown'), COALESCE(ticket_type, 'Ticket')
+    """)
+    ticket_revenue_rows = [dict(row) for row in cursor.fetchall()]
+
+    ticket_revenue_by_event = {}
+    ticket_breakdown_by_event = {}
+
+    for ticket_row in ticket_revenue_rows:
+        ticket_event_name = ticket_row.get("event_name") or "Unknown"
+        ticket_type = ticket_row.get("ticket_type") or "Ticket"
+        ticket_quantity = int(ticket_row.get("quantity") or 0)
+        ticket_revenue = int(ticket_row.get("amount_cents") or 0) / 100.0
+
+        ticket_revenue_by_event[ticket_event_name] = (
+            ticket_revenue_by_event.get(ticket_event_name, 0.0) + ticket_revenue
+        )
+
+        ticket_breakdown_by_event.setdefault(ticket_event_name, [])
+        ticket_breakdown_by_event[ticket_event_name].append({
+            "name": ticket_type,
+            "quantity": ticket_quantity,
+            "estimated_attendance": ticket_quantity,
+            "price": 0,
+            "revenue": ticket_revenue,
+        })
+
     expenses_by_event = {}
     cash_by_event = {}
     total_expenses = 0.0
@@ -7651,6 +7683,42 @@ def admin_dashboard_revenue():
         event_cash_rows = cash_by_event.get(event_name, [])
         event_expense_total = sum(float(item.get("amount", 0) or 0) for item in event_expenses)
 
+        online_ticket_revenue = float(ticket_revenue_by_event.get(event_name, 0.0) or 0.0)
+
+        # Rebuild ticket revenue/breakdown from event_tickets for setup-only completed events.
+        if ticket_breakdown_by_event.get(event_name):
+            event["tickets"] = ticket_breakdown_by_event.get(event_name, [])
+
+        if online_ticket_revenue > float(event.get("total_revenue", 0) or 0):
+            event["total_revenue"] = online_ticket_revenue
+            event["ticket_revenue"] = online_ticket_revenue
+
+        # Add online ticket revenue rows into the Revenue Breakdown box.
+        if ticket_breakdown_by_event.get(event_name):
+            event.setdefault("revenue_sources", [])
+            existing_revenue_source_names = {
+                (source.get("name") or "").strip().lower()
+                for source in event.get("revenue_sources", []) or []
+            }
+
+            for ticket_item in ticket_breakdown_by_event.get(event_name, []):
+                source_name = (ticket_item.get("name") or "Ticket").strip()
+                source_revenue = float(ticket_item.get("revenue", 0) or 0)
+                source_quantity = int(ticket_item.get("quantity", 0) or 0)
+
+                if source_revenue <= 0 and source_quantity <= 0:
+                    continue
+
+                if source_name.lower() in existing_revenue_source_names:
+                    continue
+
+                event["revenue_sources"].append({
+                    "name": source_name,
+                    "quantity": source_quantity,
+                    "revenue": source_revenue,
+                })
+                existing_revenue_source_names.add(source_name.lower())
+
         ticket_cash_rows = []
         other_cash_rows = []
 
@@ -7722,6 +7790,11 @@ def admin_dashboard_revenue():
         event["expense_total"] = event_expense_total
         event["total_revenue_with_cash"] = float(event.get("total_revenue", 0) or 0) + event_cash_total
         event["net_profit"] = event["total_revenue_with_cash"] - event_expense_total
+
+        event["total_tickets"] = sum(
+            int(ticket.get("quantity", 0) or 0)
+            for ticket in event.get("tickets", []) or []
+        )
 
         # Top-right box: ticket revenue only
         if ticket_cash_total > 0:
