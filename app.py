@@ -8,6 +8,7 @@ import os
 import time
 import secrets
 import sqlite3
+from datetime import datetime, date
 import smtplib
 import traceback
 import urllib.parse
@@ -51,6 +52,53 @@ except Exception:
                     os.environ[key] = value
 
 DB_PATH = os.getenv("DATABASE_PATH", "database.db").strip() or "database.db"
+
+def parse_event_date_value(value):
+    raw = (value or "").strip()
+    if not raw:
+        return None
+
+    formats = [
+        "%Y-%m-%d",
+        "%m/%d/%Y",
+        "%B %d, %Y",
+        "%A, %B %d, %Y",
+        "%b %d, %Y",
+        "%A, %b %d, %Y",
+    ]
+
+    for fmt in formats:
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+
+    return None
+
+
+def automatic_event_status(event_date_value, fallback_status="Upcoming"):
+    event_day = parse_event_date_value(event_date_value)
+    if not event_day:
+        return (fallback_status or "Upcoming").strip() or "Upcoming"
+
+    today = date.today()
+
+    if event_day > today:
+        return "Upcoming"
+    if event_day == today:
+        return "Live"
+    return "Past"
+
+
+def event_badge_class(status_label):
+    status = (status_label or "").strip().lower()
+
+    if status == "past" or status == "completed":
+        return "success"
+    if status in ("live", "active"):
+        return "live"
+    return "warning"
+
 
 
 def seed_vip_signups_from_csv(cursor):
@@ -2881,6 +2929,7 @@ def get_live_dashboard_data():
 
         setup_status = (setup_event.get("status") or "Upcoming").strip()
         setup_date = (setup_event.get("event_date") or "").strip()
+        automatic_status = automatic_event_status(setup_date, setup_status)
 
         event_record = events_map.setdefault(setup_name, {
             "name": setup_name,
@@ -2891,16 +2940,15 @@ def get_live_dashboard_data():
         })
 
         event_record["date"] = setup_date or event_record.get("date") or "Upcoming"
-        event_record["status_label"] = setup_status or event_record.get("status_label") or "Upcoming"
+        event_record["status_label"] = automatic_status
+        event_record["badge_class"] = event_badge_class(automatic_status)
+        event_record["is_past"] = automatic_status.lower() == "past"
 
-        if setup_status.lower() == "completed":
-            event_record["badge_class"] = "success"
-        elif setup_status.lower() in ("live", "active"):
-            event_record["badge_class"] = "live"
-        else:
-            event_record["badge_class"] = "warning"
-
-    events = list(events_map.values())
+    events = [
+        event
+        for event in events_map.values()
+        if not event.get("is_past")
+    ]
 
     conn.close()
 
@@ -8715,6 +8763,21 @@ def client_dashboard_contacts_preview():
 # -------------------------
 # RUN
 # -------------------------
+
+@app.route("/thank-you")
+@app.route("/thank-you/")
+def thank_you_page():
+    return render_thank_you_safe(
+        "Thank You for Your Purchase!",
+        "Your ticket purchase is complete. We appreciate your support and can’t wait to see you at The Jukebox Lounge NC."
+    )
+
+
+@app.route("/vip")
+@app.route("/vip/")
+def vip_page():
+    return render_template("vip.html")
+
 if __name__ == "__main__":
     app.run(debug=True, port=5050, use_reloader=False)
 

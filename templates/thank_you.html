@@ -1,38 +1,336 @@
-{% extends 'base.html' %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-{% block content %}
+  <title>Thank You for Your Purchase | The Jukebox Lounge NC</title>
 
-<div style="text-align:center; padding:120px 20px;">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
-    <h1 style="
-        color:#D4AF37;
-        font-size:40px;
-        margin-bottom:15px;
-        letter-spacing:2px;
-    ">
-        {{ title }}
-    </h1>
+  <style>
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top, rgba(212, 175, 55, 0.16), transparent 34%),
+        linear-gradient(135deg, #080706 0%, #14100b 55%, #080706 100%);
+      color: #fff8e7;
+      font-family: inherit;
+    }
 
-    <p style="
-        color:#ccc;
-        font-size:18px;
-        max-width:600px;
-        margin:0 auto 30px;
-        line-height:1.6;
-    ">
-        {{ message }}
-    </p>
+    .thank-you-page {
+      min-height: 100vh;
+      padding: 80px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
 
-    <a href="/" style="
-        display:inline-block;
-        padding:12px 25px;
-        background:#D4AF37;
-        color:#000;
-        text-decoration:none;
-        border-radius:8px;
-        font-weight:bold;
-        letter-spacing:1px;
-    ">
-        Return Home
+    .thank-you-wrap {
+      width: min(1120px, 100%);
+    }
 
-{% endblock %}
+    .thank-you-hero {
+      text-align: center;
+      margin-bottom: 42px;
+    }
+
+    .thank-you-kicker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 16px;
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      border-radius: 999px;
+      color: #d4af37;
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    .thank-you-hero h1 {
+      margin: 0;
+      font-size: clamp(2.5rem, 6vw, 5rem);
+      line-height: 0.95;
+      color: #f7d978;
+      text-transform: uppercase;
+      letter-spacing: -0.04em;
+    }
+
+    .thank-you-hero p {
+      max-width: 720px;
+      margin: 22px auto 0;
+      color: rgba(255, 248, 231, 0.82);
+      font-size: 1.08rem;
+      line-height: 1.7;
+    }
+
+    .thank-you-feature {
+      margin: 0 auto 28px;
+      max-width: 780px;
+      padding: 26px;
+      border-radius: 24px;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      background:
+        linear-gradient(135deg, rgba(212, 175, 55, 0.18), rgba(255, 255, 255, 0.04)),
+        rgba(17, 13, 8, 0.92);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
+      text-align: center;
+    }
+
+    .thank-you-feature h2 {
+      margin: 0 0 10px;
+      color: #fff3c4;
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+    }
+
+    .thank-you-feature p {
+      margin: 0 auto 22px;
+      max-width: 600px;
+      color: rgba(255, 248, 231, 0.78);
+      line-height: 1.65;
+    }
+
+    .next-step-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 26px;
+    }
+
+    .next-step-card {
+      position: relative;
+      overflow: hidden;
+      padding: 24px;
+      border-radius: 22px;
+      background: rgba(17, 13, 8, 0.88);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      box-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+      min-height: 230px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .next-step-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(212, 175, 55, 0.18), transparent 36%);
+      pointer-events: none;
+    }
+
+    .next-step-card-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .next-step-icon {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: rgba(212, 175, 55, 0.12);
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      color: #f7d978;
+      font-size: 1.35rem;
+      margin-bottom: 18px;
+    }
+
+    .next-step-card h3 {
+      margin: 0 0 10px;
+      color: #fff3c4;
+      font-size: 1.2rem;
+    }
+
+    .next-step-card p {
+      margin: 0;
+      color: rgba(255, 248, 231, 0.74);
+      line-height: 1.6;
+      font-size: 0.96rem;
+    }
+
+    .coming-soon-pill {
+      display: inline-flex;
+      width: fit-content;
+      margin-bottom: 12px;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: rgba(212, 175, 55, 0.12);
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      color: #f7d978;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .thank-you-btn {
+      position: relative;
+      z-index: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: fit-content;
+      margin-top: 22px;
+      padding: 12px 18px;
+      border-radius: 999px;
+      background: #d4af37;
+      color: #100c06;
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 0.92rem;
+      border: 0;
+      box-shadow: 0 12px 28px rgba(212, 175, 55, 0.24);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .thank-you-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 36px rgba(212, 175, 55, 0.32);
+    }
+
+    .thank-you-btn.secondary {
+      background: transparent;
+      color: #f7d978;
+      border: 1px solid rgba(212, 175, 55, 0.55);
+      box-shadow: none;
+    }
+
+    .thank-you-btn.disabled {
+      cursor: not-allowed;
+      opacity: 0.72;
+      background: rgba(255, 248, 231, 0.1);
+      color: rgba(255, 248, 231, 0.72);
+      border: 1px solid rgba(255, 248, 231, 0.18);
+      box-shadow: none;
+      pointer-events: none;
+    }
+
+    .thank-you-footer-action {
+      text-align: center;
+      margin-top: 34px;
+    }
+
+    @media (max-width: 900px) {
+      .next-step-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 640px) {
+      .thank-you-page {
+        padding: 54px 16px;
+      }
+
+      .next-step-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .next-step-card {
+        min-height: auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="thank-you-page">
+    <section class="thank-you-wrap">
+
+      <div class="thank-you-hero">
+        <div class="thank-you-kicker">Purchase Confirmed</div>
+        <h1>Thank You</h1>
+        <p>
+          Your ticket purchase is complete. We appreciate your support and can’t wait to see you at
+          The Jukebox Lounge NC. While you’re here, explore more ways to stay connected with us.
+        </p>
+      </div>
+
+      <div class="thank-you-feature">
+        <h2>Keep the vibe going</h2>
+        <p>
+          Check out upcoming events, join the VIP list, become a member, support the lounge,
+          or connect with us about opportunities to get involved.
+        </p>
+        <a class="thank-you-btn" href="/events">Explore Upcoming Events</a>
+      </div>
+
+      <div class="next-step-grid">
+
+        <article class="next-step-card">
+          <div class="next-step-card-content">
+            <div class="next-step-icon">✨</div>
+            <h3>Join the VIP List</h3>
+            <p>
+              Get first access to event updates, special offers, lounge news, and exclusive invites.
+            </p>
+          </div>
+          <a class="thank-you-btn" href="/vip">Join VIP List</a>
+        </article>
+
+        <article class="next-step-card">
+          <div class="next-step-card-content">
+            <div class="next-step-icon">👑</div>
+            <h3>Become a Member</h3>
+            <p>
+              Enjoy member perks, exclusive access, and a closer connection to the Jukebox community.
+            </p>
+          </div>
+          <a class="thank-you-btn" href="/membership">Become a Member</a>
+        </article>
+
+        <article class="next-step-card">
+          <div class="next-step-card-content">
+            <div class="next-step-icon">🤝</div>
+            <h3>Support the Lounge</h3>
+            <p>
+              Help us continue creating memorable events, live entertainment, and community-centered experiences.
+            </p>
+          </div>
+          <a class="thank-you-btn" href="/donate">Make a Donation</a>
+        </article>
+
+        <article class="next-step-card">
+          <div class="next-step-card-content">
+            <div class="next-step-icon">🛍️</div>
+            <span class="coming-soon-pill">Coming Soon</span>
+            <h3>Jukebox Merch</h3>
+            <p>
+              Rep The Jukebox Lounge NC with exclusive apparel and lounge-inspired merch coming soon.
+            </p>
+          </div>
+          <span class="thank-you-btn disabled">Coming Soon</span>
+        </article>
+
+        <article class="next-step-card">
+          <div class="next-step-card-content">
+            <div class="next-step-icon">💼</div>
+            <h3>Become a Partner</h3>
+            <p>
+              Interested in vending, DJing, performing, sponsoring, or collaborating with us? Send us your information and our team will follow up.
+            </p>
+          </div>
+          <a class="thank-you-btn" href="/sponsors">Learn More</a>
+        </article>
+
+        <article class="next-step-card">
+          <div class="next-step-card-content">
+            <div class="next-step-icon">🏠</div>
+            <h3>Back to Homepage</h3>
+            <p>
+              Return to the main site and keep exploring everything The Jukebox Lounge NC has to offer.
+            </p>
+          </div>
+          <a class="thank-you-btn secondary" href="/">Go Home</a>
+        </article>
+
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>

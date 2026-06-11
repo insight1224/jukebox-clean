@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Join the VIP List | The Jukebox Lounge NC</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <style>
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top, rgba(212, 175, 55, 0.16), transparent 34%),
+        linear-gradient(135deg, #080706 0%, #14100b 55%, #080706 100%);
+      color: #fff8e7;
+      font-family: inherit;
+    }
+
+    .vip-page {
+      min-height: 100vh;
+      padding: 80px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .vip-wrap {
+      width: min(1080px, 100%);
+      display: grid;
+      grid-template-columns: 1fr 0.95fr;
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .vip-hero,
+    .vip-form-card {
+      border-radius: 26px;
+      border: 1px solid rgba(212, 175, 55, 0.28);
+      background: rgba(17, 13, 8, 0.9);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.36);
+      overflow: hidden;
+    }
+
+    .vip-hero {
+      padding: 42px;
+      position: relative;
+    }
+
+    .vip-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at top right, rgba(212, 175, 55, 0.22), transparent 40%);
+      pointer-events: none;
+    }
+
+    .vip-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .vip-kicker {
+      display: inline-flex;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      background: rgba(212, 175, 55, 0.08);
+      color: #d4af37;
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+
+    .vip-hero h1 {
+      margin: 0;
+      font-size: clamp(2.6rem, 6vw, 5.4rem);
+      line-height: 0.92;
+      color: #f7d978;
+      text-transform: uppercase;
+      letter-spacing: -0.05em;
+    }
+
+    .vip-hero p {
+      margin: 22px 0 0;
+      color: rgba(255, 248, 231, 0.8);
+      font-size: 1.08rem;
+      line-height: 1.75;
+      max-width: 620px;
+    }
+
+    .vip-benefits {
+      display: grid;
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .vip-benefit {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.045);
+      border: 1px solid rgba(212, 175, 55, 0.18);
+      color: rgba(255, 248, 231, 0.82);
+      line-height: 1.5;
+    }
+
+    .vip-benefit span {
+      color: #f7d978;
+      font-weight: 900;
+    }
+
+    .vip-form-card {
+      padding: 34px;
+    }
+
+    .vip-form-card h2 {
+      margin: 0 0 10px;
+      color: #fff3c4;
+      font-size: 1.8rem;
+    }
+
+    .vip-form-card p {
+      margin: 0 0 24px;
+      color: rgba(255, 248, 231, 0.72);
+      line-height: 1.6;
+    }
+
+    .vip-form {
+      display: grid;
+      gap: 15px;
+    }
+
+    .vip-form label {
+      display: grid;
+      gap: 8px;
+      color: #fff3c4;
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .vip-form input,
+    .vip-form select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid rgba(212, 175, 55, 0.24);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #fff8e7;
+      padding: 13px 14px;
+      font: inherit;
+      outline: none;
+    }
+
+    .vip-form input::placeholder {
+      color: rgba(255, 248, 231, 0.42);
+    }
+
+    .vip-form select option {
+      color: #111;
+    }
+
+    .vip-submit {
+      margin-top: 8px;
+      border: 0;
+      border-radius: 999px;
+      background: #d4af37;
+      color: #100c06;
+      padding: 14px 20px;
+      font-weight: 900;
+      cursor: pointer;
+      box-shadow: 0 14px 32px rgba(212, 175, 55, 0.26);
+    }
+
+    .vip-back {
+      display: inline-flex;
+      margin-top: 18px;
+      color: #f7d978;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    @media (max-width: 860px) {
+      .vip-wrap {
+        grid-template-columns: 1fr;
+      }
+
+      .vip-page {
+        padding: 54px 16px;
+      }
+
+      .vip-hero,
+      .vip-form-card {
+        padding: 28px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="vip-page">
+    <section class="vip-wrap">
+
+      <div class="vip-hero">
+        <div class="vip-content">
+          <div class="vip-kicker">VIP Access</div>
+          <h1>Join the VIP List</h1>
+          <p>
+            Be the first to know about upcoming events, ticket drops, special offers,
+            lounge updates, and exclusive invites from The Jukebox Lounge NC.
+          </p>
+
+          <div class="vip-benefits">
+            <div class="vip-benefit"><span>01</span> Get early updates on upcoming events and special nights.</div>
+            <div class="vip-benefit"><span>02</span> Receive exclusive announcements, offers, and lounge news.</div>
+            <div class="vip-benefit"><span>03</span> Stay connected with the Jukebox community year-round.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="vip-form-card">
+        <h2>Sign up for updates</h2>
+        <p>
+          Enter your information below and we’ll keep you in the loop.
+        </p>
+
+        <form class="vip-form" action="/vip-signup" method="POST">
+          <label>
+            First Name
+            <input type="text" name="first_name" placeholder="First name" required>
+          </label>
+
+          <label>
+            Last Name
+            <input type="text" name="last_name" placeholder="Last name" required>
+          </label>
+
+          <label>
+            Email Address
+            <input type="email" name="email" placeholder="you@example.com" required>
+          </label>
+
+          <label>
+            Phone Number
+            <input type="tel" name="phone" placeholder="Optional">
+          </label>
+
+
+
+          <button class="vip-submit" type="submit">Join the VIP List</button>
+        </form>
+
+        <a class="vip-back" href="/">← Back to Homepage</a>
+      </div>
+
+    </section>
+  </main>
+</body>
+</html>
