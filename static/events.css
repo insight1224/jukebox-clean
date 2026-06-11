@@ -557,3 +557,129 @@
     padding: 26px;
   }
 }
+
+/* Compact heading after removing duplicate Events page hero */
+.compact-events-heading {
+  max-width: 900px;
+  margin: 0 auto 34px;
+  text-align: center;
+}
+
+.compact-events-heading h2 {
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.compact-events-heading p:not(.events-kicker) {
+  max-width: 620px;
+  margin: 14px auto 0;
+}
+
+@media (max-width: 700px) {
+  .compact-events-heading {
+    margin-bottom: 24px;
+    padding: 0 14px;
+  }
+
+  .compact-events-heading h2 {
+    font-size: clamp(2.2rem, 12vw, 3.4rem);
+  }
+}
+
+/* Compact Events page heading */
+.compact-events-heading {
+  max-width: 900px;
+  margin: 0 auto 34px;
+  text-align: center;
+}
+
+.compact-events-heading h2 {
+  font-size: clamp(2.4rem, 6vw, 4.8rem);
+  line-height: 0.95;
+}
+
+.compact-events-heading p:not(.events-kicker) {
+  max-width: 620px;
+  margin: 14px auto 0;
+}
+
+@media (max-width: 700px) {
+  .compact-events-heading {
+    margin-bottom: 24px;
+    padding: 0 14px;
+  }
+
+  .compact-events-heading h2 {
+    font-size: clamp(2.2rem, 12vw, 3.4rem);
+  }
+}
+
+/* Events page restored hero-style heading */
+.compact-events-heading {
+  max-width: 980px;
+  margin: 0 auto 70px;
+  padding: 72px 24px 48px;
+  text-align: center;
+}
+
+.compact-events-heading .events-kicker {
+  color: #f2d35f;
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+
+.compact-events-heading h2 {
+  color: #ffe879;
+  font-size: clamp(3.5rem, 8vw, 6.8rem);
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  margin: 0;
+}
+
+.compact-events-heading p:not(.events-kicker) {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.65;
+  max-width: 760px;
+  margin: 28px auto 0;
+}
+
+@media (max-width: 700px) {
+  .compact-events-heading {
+    margin-bottom: 38px;
+    padding: 48px 18px 28px;
+  }
+
+  .compact-events-heading .events-kicker {
+    font-size: 0.75rem;
+    letter-spacing: 0.24em;
+  }
+
+  .compact-events-heading h2 {
+    font-size: clamp(3rem, 16vw, 4.4rem);
+  }
+
+  .compact-events-heading p:not(.events-kicker) {
+    font-size: 0.98rem;
+    line-height: 1.55;
+    margin-top: 22px;
+  }
+}
+
+/* Make Events hero subtitle stretch wider without increasing size */
+.compact-events-heading p:not(.events-kicker) {
+  max-width: 980px;
+  width: 100%;
+  font-size: 1.05rem;
+}
+
+@media (max-width: 700px) {
+  .compact-events-heading p:not(.events-kicker) {
+    max-width: 100%;
+    font-size: 0.98rem;
+  }
+}
