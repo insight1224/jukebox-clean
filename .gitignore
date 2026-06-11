@@ -14,3 +14,9 @@ transactions-2026-01-01-2027-01-01.csv
 app.py.backup
 database.backup-before-square-sync.db
 database.db
+
+# Local database backups
+backups/
+*.backup.db
+*.before-*.db
+templates/*.before-*

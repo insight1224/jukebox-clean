@@ -8843,6 +8843,67 @@ def client_dashboard_contacts_preview():
 # RUN
 # -------------------------
 
+
+@app.route("/admin/export-vip-signups")
+@requires_auth
+def export_vip_signups():
+    import csv
+    import io
+    from flask import Response
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    rows = cur.execute("""
+        SELECT id, name, email, details, status, created_at, archived, archived_at, notes
+        FROM leads
+        WHERE type = 'VIP Signup'
+        ORDER BY created_at DESC, id DESC
+    """).fetchall()
+
+    conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    writer.writerow([
+        "ID",
+        "Name",
+        "Email",
+        "Details",
+        "Status",
+        "Created At",
+        "Archived",
+        "Archived At",
+        "Notes",
+    ])
+
+    for row in rows:
+        writer.writerow([
+            row["id"],
+            row["name"],
+            row["email"],
+            row["details"],
+            row["status"],
+            row["created_at"],
+            row["archived"],
+            row["archived_at"],
+            row["notes"],
+        ])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={
+            "Content-Disposition": "attachment; filename=jukebox-vip-signups.csv"
+        },
+    )
+
+
 @app.route("/thank-you")
 @app.route("/thank-you/")
 def thank_you_page():
