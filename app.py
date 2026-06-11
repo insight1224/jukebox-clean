@@ -6379,6 +6379,36 @@ def qr(ticket_id):
 def admin_dashboard_redesign():
     metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
+    # Main dashboard KPI corrections: count all event records and distinct active VIP emails.
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    total_events_count = cur.execute("""
+        SELECT COUNT(*)
+        FROM events
+    """).fetchone()[0] or 0
+
+    vip_email_count = cur.execute("""
+        SELECT COUNT(DISTINCT LOWER(TRIM(email)))
+        FROM leads
+        WHERE type = 'VIP Signup'
+          AND LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(archived, 0) = 0
+          AND email IS NOT NULL
+          AND TRIM(email) <> ''
+    """).fetchone()[0] or 0
+
+    conn.close()
+
+    dashboard_preview_summary["upcoming_events_count"] = int(total_events_count)
+    dashboard_preview_summary["total_events_count"] = int(total_events_count)
+
+    metrics["vip_email_count"] = int(vip_email_count)
+    metrics["vip_count"] = int(vip_email_count)
+    metrics["vip_signups"] = int(vip_email_count)
+
+
     preview_tickets_sold = metrics.get("single_tickets", 0)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
