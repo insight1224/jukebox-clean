@@ -2585,6 +2585,7 @@ events_data = [
     {
         "id": 1,
         "name": "Battle of the DJs",
+        "status": "past",
         "flyer": "images/flyer-part1.jpg",
         "description": """Step into an elevated indoor/outdoor experience at Battle of the DJs — where top talent goes head-to-head, delivering high-energy sets and unforgettable vibes all night long. Expect great music, curated energy, and a crowd that knows how to move.
 
@@ -2618,6 +2619,7 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
     {
         "id": 2,
         "name": "The Quiet Storm Live",
+        "status": "past",
         "flyer": "/static/images/flyer-part2.jpg",
         "description": "The Intimate R&B Experience",
         "ticket_link": "https://square.link/u/p4eAdd8g",
@@ -2641,6 +2643,7 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
     {
         "id": 3,
         "name": "Juneteenth Celebration",
+        "status": "past",
         "flyer": "/static/images/flyer-juneteenth-finale.png",
         "description": "The Jukebox Lounge NC presents Grown & Sexy: Melanin — the official finale of our 3-Part Grand Opening Series and Juneteenth Weekend Celebration. Join us June 20th at West End Social for a classy 30+ experience celebrating culture, confidence, music, and all shades of beautiful. Dressy casual to upscale attire encouraged. No athletic wear or ball caps.",
         "ticket_link": "https://square.link/u/51KF7WKE",
@@ -2661,6 +2664,39 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
             "booth": {"price": 35, "sold": 0, "size": 100}
         }
     },
+    {
+        "id": 4,
+        "name": "Battle of the DJs Part Two",
+        "status": "upcoming",
+        "flyer": "/static/images/battle-of-the-djs-part-2.png",
+        "description": """The battle continues. Four DJs will go head-to-head across three high-energy rounds for one championship title. Expect live mixes, crowd interaction, great food, and the grown Jukebox Lounge energy that made the original Battle of the DJs unforgettable.
+
+This is an exclusive 30+ event. Valid government-issued ID is required for entry.""",
+        "description_long": """The battle continues. Four DJs will go head-to-head across three high-energy rounds for one championship title. Expect live mixes, crowd interaction, great food, and the grown Jukebox Lounge energy that made the original Battle of the DJs unforgettable.
+
+Hosted by DJ Fatz “The Governor,” the ultimate DJ showdown returns to Kore Durham. The crowd will help decide who earns the championship title.
+
+This is an exclusive 30+ event. Valid government-issued ID is required for entry.""",
+        "ticket_link": "",
+        "event_datetime": "Sunday, August 2, 2026",
+        "location": "Kore Durham — 923 E Main St, Durham, NC 27701",
+        "time": "3:00 PM",
+        "doors": "3:00 PM",
+        "ticket_label": "Tickets Coming Soon",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=923+E+Main+St+Durham+NC+27701",
+        "early_link": "",
+        "ga_link": "",
+        "vip_link": "",
+        "booth_link": "",
+        "tickets_coming_soon": True,
+        "tickets": {
+            "early": {"price": 15, "sold": 0, "size": 30},
+            "ga": {"price": 18, "sold": 0, "size": 298},
+            "vip": {"price": 200, "sold": 0, "size": 6},
+            "booth": {"price": 200, "sold": 0, "size": 6}
+        }
+    },
+
 ]
 
 
@@ -2671,7 +2707,7 @@ def dashboard():
     return admin_dashboard_redesign()
 
 
-def get_live_dashboard_data():
+def get_live_dashboard_data(include_past=False):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -2805,17 +2841,37 @@ def get_live_dashboard_data():
     square_total_collected = total_revenue + tips_other_revenue
 
     cur.execute("""
-        SELECT COALESCE(et.event_name, 'Unknown') AS event_name,
-               et.ticket_type,
-               COUNT(*) AS quantity,
-               SUM(COALESCE(et.amount_cents, 0)) / 100.0 AS revenue,
-               SUM(COALESCE(etr.guests_per_ticket, 1)) AS estimated_attendance
-        FROM event_tickets et
+        WITH classified_tickets AS (
+            SELECT
+                et.*,
+                CASE
+                    WHEN LOWER(COALESCE(et.payment_id, '')) LIKE 'eventbrite:%'
+                         AND COALESCE(et.event_name, '') = 'Battle of the DJs'
+                        THEN 'Eventbrite'
+
+                    WHEN LOWER(TRIM(COALESCE(et.ticket_type, ''))) = 'general admission'
+                         AND COALESCE(et.amount_cents, 0) = 2000
+                         AND COALESCE(et.event_name, '') = 'Battle of the DJs'
+                        THEN 'Door - Square'
+
+                    ELSE COALESCE(et.ticket_type, 'Ticket')
+                END AS display_ticket_type
+            FROM event_tickets et
+        )
+        SELECT
+            COALESCE(ct.event_name, 'Unknown') AS event_name,
+            ct.display_ticket_type AS ticket_type,
+            COUNT(*) AS quantity,
+            SUM(COALESCE(ct.amount_cents, 0)) / 100.0 AS revenue,
+            SUM(COALESCE(etr.guests_per_ticket, 1)) AS estimated_attendance
+        FROM classified_tickets ct
         LEFT JOIN event_ticket_rules etr
-          ON LOWER(TRIM(et.event_name)) = LOWER(TRIM(etr.event_name))
-         AND LOWER(TRIM(et.ticket_type)) = LOWER(TRIM(etr.ticket_type))
-        GROUP BY COALESCE(et.event_name, 'Unknown'), et.ticket_type
-        ORDER BY event_name, et.ticket_type
+          ON LOWER(TRIM(ct.event_name)) = LOWER(TRIM(etr.event_name))
+         AND LOWER(TRIM(ct.ticket_type)) = LOWER(TRIM(etr.ticket_type))
+        GROUP BY
+            COALESCE(ct.event_name, 'Unknown'),
+            ct.display_ticket_type
+        ORDER BY event_name, ticket_type
     """)
     event_rows = cur.fetchall()
 
@@ -2851,12 +2907,13 @@ def get_live_dashboard_data():
     cur.execute("""
         SELECT COALESCE(event_name, 'Unknown') AS event_name,
                CASE
-                 WHEN payment_id LIKE 'eventbrite:%'
-                   THEN COALESCE(ticket_type, 'Ticket') || ' - Eventbrite'
+                 WHEN LOWER(COALESCE(payment_id, '')) LIKE 'eventbrite:%'
+                      AND COALESCE(event_name, '') = 'Battle of the DJs'
+                   THEN 'Eventbrite'
                  WHEN LOWER(COALESCE(ticket_type, '')) = 'general admission'
                       AND COALESCE(amount_cents, 0) = 2000
                       AND COALESCE(event_name, '') = 'Battle of the DJs'
-                   THEN 'General Admission - Door'
+                   THEN 'Door - Square'
                  ELSE COALESCE(ticket_type, 'Ticket') || ' - Square'
                END AS source_name,
                COUNT(*) AS quantity,
@@ -2947,7 +3004,7 @@ def get_live_dashboard_data():
     events = [
         event
         for event in events_map.values()
-        if not event.get("is_past")
+        if include_past or not event.get("is_past")
     ]
 
     conn.close()
@@ -3573,12 +3630,12 @@ def admin_unmapped_square():
       </div>
 
       <nav class="sidebar-nav">
-        <a href="/admin/dashboard-redesign">Dashboard</a>
-        <a href="/admin/dashboard-redesign/events">Events</a>
-        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
-        <a href="/admin/dashboard-redesign/messages">Messages</a>
-        <a href="/admin/dashboard-redesign/members">Members</a>
-        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard/events">Events</a>
+        <a href="/dashboard/revenue">Revenue</a>
+        <a href="/dashboard/messages">Messages</a>
+        <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/contacts">Contact Log</a>
         <a href="/admin/unmapped-square" class="active">Unmapped Tickets</a>
       </nav>
     </aside>
@@ -3592,8 +3649,8 @@ def admin_unmapped_square():
         </div>
 
         <div class="topbar-actions">
-          <a class="btn secondary" href="/admin/dashboard-redesign">Back to Dashboard</a>
-          <a class="btn primary" href="/admin/dashboard-redesign/events">Events</a>
+          <a class="btn secondary" href="/dashboard">Back to Dashboard</a>
+          <a class="btn primary" href="/dashboard/events">Events</a>
         </div>
       </header>
 
@@ -3630,6 +3687,16 @@ def admin_unmapped_square():
 # -------------------------
 # HOME
 # -------------------------
+
+
+@app.route("/scrapbook-wall")
+def scrapbook_wall():
+    return render_template("scrapbook_wall.html")
+
+@app.route("/scrapbook")
+def scrapbook():
+    return render_template("scrapbook.html")
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -3637,156 +3704,7 @@ def home():
 @app.route("/dashboard-old")
 @requires_auth
 def dashboard_old():
-    single_tickets = 187
-    vip_tickets = 6
-    total_tickets_sold = single_tickets + vip_tickets
-    estimated_attendance = total_tickets_sold
-    active_memberships = 20
-
-    ticket_revenue = 4515.15
-    membership_revenue = 200.00
-    total_revenue = ticket_revenue + membership_revenue
-
-    metrics = {
-        "single_tickets": single_tickets,
-        "total_tickets_sold": total_tickets_sold,
-        "vip_tickets": vip_tickets,
-        "estimated_attendance": total_tickets_sold,
-        "ticket_revenue": ticket_revenue,
-        "active_memberships": active_memberships,
-        "membership_revenue": membership_revenue,
-        "total_revenue": total_revenue,
-    }
-
-    events = [
-        {
-            "name": "Battle of the DJs",
-            "tickets": [
-                {"name": "Early Bird", "quantity": 22, "price": 14.0204545455},
-                {"name": "General Admissions", "quantity": 37, "price": 19.0459459459},
-                {"name": "VIP Section", "quantity": 6, "price": 158.3333333333},
-                {"name": "DJ VIP", "quantity": 0, "price": 0},
-                {
-                    "name": "Door Sales",
-                    "quantity": 127,
-                    "price": 0,
-                    "revenue_override": 2540.00,
-                    "cash_amount": 1320.00,
-                    "square_amount": 1220.00,
-                },
-            ],
-        },
-        {
-            "name": "Quiet Storm Live",
-            "tickets": [
-                {"name": "General Admission", "quantity": 1, "price": 12},
-            ],
-        },
-    ]
-
-    for event in events:
-        event_total_tickets = 0
-        event_total_revenue = 0
-        for ticket in event["tickets"]:
-            ticket_revenue_generated = ticket.get("revenue_override", ticket["quantity"] * ticket["price"])
-            ticket["revenue"] = ticket_revenue_generated
-            event_total_tickets += ticket["quantity"]
-            event_total_revenue += ticket_revenue_generated
-        event["total_tickets_sold"] = event_total_tickets
-        event["total_revenue"] = event_total_revenue
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        SELECT COUNT(*)
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND status = 'Active'
-        """
-    )
-    membership_log_count = int(cursor.fetchone()[0] or 0)
-
-    cursor.execute(
-        """
-        SELECT DISTINCT LOWER(TRIM(email))
-        FROM leads
-        WHERE type = 'VIP Signup'
-          AND LOWER(COALESCE(status, '')) = 'active'
-          AND email IS NOT NULL
-          AND TRIM(email) <> ''
-        ORDER BY LOWER(TRIM(email))
-        """
-    )
-    vip_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
-
-    cursor.execute(
-        """
-        SELECT DISTINCT LOWER(TRIM(email))
-        FROM leads
-        WHERE type = 'Membership Signup'
-          AND LOWER(COALESCE(status, '')) = 'active'
-          AND email IS NOT NULL
-          AND TRIM(email) <> ''
-        ORDER BY LOWER(TRIM(email))
-        """
-    )
-    membership_recipients = [r[0] for r in cursor.fetchall() if r and r[0]]
-
-    cursor.execute(
-        """
-        SELECT
-            SUM(CASE WHEN LOWER(COALESCE(category, '')) = 'talent' THEN 1 ELSE 0 END) AS talent_count,
-            SUM(CASE WHEN LOWER(COALESCE(category, '')) = 'vendor' THEN 1 ELSE 0 END) AS vendor_count,
-            COUNT(*) AS total_count
-        FROM contact_log
-        """
-    )
-    contact_log_counts = cursor.fetchone() or (0, 0, 0)
-
-    dashboard_overview = {
-        "active_messages": int(metrics.get("contact_messages", 0) or 0)
-            + int(metrics.get("vendor_applications", 0) or 0)
-            + int(metrics.get("dj_applications", 0) or 0),
-        "talent_contacts": int(contact_log_counts[0] or 0),
-        "vendor_contacts": int(contact_log_counts[1] or 0),
-        "total_contacts": int(contact_log_counts[2] or 0),
-    }
-
-    conn.close()
-
-    active_members = []
-    vip_members = []
-    membership_log_members = []
-
-    event_demand_votes = []
-    total_demand_votes = 0
-
-    active_suggestions = []
-    archived_suggestions = []
-
-    return render_template(
-        "dashboard.html",
-        metrics=metrics,
-        events=upcoming_events,
-        past_events=past_events,
-        past_expenses_total=past_expenses_total,
-        past_revenue_total=past_revenue_total,
-        past_net_profit=past_net_profit,
-        vip_members=vip_members,
-        membership_log_members=membership_log_members,
-        vip_count=len(vip_members),
-        membership_count=membership_log_count,
-        membership_log_count=membership_log_count,
-        event_demand_votes=event_demand_votes,
-        total_demand_votes=total_demand_votes,
-        active_suggestions=active_suggestions,
-        archived_suggestions=archived_suggestions,
-        vip_recipients=vip_recipients,
-        membership_recipients=membership_recipients,
-        square_connected=False,
-    )
-
+    return redirect(url_for("dashboard"))
 
 @app.route("/bookkeeping")
 @requires_auth
@@ -4476,27 +4394,105 @@ def about():
 # GALLERY PAGE
 # -------------------------
 
-@app.route("/gallery/battle-of-the-djs")
-def gallery_battle_of_the_djs():
-    gallery_dir = os.path.join(app.static_folder, "images", "battle-of-the-djs-gallery")
+def load_event_gallery(folder_name, video_folder_name=None):
+    gallery_dir = os.path.join(app.static_folder, "images", folder_name)
     images = []
+
     if os.path.isdir(gallery_dir):
         images = sorted([
-            f"images/battle-of-the-djs-gallery/{name}"
+            f"images/{folder_name}/{name}"
             for name in os.listdir(gallery_dir)
             if name.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))
         ])
 
-    video_dir = os.path.join(app.static_folder, "images", "battle of the djs")
+    video_folder_name = video_folder_name or folder_name
+    video_dir = os.path.join(app.static_folder, "images", video_folder_name)
     videos = []
+
     if os.path.isdir(video_dir):
         videos = sorted([
-            f"images/battle of the djs/{name}"
+            f"images/{video_folder_name}/{name}"
             for name in os.listdir(video_dir)
             if name.lower().endswith((".mov", ".mp4", ".webm"))
         ])
 
-    return render_template("gallery_event.html", title="Battle of the DJs", subtitle="DJ Event Experience", images=images, videos=videos)
+    return images, videos
+
+
+@app.route("/gallery/battle-of-the-djs")
+def gallery_battle_of_the_djs():
+    images, videos = load_event_gallery(
+        "battle-of-the-djs-gallery",
+        "battle of the djs"
+    )
+
+    return render_template(
+        "gallery_event.html",
+        title="Battle of the DJs",
+        subtitle="Grand Opening Series — Part 1",
+        images=images,
+        videos=videos,
+        recap_paragraphs=[
+            "Battle of the DJs launched the Grand Opening Series with four DJs, three rounds, and an unforgettable night of music, competition, and community.",
+            "Guests experienced curated sets, crowd interaction, local talent, and the grown energy that would define The Jukebox Lounge NC."
+        ],
+        highlights=[
+            "🎧 Four DJs",
+            "🔥 Three Rounds",
+            "🏆 One Winner",
+            "📸 Opening-Night Memories",
+            "🤝 Community"
+        ]
+    )
+
+
+@app.route("/gallery/quiet-storm")
+def gallery_quiet_storm():
+    images, videos = load_event_gallery("quiet-storm-gallery")
+
+    return render_template(
+        "gallery_event.html",
+        title="The Quiet Storm Live",
+        subtitle="Grand Opening Series — Part 2",
+        images=images,
+        videos=videos,
+        recap_paragraphs=[
+            "The Quiet Storm Live continued the Grand Opening Series with an intimate evening of live R&B, smooth vocals, and soulful energy.",
+            "The experience brought guests together for a grown atmosphere centered around timeless music, meaningful moments, and the sound of Devin D."
+        ],
+        highlights=[
+            "🎤 Live Vocals",
+            "🎶 Classic R&B",
+            "✨ Intimate Atmosphere",
+            "📸 Soulful Moments",
+            "🥂 Grown Energy"
+        ]
+    )
+
+
+@app.route("/gallery/juneteenth-celebration")
+def gallery_juneteenth_celebration():
+    images, videos = load_event_gallery("juneteenth-celebration-gallery")
+
+    return render_template(
+        "gallery_event.html",
+        title="Juneteenth Celebration",
+        subtitle="Grand Opening Series — Finale",
+        images=images,
+        videos=videos,
+        recap_paragraphs=[
+            "The Juneteenth Celebration completed the Grand Opening Series with a night honoring culture, confidence, community, and all shades of beautiful.",
+            "The Grown & Sexy finale brought the three-part launch to a close with elevated style, feel-good music, and memorable moments at West End Social."
+        ],
+        highlights=[
+            "✊🏾 Culture",
+            "✨ Confidence",
+            "🎶 Feel-Good Music",
+            "📸 Finale Memories",
+            "🤎 Community"
+        ]
+    )
+
 
 @app.route("/gallery")
 def gallery():
@@ -6376,6 +6372,10 @@ def qr(ticket_id):
 
 @app.route("/admin/dashboard-redesign")
 @requires_auth
+def admin_dashboard_redesign_redirect():
+    return redirect(url_for("dashboard"))
+
+
 def admin_dashboard_redesign():
     metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
@@ -6902,6 +6902,48 @@ def api_event_cash_revenue():
                 "Not Checked In",
             ),
         )
+
+        # Add one $0 event ticket record per comp ticket so comps appear in
+        # ticket totals, ticket breakdowns, guest lists, and attendance.
+        for comp_index in range(1, comp_quantity + 1):
+            comp_ticket_id = f"COMP_{cash_id}_{comp_index}"
+            comp_payment_id = f"COMP_{cash_id}:{comp_index}"
+
+            cur.execute(
+                """
+                INSERT INTO event_tickets (
+                    name,
+                    email,
+                    ticket_type,
+                    amount_cents,
+                    ticket_id,
+                    status,
+                    payment_id,
+                    checkin_url,
+                    qr_url,
+                    event_name,
+                    checked_in,
+                    checked_in_count
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    comp_customer_name,
+                    "",
+                    comp_ticket_type,
+                    0,
+                    comp_ticket_id,
+                    "not_checked_in",
+                    comp_payment_id,
+                    f"/checkin/{comp_ticket_id}",
+                    f"/qr/{comp_ticket_id}",
+                    event_name,
+                    0,
+                    0,
+                ),
+            )
+
+        conn.commit()
     conn.close()
 
     return {
@@ -7355,6 +7397,7 @@ def api_events_setup():
 
 
 
+@app.route("/dashboard/income-summary")
 @app.route("/admin/dashboard-redesign/income-summary")
 @requires_auth
 def income_summary_report():
@@ -7510,10 +7553,11 @@ def income_summary_report():
     )
 
 
+@app.route("/dashboard/revenue")
 @app.route("/admin/dashboard-redesign/revenue")
 @requires_auth
 def admin_dashboard_revenue():
-    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data(include_past=True)
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -7610,12 +7654,37 @@ def admin_dashboard_revenue():
     cash_rows = [dict(row) for row in cursor.fetchall()]
 
     cursor.execute("""
-        SELECT COALESCE(event_name, 'Unknown') AS event_name,
-               COALESCE(ticket_type, 'Ticket') AS ticket_type,
-               COUNT(*) AS quantity,
-               COALESCE(SUM(amount_cents), 0) AS amount_cents
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            CASE
+                WHEN LOWER(COALESCE(payment_id, '')) LIKE 'eventbrite:%'
+                     AND COALESCE(event_name, '') = 'Battle of the DJs'
+                    THEN 'Eventbrite'
+
+                WHEN LOWER(TRIM(COALESCE(ticket_type, ''))) = 'general admission'
+                     AND COALESCE(amount_cents, 0) = 2000
+                     AND COALESCE(event_name, '') = 'Battle of the DJs'
+                    THEN 'Door - Square'
+
+                ELSE COALESCE(ticket_type, 'Ticket')
+            END AS ticket_type,
+            COUNT(*) AS quantity,
+            COALESCE(SUM(amount_cents), 0) AS amount_cents
         FROM event_tickets
-        GROUP BY COALESCE(event_name, 'Unknown'), COALESCE(ticket_type, 'Ticket')
+        GROUP BY
+            COALESCE(event_name, 'Unknown'),
+            CASE
+                WHEN LOWER(COALESCE(payment_id, '')) LIKE 'eventbrite:%'
+                     AND COALESCE(event_name, '') = 'Battle of the DJs'
+                    THEN 'Eventbrite'
+
+                WHEN LOWER(TRIM(COALESCE(ticket_type, ''))) = 'general admission'
+                     AND COALESCE(amount_cents, 0) = 2000
+                     AND COALESCE(event_name, '') = 'Battle of the DJs'
+                    THEN 'Door - Square'
+
+                ELSE COALESCE(ticket_type, 'Ticket')
+            END
     """)
     ticket_revenue_rows = [dict(row) for row in cursor.fetchall()]
 
@@ -7715,16 +7784,16 @@ def admin_dashboard_revenue():
 
         online_ticket_revenue = float(ticket_revenue_by_event.get(event_name, 0.0) or 0.0)
 
-        # Rebuild ticket revenue/breakdown from event_tickets for setup-only completed events.
-        if ticket_breakdown_by_event.get(event_name):
+        # Only rebuild tickets when the shared dashboard data did not already provide them.
+        if ticket_breakdown_by_event.get(event_name) and not event.get("tickets"):
             event["tickets"] = ticket_breakdown_by_event.get(event_name, [])
 
         if online_ticket_revenue > float(event.get("total_revenue", 0) or 0):
             event["total_revenue"] = online_ticket_revenue
             event["ticket_revenue"] = online_ticket_revenue
 
-        # Add online ticket revenue rows into the Revenue Breakdown box.
-        if ticket_breakdown_by_event.get(event_name):
+        # Add fallback revenue rows only when shared dashboard data did not provide them.
+        if ticket_breakdown_by_event.get(event_name) and not event.get("revenue_sources"):
             event.setdefault("revenue_sources", [])
             existing_revenue_source_names = {
                 (source.get("name") or "").strip().lower()
@@ -7788,27 +7857,16 @@ def admin_dashboard_revenue():
         other_cash_total = sum(float(item.get("amount", 0) or 0) for item in other_cash_rows)
         event_cash_total = ticket_cash_total + other_cash_total
 
-        # Add cash/door ticket sales into the left-side Ticket Breakdown as General Admission.
+        # Keep cash door tickets separate from online General Admission.
         if ticket_cash_total > 0 or ticket_cash_quantity > 0:
-            general_admission_ticket = None
-            for ticket in event.get("tickets", []) or []:
-                if (ticket.get("name") or "").strip().lower() in {"general admission", "general admissions"}:
-                    general_admission_ticket = ticket
-                    break
-
-            if general_admission_ticket:
-                general_admission_ticket["quantity"] = int(general_admission_ticket.get("quantity", 0) or 0) + ticket_cash_quantity
-                general_admission_ticket["estimated_attendance"] = int(general_admission_ticket.get("estimated_attendance", 0) or 0) + ticket_cash_quantity
-                general_admission_ticket["revenue"] = float(general_admission_ticket.get("revenue", 0) or 0) + ticket_cash_total
-            else:
-                event.setdefault("tickets", [])
-                event["tickets"].append({
-                    "name": "General Admission",
-                    "quantity": ticket_cash_quantity,
-                    "estimated_attendance": ticket_cash_quantity,
-                    "price": 0,
-                    "revenue": ticket_cash_total,
-                })
+            event.setdefault("tickets", [])
+            event["tickets"].append({
+                "name": "Door - Cash",
+                "quantity": ticket_cash_quantity,
+                "estimated_attendance": ticket_cash_quantity,
+                "price": 0,
+                "revenue": ticket_cash_total,
+            })
 
         # Bottom-left box: other/non-ticket revenue only
         event["cash_revenue"] = other_cash_rows
@@ -7826,11 +7884,11 @@ def admin_dashboard_revenue():
             for ticket in event.get("tickets", []) or []
         )
 
-        # Top-right box: ticket revenue only
+        # Top-right box: keep cash door revenue separate.
         if ticket_cash_total > 0:
             event.setdefault("revenue_sources", [])
             event["revenue_sources"].append({
-                "name": "General Admission - Door",
+                "name": "Door - Cash",
                 "quantity": ticket_cash_quantity,
                 "revenue": ticket_cash_total,
             })
@@ -7852,17 +7910,35 @@ def admin_dashboard_revenue():
 
         event["revenue_sources"] = list(merged_sources.values())
 
-    past_event_names = {
-        row.get("name")
-        for row in event_setup_rows
-        if (row.get("status") or "").strip().lower() == "completed"
-    }
+    past_event_names = set()
 
-    if not past_event_names:
-        past_event_names = {"Battle of the DJs"}
+    for row in event_setup_rows:
+        event_name = (row.get("name") or "").strip()
+        stored_status = (row.get("status") or "Upcoming").strip()
+        stored_status_lower = stored_status.lower()
 
-    past_events = [event for event in events if event.get("name") in past_event_names]
-    upcoming_events = [event for event in events if event.get("name") not in past_event_names]
+        if not event_name:
+            continue
+
+        automatic_status = automatic_event_status(
+            row.get("event_date"),
+            stored_status,
+        )
+
+        if stored_status_lower == "completed" or automatic_status == "Past":
+            past_event_names.add(event_name)
+
+    past_events = [
+        event
+        for event in events
+        if event.get("name") in past_event_names
+    ]
+
+    upcoming_events = [
+        event
+        for event in events
+        if event.get("name") not in past_event_names
+    ]
 
     past_expenses_total = sum(float(event.get("expense_total", 0) or 0) for event in past_events)
     past_revenue_total = sum(float(event.get("total_revenue_with_cash", event.get("total_revenue", 0)) or 0) for event in past_events)
@@ -7916,6 +7992,7 @@ def admin_dashboard_revenue():
         expenses_by_event=expenses_by_event,
         cash_by_event=cash_by_event,
         expense_rows=expense_rows,
+        business_expense_rows=business_expense_rows,
         cash_rows=cash_rows,
         events=upcoming_events,
         past_events=past_events,
@@ -7938,10 +8015,11 @@ def admin_dashboard_revenue():
     )
 
 
+@app.route("/dashboard/events")
 @app.route("/admin/dashboard-redesign/events")
 @requires_auth
 def admin_dashboard_events():
-    metrics, events, dashboard_preview_summary = get_live_dashboard_data()
+    metrics, events, dashboard_preview_summary = get_live_dashboard_data(include_past=True)
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -7970,7 +8048,7 @@ def admin_dashboard_events():
                status,
                created_at
         FROM event_tickets
-        ORDER BY event_name, created_at
+        ORDER BY event_name, created_at DESC
     """)
     ticket_rows = [dict(row) for row in cur.fetchall()]
 
@@ -7989,6 +8067,20 @@ def admin_dashboard_events():
         ): max(1, int(row.get("guests_per_ticket") or 1))
         for row in ticket_rule_rows
     }
+
+    event_ticket_types = {}
+
+    for row in ticket_rule_rows:
+        event_name = (row.get("event_name") or "").strip()
+        ticket_type = (row.get("ticket_type") or "").strip()
+
+        if not event_name or not ticket_type:
+            continue
+
+        event_ticket_types.setdefault(event_name, [])
+
+        if ticket_type not in event_ticket_types[event_name]:
+            event_ticket_types[event_name].append(ticket_type)
 
     cur.execute("""
         SELECT COALESCE(et.event_name, 'Unknown') AS event_name,
@@ -8243,7 +8335,19 @@ def admin_dashboard_events():
 
     for event in events:
         setup = event_setup_map.get(event.get("name"), {})
-        status_label = setup.get("status") or "Upcoming"
+        stored_status = (setup.get("status") or "Upcoming").strip()
+        stored_status_lower = stored_status.lower()
+
+        # Preserve exceptional manual statuses. Otherwise, determine the
+        # display status automatically from the event date.
+        if stored_status_lower in ("cancelled", "canceled", "postponed"):
+            status_label = stored_status
+        else:
+            automatic_status = automatic_event_status(
+                setup.get("event_date"),
+                stored_status,
+            )
+            status_label = "Completed" if automatic_status == "Past" else automatic_status
 
         event["date"] = format_event_date(setup.get("event_date"))
         event["status_label"] = status_label
@@ -8359,10 +8463,12 @@ def admin_dashboard_events():
         membership_recipients=[],
         square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
+        event_ticket_types=event_ticket_types,
     )
 
 
 
+@app.route("/dashboard/messages")
 @app.route("/admin/dashboard-redesign/messages")
 @requires_auth
 def admin_dashboard_messages():
@@ -8665,6 +8771,7 @@ def api_delete_member():
 
 
 
+@app.route("/dashboard/members")
 @app.route("/admin/dashboard-redesign/members")
 @requires_auth
 def admin_dashboard_members():
@@ -8909,6 +9016,7 @@ def api_delete_contact_log(contact_id):
 
 
 
+@app.route("/dashboard/contacts")
 @app.route("/admin/dashboard-redesign/contacts")
 @requires_auth
 def admin_dashboard_contacts():

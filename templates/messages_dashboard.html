@@ -20,12 +20,12 @@
       </div>
 
                         <nav class="sidebar-nav">
-        <a href="/admin/dashboard-redesign">Dashboard</a>
-        <a href="/admin/dashboard-redesign/events">Events</a>
-        <a href="/admin/dashboard-redesign/revenue">Revenue</a>
-        <a href="/admin/dashboard-redesign/messages" class="active">Messages</a>
-        <a href="/admin/dashboard-redesign/members">Members</a>
-        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard/events">Events</a>
+        <a href="/dashboard/revenue">Revenue</a>
+        <a href="/dashboard/messages" class="active">Messages</a>
+        <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/contacts">Contact Log</a>
               <a href="/admin/unmapped-square">Unmapped Tickets</a>
       </nav>
     </aside>
@@ -36,7 +36,7 @@
           <strong>Messages Tab Preview</strong>
           <span>This screen keeps website inquiries, private event requests, VIP interest, replies, and archives in one place.</span>
         </div>
-        <a href="/admin/dashboard-redesign">Back to Dashboard</a>
+        <a href="/dashboard">Back to Dashboard</a>
       </div>
 
       <header class="topbar">
@@ -112,11 +112,14 @@
             data-message-status="{{ message.status or 'New' }}"
             data-message-name="{{ message.name or 'Website Inquiry' }}"
             data-message-email="{{ message.email or '' }}"
+            data-message-details="{{ message.details or '' }}"
             data-message-notes="{{ message.notes or '' }}"
           >
             <span>{{ message.name or 'Unknown' }}</span>
             <span>{{ message.type or 'Message' }}</span>
-            <span>{{ message.details or 'No message details provided.' }}</span>
+            <span class="message-preview">
+              {{ message.details or 'No message details provided.' }}
+            </span>
             <span>
               <span class="badge {% if message.status in ['New', 'Active'] %}warning{% elif message.status in ['Replied', 'Contacted', 'Booked'] %}live{% elif message.status in ['Closed', 'Declined'] %}success{% endif %} message-status-badge">
                 {{ message.status or 'New' }}
@@ -209,11 +212,14 @@
                 data-message-status="{{ message.status or 'Archived' }}"
                 data-message-name="{{ message.name or 'Website Inquiry' }}"
                 data-message-email="{{ message.email or '' }}"
+                data-message-details="{{ message.details or '' }}"
                 data-message-notes="{{ message.notes or '' }}"
               >
                 <span>{{ message.name or 'Unknown' }}</span>
                 <span>{{ message.type or 'Message' }}</span>
-                <span>{{ message.details or 'No message details provided.' }}</span>
+                <span class="message-preview">
+              {{ message.details or 'No message details provided.' }}
+            </span>
                 <span><span class="badge success message-status-badge">{{ message.status or 'Archived' }}</span></span>
                 <span>{{ message.archived_at or message.created_at or '' }}</span>
                 <span class="row-actions">
@@ -276,15 +282,68 @@
 
       const columns = row.querySelectorAll(":scope > span");
 
-      const name = columns[0]?.textContent.trim() || "Website Inquiry";
-      const type = columns[1]?.textContent.trim() || "Message";
-      const message = columns[2]?.textContent.trim() || "No message available.";
-      const status = columns[3]?.textContent.trim() || "New";
+      const name = row.getAttribute("data-message-name") || "Website Inquiry";
+      const email = row.getAttribute("data-message-email") || "";
+      const type = row.getAttribute("data-message-type") || "Message";
+      const details = row.getAttribute("data-message-details") || "No message details provided.";
+      const notes = row.getAttribute("data-message-notes") || "";
+      const status = row.getAttribute("data-message-status") || "New";
       const date = columns[4]?.textContent.trim() || "";
+
+      function escapeHtml(value) {
+        return String(value || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function buildDetailRow(label, value) {
+        return `
+          <div class="message-detail-row">
+            <div class="message-detail-label">${escapeHtml(label)}</div>
+            <div class="message-detail-value">${escapeHtml(value || "—")}</div>
+          </div>
+        `;
+      }
+
+      const detailRows = [];
+
+      if (email) {
+        detailRows.push(buildDetailRow("Email", email));
+      }
+
+      const detailLines = String(details || "")
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      detailLines.forEach((line) => {
+        if (line.includes(":")) {
+          const parts = line.split(/:(.+)/);
+          const label = (parts[0] || "").trim();
+          const value = (parts[1] || "").trim();
+
+          if (label) {
+            detailRows.push(buildDetailRow(label, value || "—"));
+          }
+        } else {
+          detailRows.push(buildDetailRow("Details", line));
+        }
+      });
+
+      if (notes) {
+        detailRows.push(buildDetailRow("Internal Notes", notes));
+      }
+
+      if (!detailRows.length) {
+        detailRows.push(buildDetailRow("Details", "No message details provided."));
+      }
 
       messageDetailTitle.textContent = name;
       messageDetailSubtitle.textContent = type + " • " + status + " • " + date;
-      messageDetailBody.textContent = message;
+      messageDetailBody.innerHTML = `<div class="message-detail-grid">${detailRows.join("")}</div>`;
       messageDetailModalOverlay.classList.add("active");
     }
 

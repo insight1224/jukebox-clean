@@ -683,3 +683,37 @@
     font-size: 0.98rem;
   }
 }
+
+/* =========================================================
+   SHOW FULL EVENT FLYERS — 2026-06-24
+   ========================================================= */
+
+.event-refresh-image {
+  height: auto;
+  aspect-ratio: 4 / 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0;
+  background:
+    radial-gradient(circle at center, rgba(212, 175, 55, 0.05), transparent 58%),
+    #050403;
+}
+
+.event-refresh-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+
+/* Give tall portrait flyers a little more room on mobile */
+@media (max-width: 640px) {
+  .event-refresh-image {
+    height: auto;
+    aspect-ratio: 4 / 5;
+  }
+}
+

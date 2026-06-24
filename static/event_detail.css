@@ -336,3 +336,95 @@ font-size: 13px;
         width: 100%;
     }
 }
+
+/* =========================================================
+   TICKET PURCHASE & REFUND POLICY — 2026-06-24
+   ========================================================= */
+
+.ticket-policy-notice {
+  max-width: 920px;
+  margin: 0 auto 30px;
+  padding: 18px 22px;
+  border: 1px solid rgba(212, 175, 55, 0.46);
+  border-left: 5px solid #d4af37;
+  border-radius: 12px;
+  background:
+    linear-gradient(145deg, rgba(212, 175, 55, 0.07), transparent),
+    rgba(12, 12, 12, 0.94);
+  color: rgba(255, 255, 255, 0.82);
+  text-align: left;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.28);
+}
+
+.ticket-policy-notice strong {
+  display: block;
+  margin-bottom: 7px;
+  color: #f0cd4d;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ticket-policy-notice p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.full-ticket-policy {
+  max-width: 920px;
+  margin: 46px auto 0;
+  padding: 34px 38px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.02), transparent),
+    rgba(10, 10, 10, 0.96);
+  color: rgba(255, 255, 255, 0.78);
+  text-align: left;
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.34);
+}
+
+.full-ticket-policy h2 {
+  margin: 0 0 18px;
+  color: #f2cf52;
+  font-size: clamp(1.65rem, 3vw, 2.3rem);
+}
+
+.full-ticket-policy p,
+.full-ticket-policy li {
+  line-height: 1.7;
+}
+
+.full-ticket-policy ul {
+  margin: 12px 0 20px;
+  padding-left: 22px;
+}
+
+.ticket-policy-kicker {
+  margin: 0 0 7px;
+  color: #d4af37;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.ticket-policy-emphasis,
+.ticket-policy-agreement {
+  color: #fff2bd;
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .ticket-policy-notice {
+    margin-bottom: 24px;
+    padding: 16px 17px;
+  }
+
+  .full-ticket-policy {
+    margin-top: 34px;
+    padding: 25px 20px;
+    border-radius: 14px;
+  }
+}
+

@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Scrapbook Wall | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+
+<section class="wall-hero">
+  <div class="wall-hero-inner">
+    <p class="wall-kicker">Community Love</p>
+    <h1>The Jukebox Scrapbook Wall</h1>
+    <p>
+      A messy, living wall of real first-time moments, fan posts, shoutouts,
+      and memories from The Jukebox Lounge NC.
+    </p>
+  </div>
+</section>
+
+<section class="memory-wall-section">
+  <div class="memory-wall clean-memory-wall">
+
+    <article class="wall-item wall-photo wall-big">
+      <img src="{{ url_for('static', filename='images/scrapbook/devin-shoutout.png') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/2C6F8C94-CCE7-4D7C-B2FA-229D42A11B1C.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/50CEB5E4-FD06-4B99-A9CA-BC5191148BF5.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/657386CA-4E27-4779-8A8A-D0A1E8D29800.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/8C1EBA10-F2C1-4BEB-A81A-89455DCD979E.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/C2A73342-6CF9-4042-98DE-B8D061540312.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/C501A97B-351C-4D7D-B01E-95ABDD8E56A4.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/DB626B10-B4BD-4F7A-8B38-DA2C504BB62D.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+    <article class="wall-item wall-photo">
+      <img src="{{ url_for('static', filename='images/scrapbook/FF4BF12A-B2B2-46C7-B7AA-97EC94A7FB8A.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+    </article>
+
+  </div>
+</section>
+
+<section class="wall-cta">
+  <p class="wall-kicker">Got a Memory?</p>
+  <h2>Tag The Jukebox Lounge NC or leave a review.</h2>
+  <p>Your post, photo, review, or first-time experience could be added to the Scrapbook Wall.</p>
+</section>
+
+{% endblock %}

@@ -2234,3 +2234,1745 @@ body.flash {
   box-shadow: none !important;
   background: transparent !important;
 }
+
+/* =========================================
+   NEW HOMEPAGE JUKEBOX EXPERIENCE
+========================================= */
+
+.home-jukebox-experience {
+  position: relative;
+  overflow: hidden;
+  padding: 78px 20px 90px;
+  background:
+    radial-gradient(circle at 50% 10%, rgba(212, 175, 55, 0.16), transparent 24%),
+    radial-gradient(circle at 15% 42%, rgba(18, 88, 59, 0.22), transparent 28%),
+    radial-gradient(circle at 86% 48%, rgba(18, 88, 59, 0.18), transparent 26%),
+    linear-gradient(145deg, #020302 0%, #08120c 48%, #030201 100%);
+  border-top: 1px solid rgba(212, 175, 55, 0.18);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.home-jukebox-experience::before {
+  content: "♪  ♫  ✦  ♬  ♪";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  text-align: center;
+  color: rgba(212, 175, 55, 0.12);
+  font-size: clamp(1.2rem, 4vw, 3rem);
+  letter-spacing: 1.2rem;
+  pointer-events: none;
+}
+
+.home-jukebox-heading {
+  position: relative;
+  z-index: 3;
+  max-width: 760px;
+  margin: 0 auto 34px;
+  text-align: center;
+}
+
+.home-jukebox-kicker {
+  margin: 0 0 10px;
+  color: #d4af37;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.home-jukebox-heading h2 {
+  margin: 0 0 12px;
+  color: #fff6df;
+  font-size: clamp(2.3rem, 5.6vw, 4.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.home-jukebox-heading > p:last-child {
+  max-width: 580px;
+  margin: 0 auto;
+  color: rgba(255, 246, 223, 0.68);
+  line-height: 1.6;
+}
+
+.home-jukebox-machine {
+  position: relative;
+  z-index: 2;
+  width: min(100%, 720px);
+  margin: 0 auto;
+  padding: 8px;
+  border-radius: 230px 230px 34px 34px;
+  background:
+    linear-gradient(
+      135deg,
+      #624308 0%,
+      #d4af37 20%,
+      #f2d467 35%,
+      #79560b 65%,
+      #d4af37 86%,
+      #493205 100%
+    );
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.64),
+    0 0 48px rgba(212, 175, 55, 0.15);
+}
+
+.home-jukebox-arch {
+  position: relative;
+  min-height: 700px;
+  padding: 46px 30px 30px;
+  overflow: hidden;
+  border: 2px solid rgba(255, 238, 173, 0.24);
+  border-radius: 220px 220px 27px 27px;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(212, 175, 55, 0.2), transparent 27%),
+    radial-gradient(circle at 18% 58%, rgba(25, 100, 66, 0.12), transparent 24%),
+    linear-gradient(145deg, #101d15 0%, #050505 58%, #0d0804 100%);
+  box-shadow:
+    inset 0 0 38px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 2px rgba(212, 175, 55, 0.08);
+}
+
+.home-jukebox-light-ring {
+  position: absolute;
+  z-index: 1;
+  top: 18px;
+  left: 20px;
+  right: 20px;
+  height: 340px;
+  border: 5px solid rgba(212, 175, 55, 0.64);
+  border-radius: 210px 210px 52% 52%;
+  box-shadow:
+    0 0 18px rgba(212, 175, 55, 0.48),
+    0 0 46px rgba(212, 175, 55, 0.16),
+    inset 0 0 22px rgba(212, 175, 55, 0.14);
+  animation: homeJukeboxGlow 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.home-record-window {
+  position: relative;
+  z-index: 3;
+  width: 230px;
+  height: 230px;
+  margin: 8px auto 22px;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(212, 175, 55, 0.34);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255,255,255,0.04), transparent 58%),
+    rgba(0, 0, 0, 0.48);
+  box-shadow:
+    inset 0 0 42px rgba(0, 0, 0, 0.78),
+    0 18px 32px rgba(0, 0, 0, 0.36);
+}
+
+.home-spinning-record {
+  width: 184px;
+  height: 184px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(
+      circle,
+      #070707 0,
+      #070707 4px,
+      #171717 5px,
+      #171717 7px
+    );
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.04);
+}
+
+.home-spinning-record.is-playing {
+  animation: homeRecordSpin 3.2s linear infinite;
+}
+
+.home-record-label {
+  width: 70px;
+  height: 70px;
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  color: #111;
+  background:
+    radial-gradient(circle at 34% 30%, #ffe899, #d4af37 55%, #87660f);
+  box-shadow: inset 0 0 0 2px rgba(255,255,255,0.16);
+  line-height: 1;
+  text-align: center;
+}
+
+.home-record-label span {
+  font-size: 0.58rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.home-record-label strong {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
+.home-now-playing {
+  position: relative;
+  z-index: 4;
+  max-width: 500px;
+  margin: 0 auto 16px;
+  padding: 12px 18px;
+  border: 1px solid rgba(212, 175, 55, 0.27);
+  border-radius: 12px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent),
+    rgba(0, 0, 0, 0.56);
+  box-shadow:
+    inset 0 0 18px rgba(212, 175, 55, 0.05),
+    0 12px 22px rgba(0, 0, 0, 0.22);
+}
+
+.home-now-playing span {
+  display: block;
+  margin-bottom: 4px;
+  color: #d4af37;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.home-now-playing strong {
+  color: #fff4db;
+  font-size: 0.94rem;
+}
+
+.home-music-player {
+  position: relative;
+  z-index: 4;
+  min-height: 96px;
+  max-width: 520px;
+  margin: 0 auto 22px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 14px;
+  color: rgba(255, 244, 219, 0.55);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.4);
+}
+
+.home-music-player p {
+  margin: 0;
+  padding: 18px;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.home-music-player iframe {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 13px;
+}
+
+.home-record-shelf-wrap {
+  position: relative;
+  z-index: 6;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 10px;
+  align-items: center;
+}
+
+.home-record-shelf {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  padding: 22px 16px 28px;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), transparent),
+    rgba(0, 0, 0, 0.47);
+  box-shadow:
+    inset 0 -20px 24px rgba(0, 0, 0, 0.52),
+    0 16px 26px rgba(0, 0, 0, 0.24);
+}
+
+.home-record-shelf::-webkit-scrollbar {
+  display: none;
+}
+
+.home-record-shelf::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 9px;
+  height: 10px;
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, #d4af37, #5d4208);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.34);
+}
+
+.home-record-arrow {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  border-radius: 50%;
+  color: #d4af37;
+  background: rgba(0, 0, 0, 0.62);
+  font-size: 1.9rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 12px 20px rgba(0,0,0,0.3),
+    0 0 18px rgba(212, 175, 55, 0.08);
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.home-record-arrow:hover {
+  transform: scale(1.06);
+  border-color: rgba(212, 175, 55, 0.75);
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.home-album {
+  position: relative;
+  flex: 0 0 118px;
+  height: 148px;
+  padding: 7px;
+  overflow: hidden;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-radius: 9px;
+  background: #080808;
+  cursor: pointer;
+  box-shadow:
+    0 13px 24px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(255,255,255,0.025);
+  transform: perspective(700px) rotateY(-3deg);
+  transition:
+    transform 0.24s ease,
+    box-shadow 0.24s ease,
+    border-color 0.24s ease;
+}
+
+.home-album:nth-child(even) {
+  transform: perspective(700px) rotateY(3deg);
+}
+
+.home-album:hover,
+.home-album.selected {
+  z-index: 10;
+  transform: translateY(-9px) scale(1.035);
+  border-color: rgba(212, 175, 55, 0.78);
+  box-shadow:
+    0 22px 34px rgba(0, 0, 0, 0.58),
+    0 0 28px rgba(212, 175, 55, 0.2);
+}
+
+.home-album img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.home-album-play {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(212, 175, 55, 0.56);
+  border-radius: 50%;
+  color: #111;
+  background: #d4af37;
+  font-size: 0.7rem;
+  box-shadow: 0 8px 16px rgba(0,0,0,0.38);
+}
+
+.home-jukebox-instruction {
+  position: relative;
+  z-index: 5;
+  margin: 18px 0 0;
+  color: rgba(255, 244, 219, 0.55);
+  font-size: 0.78rem;
+  text-align: center;
+}
+
+@keyframes homeRecordSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes homeJukeboxGlow {
+  0%, 100% {
+    opacity: 0.72;
+    box-shadow:
+      0 0 16px rgba(212, 175, 55, 0.36),
+      0 0 38px rgba(212, 175, 55, 0.12),
+      inset 0 0 20px rgba(212, 175, 55, 0.1);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 24px rgba(212, 175, 55, 0.6),
+      0 0 56px rgba(212, 175, 55, 0.2),
+      inset 0 0 28px rgba(212, 175, 55, 0.16);
+  }
+}
+
+@media (max-width: 760px) {
+  .home-jukebox-experience {
+    padding: 58px 12px 72px;
+  }
+
+  .home-jukebox-machine {
+    max-width: 480px;
+    border-radius: 180px 180px 26px 26px;
+  }
+
+  .home-jukebox-arch {
+    min-height: 620px;
+    padding: 36px 14px 24px;
+    border-radius: 170px 170px 21px 21px;
+  }
+
+  .home-jukebox-light-ring {
+    left: 12px;
+    right: 12px;
+    height: 285px;
+    border-radius: 160px 160px 48% 48%;
+  }
+
+  .home-record-window {
+    width: 190px;
+    height: 190px;
+  }
+
+  .home-spinning-record {
+    width: 150px;
+    height: 150px;
+  }
+
+  .home-record-label {
+    width: 60px;
+    height: 60px;
+  }
+
+  .home-record-shelf-wrap {
+    grid-template-columns: 38px minmax(0, 1fr) 38px;
+    gap: 6px;
+  }
+
+  .home-record-arrow {
+    width: 36px;
+    height: 36px;
+    font-size: 1.55rem;
+  }
+
+  .home-record-shelf {
+    gap: 10px;
+    padding: 18px 10px 25px;
+  }
+
+  .home-album {
+    flex-basis: 94px;
+    height: 121px;
+  }
+
+  .home-album-play {
+    right: 9px;
+    bottom: 9px;
+    width: 28px;
+    height: 28px;
+  }
+}
+
+/* CLEANER HOMEPAGE JUKEBOX POLISH */
+.home-jukebox-experience {
+  padding: 56px 20px 70px;
+}
+
+.home-jukebox-experience::before {
+  opacity: 0.08;
+  bottom: 14px;
+  font-size: clamp(1rem, 3vw, 2.2rem);
+  letter-spacing: 0.8rem;
+}
+
+.home-jukebox-heading {
+  margin: 0 auto 24px;
+}
+
+.home-jukebox-heading h2 {
+  font-size: clamp(2rem, 4.8vw, 3.8rem);
+  margin-bottom: 10px;
+}
+
+.home-jukebox-heading > p:last-child {
+  font-size: 0.95rem;
+  max-width: 520px;
+}
+
+.home-jukebox-machine {
+  width: min(100%, 660px);
+  padding: 7px;
+  border-radius: 210px 210px 28px 28px;
+  box-shadow:
+    0 26px 70px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(212, 175, 55, 0.1);
+}
+
+.home-jukebox-arch {
+  min-height: 610px;
+  padding: 34px 24px 22px;
+  border-radius: 200px 200px 22px 22px;
+}
+
+.home-jukebox-light-ring {
+  left: 18px;
+  right: 18px;
+  height: 280px;
+  border-width: 4px;
+  box-shadow:
+    0 0 14px rgba(212, 175, 55, 0.34),
+    0 0 28px rgba(212, 175, 55, 0.1),
+    inset 0 0 16px rgba(212, 175, 55, 0.08);
+}
+
+.home-record-window {
+  width: 185px;
+  height: 185px;
+  margin: 4px auto 16px;
+}
+
+.home-spinning-record {
+  width: 148px;
+  height: 148px;
+}
+
+.home-record-label {
+  width: 58px;
+  height: 58px;
+}
+
+.home-record-label span {
+  font-size: 0.5rem;
+}
+
+.home-record-label strong {
+  font-size: 0.66rem;
+}
+
+.home-now-playing {
+  max-width: 430px;
+  margin: 0 auto 12px;
+  padding: 10px 16px;
+  border-radius: 10px;
+}
+
+.home-now-playing strong {
+  font-size: 0.9rem;
+}
+
+.home-music-player {
+  max-width: 480px;
+  min-height: 82px;
+  margin: 0 auto 16px;
+  border-radius: 12px;
+}
+
+.home-music-player iframe {
+  max-width: 480px;
+}
+
+.home-record-shelf-wrap {
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  gap: 8px;
+}
+
+.home-record-shelf {
+  gap: 10px;
+  padding: 16px 12px 22px;
+  border-radius: 14px;
+}
+
+.home-record-shelf::after {
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  height: 8px;
+}
+
+.home-record-arrow {
+  width: 38px;
+  height: 38px;
+  font-size: 1.6rem;
+}
+
+.home-album {
+  flex: 0 0 92px;
+  height: 118px;
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.home-album:hover,
+.home-album.selected {
+  transform: translateY(-5px) scale(1.02);
+}
+
+.home-album-play {
+  width: 28px;
+  height: 28px;
+  right: 8px;
+  bottom: 8px;
+  font-size: 0.62rem;
+}
+
+.home-jukebox-instruction {
+  margin-top: 14px;
+  font-size: 0.74rem;
+}
+
+@media (max-width: 760px) {
+  .home-jukebox-machine {
+    width: min(100%, 440px);
+  }
+
+  .home-jukebox-arch {
+    min-height: 560px;
+    padding: 28px 12px 18px;
+  }
+
+  .home-jukebox-light-ring {
+    height: 245px;
+  }
+
+  .home-record-window {
+    width: 160px;
+    height: 160px;
+  }
+
+  .home-spinning-record {
+    width: 128px;
+    height: 128px;
+  }
+
+  .home-record-shelf {
+    padding: 14px 8px 20px;
+  }
+
+  .home-album {
+    flex-basis: 82px;
+    height: 105px;
+  }
+}
+
+/* Hide homepage music player until a record is selected */
+.home-player-hidden {
+  display: none !important;
+}
+
+.home-music-player:not(.home-player-hidden) {
+  margin-top: 6px;
+}
+
+/* Keep jukebox spacing without showing the empty boxes */
+.home-music-player.home-player-hidden {
+  display: block !important;
+  visibility: hidden;
+  min-height: 175px;
+  max-width: 480px;
+  margin: 0 auto 16px;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+.home-music-player:not(.home-player-hidden) {
+  visibility: visible;
+}
+
+.home-record-shelf-wrap {
+  margin-top: 4px;
+}
+
+/* Decorative filler area inside homepage jukebox */
+.home-jukebox-fillers {
+  position: relative;
+  z-index: 4;
+  max-width: 560px;
+  margin: 8px auto 22px;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 110px;
+  gap: 18px;
+  align-items: center;
+}
+
+.home-jukebox-speaker {
+  height: 168px;
+  border-radius: 24px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(212, 175, 55, 0.08), transparent 28%),
+    linear-gradient(145deg, #0a0f0c, #020202);
+  box-shadow:
+    inset 0 0 18px rgba(255,255,255,0.03),
+    inset 0 -16px 20px rgba(0,0,0,0.4),
+    0 10px 20px rgba(0,0,0,0.25);
+  display: grid;
+  place-items: center;
+  padding: 14px;
+}
+
+.home-jukebox-speaker span {
+  display: block;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  margin: 6px auto;
+  background:
+    radial-gradient(circle at 40% 35%, rgba(255,255,255,0.08), transparent 22%),
+    repeating-radial-gradient(
+      circle,
+      #0c0c0c 0,
+      #0c0c0c 3px,
+      #171717 4px,
+      #171717 6px
+    );
+  border: 1px solid rgba(212, 175, 55, 0.18);
+  box-shadow:
+    inset 0 0 14px rgba(0,0,0,0.65),
+    0 0 0 6px rgba(212, 175, 55, 0.04);
+}
+
+.home-jukebox-speaker span:nth-child(1),
+.home-jukebox-speaker span:nth-child(4) {
+  width: 18px;
+  height: 18px;
+  margin: 0 auto;
+  background: #d4af37;
+  border-radius: 50%;
+  box-shadow:
+    0 0 12px rgba(212, 175, 55, 0.45),
+    inset 0 0 4px rgba(255,255,255,0.28);
+}
+
+.home-jukebox-speaker span:nth-child(2),
+.home-jukebox-speaker span:nth-child(3) {
+  width: 62px;
+  height: 62px;
+}
+
+.home-jukebox-control-panel {
+  min-height: 130px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent),
+    rgba(0, 0, 0, 0.46);
+  box-shadow:
+    inset 0 0 16px rgba(212, 175, 55, 0.04),
+    0 10px 22px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+}
+
+.home-jukebox-mini-display {
+  text-align: center;
+  color: #d4af37;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.home-jukebox-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.home-jukebox-buttons span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, #ffe899, #d4af37 55%, #87660f);
+  box-shadow:
+    0 0 10px rgba(212, 175, 55, 0.28),
+    inset 0 0 4px rgba(255,255,255,0.2);
+}
+
+.home-jukebox-eq {
+  display: flex;
+  justify-content: center;
+  align-items: end;
+  gap: 7px;
+  height: 34px;
+}
+
+.home-jukebox-eq i {
+  display: block;
+  width: 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f0d46b, #8a6615);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.2);
+}
+
+.home-jukebox-eq i:nth-child(1) { height: 12px; }
+.home-jukebox-eq i:nth-child(2) { height: 24px; }
+.home-jukebox-eq i:nth-child(3) { height: 18px; }
+.home-jukebox-eq i:nth-child(4) { height: 28px; }
+.home-jukebox-eq i:nth-child(5) { height: 14px; }
+
+.home-music-player.home-player-hidden {
+  display: block !important;
+  visibility: hidden;
+  min-height: 150px;
+  max-width: 480px;
+  margin: 0 auto 16px;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .home-jukebox-fillers {
+    grid-template-columns: 78px minmax(0, 1fr) 78px;
+    gap: 10px;
+    max-width: 100%;
+    margin-bottom: 18px;
+  }
+
+  .home-jukebox-speaker {
+    height: 138px;
+    padding: 10px;
+  }
+
+  .home-jukebox-speaker span:nth-child(2),
+  .home-jukebox-speaker span:nth-child(3) {
+    width: 46px;
+    height: 46px;
+  }
+
+  .home-jukebox-control-panel {
+    min-height: 110px;
+    padding: 12px 12px;
+  }
+
+  .home-jukebox-buttons {
+    gap: 10px;
+  }
+
+  .home-jukebox-buttons span {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+/* Tighten space inside homepage jukebox */
+.home-jukebox-fillers {
+  margin-bottom: 6px;
+}
+
+.home-music-player.home-player-hidden {
+  min-height: 72px;
+  margin-bottom: 6px;
+}
+
+.home-record-shelf-wrap {
+  margin-top: 0;
+}
+
+.home-jukebox-arch {
+  min-height: 560px;
+  padding-bottom: 18px;
+}
+
+.home-jukebox-speaker {
+  height: 150px;
+}
+
+.home-jukebox-control-panel {
+  min-height: 118px;
+}
+
+/* Make speakers + control panel pop more */
+.home-jukebox-speaker,
+.home-jukebox-control-panel {
+  border: 1.5px solid rgba(212, 175, 55, 0.42) !important;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.12),
+    0 0 18px rgba(212, 175, 55, 0.12),
+    inset 0 0 18px rgba(255,255,255,0.03),
+    inset 0 -16px 20px rgba(0,0,0,0.4),
+    0 10px 20px rgba(0,0,0,0.25) !important;
+}
+
+/* Slight extra glow on the middle control panel */
+.home-jukebox-control-panel {
+  background:
+    radial-gradient(circle at top center, rgba(212, 175, 55, 0.08), transparent 35%),
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent),
+    rgba(0, 0, 0, 0.46) !important;
+}
+
+/* gold ring around the speaker circles */
+.home-jukebox-speaker span:nth-child(2),
+.home-jukebox-speaker span:nth-child(3) {
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow:
+    inset 0 0 14px rgba(0,0,0,0.65),
+    0 0 0 6px rgba(212, 175, 55, 0.05),
+    0 0 10px rgba(212, 175, 55, 0.08);
+}
+
+/* Fix speaker overlap + add luxe gold trim */
+.home-jukebox-fillers {
+  position: relative;
+  z-index: 5;
+  margin-bottom: 22px;
+  align-items: center;
+}
+
+.home-jukebox-speaker {
+  position: relative;
+  height: 138px;
+  overflow: hidden;
+  border: 2px solid rgba(212, 175, 55, 0.52) !important;
+  border-radius: 22px;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.1),
+    0 0 15px rgba(212, 175, 55, 0.13),
+    inset 0 0 18px rgba(255, 255, 255, 0.025),
+    inset 0 -14px 18px rgba(0, 0, 0, 0.42),
+    0 10px 20px rgba(0, 0, 0, 0.28) !important;
+}
+
+.home-jukebox-speaker span:nth-child(1),
+.home-jukebox-speaker span:nth-child(4) {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+}
+
+.home-jukebox-speaker span:nth-child(1) {
+  top: 12px;
+}
+
+.home-jukebox-speaker span:nth-child(4) {
+  bottom: 12px;
+}
+
+.home-jukebox-speaker span:nth-child(2),
+.home-jukebox-speaker span:nth-child(3) {
+  position: absolute;
+  left: 50%;
+  width: 52px;
+  height: 52px;
+  transform: translateX(-50%);
+  margin: 0;
+}
+
+.home-jukebox-speaker span:nth-child(2) {
+  top: 27px;
+}
+
+.home-jukebox-speaker span:nth-child(3) {
+  bottom: 27px;
+}
+
+.home-jukebox-control-panel {
+  position: relative;
+  min-height: 118px;
+  overflow: hidden;
+  border: 2px solid rgba(212, 175, 55, 0.52) !important;
+  border-radius: 18px;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.1),
+    0 0 15px rgba(212, 175, 55, 0.13),
+    inset 0 0 20px rgba(212, 175, 55, 0.035),
+    0 10px 22px rgba(0, 0, 0, 0.28) !important;
+}
+
+/* gold corner accents */
+.home-jukebox-control-panel::before,
+.home-jukebox-control-panel::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+}
+
+.home-jukebox-control-panel::before {
+  top: 7px;
+  left: 7px;
+  border-top: 2px solid #d4af37;
+  border-left: 2px solid #d4af37;
+}
+
+.home-jukebox-control-panel::after {
+  right: 7px;
+  bottom: 7px;
+  border-right: 2px solid #d4af37;
+  border-bottom: 2px solid #d4af37;
+}
+
+/* Keep Apple Music player above and away from speakers */
+.home-music-player {
+  position: relative;
+  z-index: 8;
+  clear: both;
+}
+
+.home-music-player.home-player-hidden {
+  min-height: 110px;
+  margin: 0 auto 16px;
+}
+
+.home-music-player:not(.home-player-hidden) {
+  margin-top: 6px;
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.16),
+    0 16px 30px rgba(0, 0, 0, 0.32);
+}
+
+/* subtle illuminated control buttons */
+.home-jukebox-buttons span {
+  animation: jukeboxButtonGlow 2.4s ease-in-out infinite;
+}
+
+.home-jukebox-buttons span:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+.home-jukebox-buttons span:nth-child(3) {
+  animation-delay: 0.6s;
+}
+
+.home-jukebox-buttons span:nth-child(4) {
+  animation-delay: 0.9s;
+}
+
+@keyframes jukeboxButtonGlow {
+  0%, 100% {
+    opacity: 0.78;
+    box-shadow:
+      0 0 7px rgba(212, 175, 55, 0.22),
+      inset 0 0 4px rgba(255, 255, 255, 0.18);
+  }
+
+  50% {
+    opacity: 1;
+    box-shadow:
+      0 0 15px rgba(212, 175, 55, 0.48),
+      inset 0 0 5px rgba(255, 255, 255, 0.26);
+  }
+}
+
+@media (max-width: 760px) {
+  .home-jukebox-fillers {
+    margin-bottom: 18px;
+  }
+
+  .home-jukebox-speaker {
+    height: 118px;
+  }
+
+  .home-jukebox-speaker span:nth-child(2),
+  .home-jukebox-speaker span:nth-child(3) {
+    width: 42px;
+    height: 42px;
+  }
+
+  .home-jukebox-speaker span:nth-child(2) {
+    top: 24px;
+  }
+
+  .home-jukebox-speaker span:nth-child(3) {
+    bottom: 24px;
+  }
+}
+
+/* =========================================================
+   CLEANER HOMEPAGE JUKEBOX — 2026-06-24
+   ========================================================= */
+
+/* Make the jukebox more compact without changing its design */
+.home-jukebox-machine {
+  width: min(100%, 630px);
+  box-shadow:
+    0 22px 58px rgba(0, 0, 0, 0.52),
+    0 0 20px rgba(212, 175, 55, 0.08);
+}
+
+.home-jukebox-arch {
+  min-height: 0;
+  padding: 32px 22px 18px;
+}
+
+/* Tighten spacing around speakers and controls */
+.home-jukebox-fillers {
+  margin: 4px auto 10px;
+}
+
+/* Do not reserve a large empty area before music is selected */
+.home-music-player.home-player-hidden {
+  display: none !important;
+  min-height: 0 !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Give the real player clean spacing once a record is selected */
+.home-music-player:not(.home-player-hidden) {
+  display: grid;
+  margin: 10px auto 14px;
+}
+
+/* Pull the album selector closer to the controls */
+.home-record-shelf-wrap {
+  margin-top: 6px;
+}
+
+.home-record-shelf {
+  padding: 14px 12px 21px;
+}
+
+/* Slightly reduce decorative element height */
+.home-jukebox-speaker {
+  height: 128px;
+}
+
+.home-jukebox-control-panel {
+  min-height: 108px;
+}
+
+/* Keep mobile layout compact and readable */
+@media (max-width: 760px) {
+  .home-jukebox-machine {
+    width: min(100%, 430px);
+  }
+
+  .home-jukebox-arch {
+    min-height: 0;
+    padding: 27px 11px 16px;
+  }
+
+  .home-jukebox-fillers {
+    margin: 4px auto 10px;
+  }
+
+  .home-jukebox-speaker {
+    height: 112px;
+  }
+
+  .home-jukebox-control-panel {
+    min-height: 102px;
+  }
+
+  .home-record-shelf-wrap {
+    margin-top: 4px;
+  }
+}
+
+
+/* =========================================================
+   REFINED OPEN MUSIC PLAYER — 2026-06-24
+   ========================================================= */
+
+.home-music-player:not(.home-player-hidden) {
+  max-width: 500px;
+  min-height: 0;
+  margin: 10px auto 10px;
+  padding: 8px;
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    rgba(5, 5, 5, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.08),
+    0 14px 28px rgba(0, 0, 0, 0.34),
+    inset 0 0 18px rgba(212, 175, 55, 0.035);
+}
+
+.home-music-player:not(.home-player-hidden) iframe {
+  display: block;
+  width: 100%;
+  max-width: 484px;
+  height: 150px;
+  border-radius: 11px;
+}
+
+.home-music-player:not(.home-player-hidden) + .home-record-shelf-wrap {
+  margin-top: 6px;
+}
+
+@media (max-width: 760px) {
+  .home-music-player:not(.home-player-hidden) {
+    width: calc(100% - 8px);
+    margin: 8px auto 8px;
+    padding: 6px;
+    border-radius: 14px;
+  }
+
+  .home-music-player:not(.home-player-hidden) iframe {
+    height: 145px;
+    border-radius: 9px;
+  }
+}
+
+
+/* =========================================================
+   STRONGER OPEN PLAYER STYLING — 2026-06-24
+   ========================================================= */
+
+.home-music-player:not(.home-player-hidden) {
+  width: min(100%, 470px);
+  max-width: 470px;
+  margin: 14px auto 12px;
+  padding: 10px;
+  border: 2px solid rgba(212, 175, 55, 0.62);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(22, 22, 18, 0.98), rgba(2, 2, 2, 0.98));
+  box-shadow:
+    0 0 0 4px rgba(0, 0, 0, 0.5),
+    0 0 18px rgba(212, 175, 55, 0.12),
+    0 16px 32px rgba(0, 0, 0, 0.46),
+    inset 0 0 20px rgba(212, 175, 55, 0.05);
+}
+
+.home-music-player:not(.home-player-hidden) iframe {
+  width: 100%;
+  max-width: 450px;
+  height: 138px !important;
+  border-radius: 10px;
+}
+
+.home-music-player:not(.home-player-hidden) + .home-record-shelf-wrap {
+  margin-top: 8px;
+}
+
+@media (max-width: 760px) {
+  .home-music-player:not(.home-player-hidden) {
+    width: calc(100% - 18px);
+    padding: 8px;
+    margin: 12px auto 10px;
+  }
+
+  .home-music-player:not(.home-player-hidden) iframe {
+    height: 135px !important;
+  }
+}
+
+
+/* Prevent Apple Music controls from clipping */
+.home-music-player:not(.home-player-hidden) iframe {
+  height: 146px !important;
+}
+
+@media (max-width: 760px) {
+  .home-music-player:not(.home-player-hidden) iframe {
+    height: 142px !important;
+  }
+}
+
+
+/* =========================================================
+   CLEAN HERO-TO-JUKEBOX LOGO TRANSITION — 2026-06-24
+   ========================================================= */
+
+/* Fade the large hero watermark before the foreground logo */
+.hero::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 210px;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0),
+      rgba(0, 0, 0, 0.78) 58%,
+      #020302 100%
+    );
+}
+
+/* Place the smaller logo cleanly between the two sections */
+.hero-logo {
+  bottom: -118px;
+  z-index: 5;
+}
+
+.hero-logo img {
+  display: block;
+  width: min(390px, 72vw);
+  opacity: 1;
+  filter: drop-shadow(0 14px 24px rgba(0, 0, 0, 0.75));
+}
+
+/* Reserve space so the heading does not crowd the logo */
+.home-jukebox-experience {
+  padding-top: 155px;
+}
+
+.home-jukebox-heading {
+  margin-bottom: 24px;
+}
+
+/* Keep the mobile logo inside the normal page flow */
+@media (max-width: 768px) {
+  .hero::after {
+    height: 120px;
+  }
+
+  .hero-logo {
+    position: static;
+    transform: none;
+    margin-top: 16px;
+  }
+
+  .hero-logo img {
+    width: min(220px, 68vw);
+    margin: 0 auto;
+  }
+
+  .home-jukebox-experience {
+    padding-top: 58px;
+  }
+}
+
+
+/* =========================================================
+   EXPERIENCE SECTION POLISH — 2026-06-24
+   ========================================================= */
+
+.experience {
+  margin-top: 0;
+  padding-top: 58px;
+}
+
+.experience .section-title {
+  margin-bottom: 24px;
+}
+
+.experience-box {
+  max-width: 760px;
+  padding: 42px 44px 34px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 18px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0.008)
+    ),
+    rgba(11, 11, 11, 0.94);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.34),
+    inset 0 0 30px rgba(212, 175, 55, 0.025);
+}
+
+.experience-text {
+  max-width: 650px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.75;
+}
+
+.experience-highlight {
+  max-width: 620px;
+  margin: 26px auto 22px;
+  line-height: 1.45;
+}
+
+/* Two-column feature list */
+.experience-features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  max-width: 650px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.experience-features p {
+  position: relative;
+  margin: 0;
+  padding: 12px 14px 12px 34px;
+  border: 1px solid rgba(212, 175, 55, 0.16);
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.035);
+  line-height: 1.4;
+}
+
+.experience-features p::before {
+  content: "✦";
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #d4af37;
+  font-size: 0.72rem;
+}
+
+/* Center the final item when there is an odd number */
+.experience-features p:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+  width: calc(50% - 9px);
+  justify-self: center;
+}
+
+.experience-cta {
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(212, 175, 55, 0.16);
+}
+
+.experience-cta p {
+  margin-bottom: 14px;
+}
+
+.experience-cta .btn {
+  min-width: 150px;
+  padding: 12px 24px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .experience {
+    padding-top: 42px;
+  }
+
+  .experience-box {
+    padding: 30px 20px 26px;
+    border-radius: 15px;
+  }
+
+  .experience-features {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .experience-features p:last-child:nth-child(odd) {
+    grid-column: auto;
+    width: 100%;
+  }
+
+  .experience-cta {
+    margin-top: 24px;
+    padding-top: 20px;
+  }
+}
+
+
+/* =========================================================
+   GRAND OPENING MEMORIES — 2026-06-24
+   ========================================================= */
+
+.grand-opening-memories {
+  position: relative;
+  overflow: hidden;
+  padding-top: 68px;
+  padding-bottom: 78px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(212, 175, 55, 0.08), transparent 26%),
+    linear-gradient(180deg, #050505 0%, #090806 100%);
+}
+
+.grand-opening-memories .section-kicker {
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.grand-opening-memories .section-title {
+  margin-bottom: 14px;
+}
+
+.grand-opening-memories .grand-opening-text {
+  max-width: 700px;
+  margin: 0 auto 34px;
+  color: rgba(255, 246, 223, 0.72);
+  line-height: 1.65;
+  text-align: center;
+}
+
+.memory-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 24px 20px 22px;
+  border: 1px solid rgba(212, 175, 55, 0.24);
+  border-radius: 18px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.025), transparent),
+    rgba(14, 14, 14, 0.96);
+  box-shadow:
+    0 20px 46px rgba(0, 0, 0, 0.32),
+    inset 0 0 24px rgba(212, 175, 55, 0.025);
+}
+
+.memory-card h3 {
+  margin: 14px 0 8px;
+  color: #f1cd42;
+  line-height: 1.2;
+}
+
+.memory-card > p {
+  min-height: 52px;
+  margin: 0 0 18px;
+  color: rgba(255, 246, 223, 0.75);
+  line-height: 1.45;
+}
+
+.memory-badge {
+  align-self: center;
+  display: inline-flex;
+  padding: 7px 11px;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 999px;
+  color: #d4af37;
+  background: rgba(212, 175, 55, 0.055);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.memory-card .poster-image-wrapper {
+  appearance: none;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 13px;
+  background: #050505;
+  cursor: pointer;
+}
+
+.memory-card .poster-image-wrapper img {
+  transition:
+    transform 0.3s ease,
+    filter 0.3s ease,
+    opacity 0.3s ease;
+  filter: saturate(0.86) brightness(0.92);
+}
+
+.memory-card .poster-image-wrapper:hover img {
+  transform: scale(1.018);
+  filter: saturate(1) brightness(1);
+}
+
+.memory-link-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 20px;
+  padding: 11px 18px;
+  border: 1px solid rgba(212, 175, 55, 0.62);
+  border-radius: 999px;
+  color: #f3d45f;
+  background: rgba(212, 175, 55, 0.045);
+  font-weight: 800;
+  text-decoration: none;
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.memory-link-btn:hover {
+  transform: translateY(-2px);
+  color: #090909;
+  background: #d4af37;
+  box-shadow: 0 10px 22px rgba(212, 175, 55, 0.18);
+}
+
+@media (max-width: 768px) {
+  .grand-opening-memories {
+    padding-top: 52px;
+    padding-bottom: 60px;
+  }
+
+  .grand-opening-memories .grand-opening-text {
+    margin-bottom: 26px;
+  }
+
+  .memory-card {
+    padding: 20px 16px;
+  }
+
+  .memory-card > p {
+    min-height: 0;
+  }
+}
+
+
+/* =========================================================
+   LOWER HOMEPAGE POLISH — 2026-06-24
+   ========================================================= */
+
+/* Reviews */
+.testimonials-section {
+  padding: 62px 20px 58px;
+}
+
+.testimonials-wrap h2 {
+  margin-bottom: 10px;
+  font-size: clamp(2.1rem, 4.5vw, 3.25rem);
+}
+
+.reviews-intro {
+  max-width: 560px;
+  margin: 0 auto 28px;
+  color: rgba(255, 246, 223, 0.68);
+  line-height: 1.6;
+}
+
+.google-reviews-embed {
+  margin-top: 0;
+}
+
+/* Partners */
+.featured-partners-section {
+  padding: 58px 20px 62px;
+}
+
+.featured-partners-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.featured-partners-wrap h2 {
+  margin-bottom: 14px;
+}
+
+.featured-partners-wrap > p:last-of-type {
+  max-width: 680px;
+  margin: 0 auto 24px;
+  color: rgba(255, 246, 223, 0.72);
+  line-height: 1.7;
+}
+
+/* VIP */
+.vip {
+  padding: 56px 20px 44px;
+  background:
+    radial-gradient(circle at center, rgba(212, 175, 55, 0.07), transparent 42%),
+    linear-gradient(180deg, #050505, #000);
+}
+
+.vip-box {
+  max-width: 560px;
+  padding: 38px 36px 34px;
+  border-color: rgba(212, 175, 55, 0.34);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent),
+    rgba(0, 0, 0, 0.76);
+  box-shadow:
+    0 22px 52px rgba(0, 0, 0, 0.52),
+    0 0 28px rgba(212, 175, 55, 0.06);
+}
+
+.vip-kicker {
+  margin: 0 0 9px;
+  color: #d4af37;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.vip-box h2 {
+  margin: 0 0 14px;
+}
+
+.vip-description {
+  max-width: 440px;
+  margin: 0 auto 22px;
+  color: rgba(255, 246, 223, 0.75);
+  line-height: 1.65;
+}
+
+.vip-subtext {
+  margin-top: 16px;
+}
+
+/* Social */
+.social {
+  padding: 34px 20px 46px;
+}
+
+.social h3 {
+  margin-bottom: 18px;
+}
+
+.social-links {
+  gap: 16px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .testimonials-section {
+    padding: 48px 14px 46px;
+  }
+
+  .reviews-intro {
+    margin-bottom: 22px;
+  }
+
+  .featured-partners-section {
+    padding: 46px 16px 50px;
+  }
+
+  .vip {
+    padding: 44px 14px 32px;
+  }
+
+  .vip-box {
+    padding: 30px 20px 28px;
+  }
+
+  .social {
+    padding: 28px 14px 38px;
+  }
+}
+

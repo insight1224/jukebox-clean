@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Scrapbook | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+
+<section class="scrapbook-book-app">
+
+  <div class="jukebox-library-screen" id="jukeboxLibrary">
+    <div class="jukebox-library-stage">
+
+      <div class="library-light library-light-left"></div>
+      <div class="library-light library-light-right"></div>
+
+      <div class="jukebox-library-heading">
+        <p>The Jukebox Lounge NC Presents</p>
+        <h1>The Memory Collection</h1>
+        <span>Pull a volume from the collection and step inside the story.</span>
+      </div>
+
+      <div class="jukebox-machine">
+
+        <div class="jukebox-arch">
+          <div class="jukebox-glow-ring"></div>
+
+          <div class="record-display">
+            <div class="spinning-record" id="spinningRecord">
+              <div class="record-label">
+                <span>The Jukebox</span>
+                <small>Memories</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="album-shelf">
+            <div class="shelf-album shelf-album-side">
+              <span>Live<br>Moments</span>
+            </div>
+
+            <button class="featured-scrapbook-album" id="pullScrapbookBtn" type="button">
+              <img src="{{ url_for('static', filename='images/logo-small-home.png') }}" alt="">
+              <strong>The Jukebox<br>Scrapbook</strong>
+              <small>Volume One</small>
+              <span class="pull-book-label">Pull the Scrapbook</span>
+            </button>
+
+            <div class="shelf-album shelf-album-side">
+              <span>Community<br>Love</span>
+            </div>
+          </div>
+
+          <div class="jukebox-controls">
+            <span>Now Featuring</span>
+            <strong>The Jukebox Scrapbook — Volume One</strong>
+          </div>
+        </div>
+
+      </div>
+
+      <p class="library-instruction">
+        Select the featured volume to open the memory collection.
+      </p>
+
+    </div>
+  </div>
+
+  <div class="scrapbook-cover-screen" id="scrapbookCover">
+    <div class="scrapbook-cover-book">
+      <div class="cover-glow"></div>
+      <img class="scrapbook-cover-logo" src="{{ url_for('static', filename='images/logo-small-home.png') }}" alt="The Jukebox Lounge NC logo">
+      <p class="cover-kicker">The Jukebox Lounge NC</p>
+      <h1>The Jukebox Scrapbook</h1>
+      <p class="cover-subtitle">
+        Memories • First Times • Community Love
+      </p>
+      <button class="open-book-btn" id="openScrapbookBtn" type="button">
+        Open Scrapbook
+      </button>
+    </div>
+  </div>
+
+  <div class="scrapbook-reader hidden" id="scrapbookReader">
+    <div class="reader-topbar">
+      <p class="reader-label">The Jukebox Scrapbook</p>
+      <div class="reader-controls">
+        <button type="button" class="reader-btn" id="prevPageBtn">Previous</button>
+        <span class="page-indicator" id="pageIndicator">Page 1 of 5</span>
+        <button type="button" class="reader-btn" id="nextPageBtn">Next</button>
+      </div>
+    </div>
+
+    <div class="scrapbook-spread-wrap">
+
+      <section class="scrapbook-spread active" data-page="1">
+        <div class="paper-page left-page">
+          <p class="paper-tab">Memory 01</p>
+          <div class="polaroid featured-polaroid tilt-left">
+            <img src="{{ url_for('static', filename='images/scrapbook/devin-shoutout.png') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+
+        <div class="paper-page right-page">
+          <p class="paper-tab">Memory 02</p>
+          <div class="polaroid tilt-right">
+            <img src="{{ url_for('static', filename='images/scrapbook/2C6F8C94-CCE7-4D7C-B2FA-229D42A11B1C.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="scrapbook-spread" data-page="2">
+        <div class="paper-page left-page">
+          <p class="paper-tab">Memory 03</p>
+          <div class="polaroid tilt-right">
+            <img src="{{ url_for('static', filename='images/scrapbook/50CEB5E4-FD06-4B99-A9CA-BC5191148BF5.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+
+        <div class="paper-page right-page">
+          <p class="paper-tab">Memory 04</p>
+          <div class="polaroid tilt-left">
+            <img src="{{ url_for('static', filename='images/scrapbook/657386CA-4E27-4779-8A8A-D0A1E8D29800.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="scrapbook-spread" data-page="3">
+        <div class="paper-page left-page">
+          <p class="paper-tab">Memory 05</p>
+          <div class="polaroid tilt-left">
+            <img src="{{ url_for('static', filename='images/scrapbook/8C1EBA10-F2C1-4BEB-A81A-89455DCD979E.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+
+        <div class="paper-page right-page">
+          <p class="paper-tab">Memory 06</p>
+          <div class="polaroid tilt-right">
+            <img src="{{ url_for('static', filename='images/scrapbook/C2A73342-6CF9-4042-98DE-B8D061540312.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="scrapbook-spread" data-page="4">
+        <div class="paper-page left-page">
+          <p class="paper-tab">Memory 07</p>
+          <div class="polaroid tilt-right">
+            <img src="{{ url_for('static', filename='images/scrapbook/C501A97B-351C-4D7D-B01E-95ABDD8E56A4.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+
+        <div class="paper-page right-page">
+          <p class="paper-tab">Memory 08</p>
+          <div class="polaroid tilt-left">
+            <img src="{{ url_for('static', filename='images/scrapbook/DB626B10-B4BD-4F7A-8B38-DA2C504BB62D.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="scrapbook-spread" data-page="5">
+        <div class="paper-page left-page">
+          <p class="paper-tab">Memory 09</p>
+          <div class="polaroid featured-polaroid tilt-left">
+            <img src="{{ url_for('static', filename='images/scrapbook/FF4BF12A-B2B2-46C7-B7AA-97EC94A7FB8A.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
+            <span>saved memory</span>
+          </div>
+        </div>
+
+        <div class="paper-page right-page">
+          <p class="paper-tab">End of Scrapbook</p>
+          <div class="polaroid tilt-right">
+            <img src="{{ url_for('static', filename='images/logo-small-home.png') }}" alt="The Jukebox Lounge NC logo">
+            <span>The Jukebox Lounge NC</span>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+
+  <div class="scrapbook-ending hidden" id="scrapbookEnding">
+    <div class="scrapbook-ending-card">
+      <img class="scrapbook-ending-logo" src="{{ url_for('static', filename='images/logo-small-home.png') }}" alt="The Jukebox Lounge NC logo">
+      <p class="cover-kicker">Scrapbook Closed</p>
+      <h2>Thank you for being part of the story.</h2>
+      <p>
+        Every post, performance, first-time moment, and memory helps build
+        The Jukebox Lounge NC into something bigger.
+      </p>
+      <button class="open-book-btn" id="restartScrapbookBtn" type="button">
+        View Again
+      </button>
+    </div>
+  </div>
+
+</section>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const library = document.getElementById("jukeboxLibrary");
+  const pullBookBtn = document.getElementById("pullScrapbookBtn");
+  const cover = document.getElementById("scrapbookCover");
+  const reader = document.getElementById("scrapbookReader");
+  const ending = document.getElementById("scrapbookEnding");
+
+  const openBtn = document.getElementById("openScrapbookBtn");
+  const restartBtn = document.getElementById("restartScrapbookBtn");
+  const prevBtn = document.getElementById("prevPageBtn");
+  const nextBtn = document.getElementById("nextPageBtn");
+  const pageIndicator = document.getElementById("pageIndicator");
+  const pages = Array.from(document.querySelectorAll(".scrapbook-spread"));
+
+  const spinningRecord = document.getElementById("spinningRecord");
+
+  let currentPage = 0;
+  let isTurning = false;
+
+  cover.classList.add("hidden");
+
+  function updateControls(index) {
+    pageIndicator.textContent = "Page " + (index + 1) + " of " + pages.length;
+    prevBtn.disabled = index === 0;
+    nextBtn.disabled = false;
+    nextBtn.textContent = index === pages.length - 1 ? "Close Book" : "Next";
+    nextBtn.classList.toggle("close-book-arrow", index === pages.length - 1);
+  }
+
+  function showPage(index, direction) {
+    if (isTurning) return;
+    isTurning = true;
+
+    const current = pages[currentPage];
+    const next = pages[index];
+
+    pages.forEach((page) => {
+      page.classList.remove(
+        "active",
+        "turning-next",
+        "turning-prev",
+        "enter-next",
+        "enter-prev"
+      );
+    });
+
+    if (current && current !== next) {
+      current.classList.add(
+        "active",
+        direction === "next" ? "turning-next" : "turning-prev"
+      );
+    }
+
+    setTimeout(() => {
+      pages.forEach((page) => {
+        page.classList.remove(
+          "active",
+          "turning-next",
+          "turning-prev",
+          "enter-next",
+          "enter-prev"
+        );
+      });
+
+      next.classList.add(
+        "active",
+        direction === "next" ? "enter-next" : "enter-prev"
+      );
+
+      currentPage = index;
+      updateControls(index);
+
+      setTimeout(() => {
+        next.classList.remove("enter-next", "enter-prev");
+        isTurning = false;
+      }, 450);
+    }, current && current !== next ? 360 : 0);
+  }
+
+  function revealBook() {
+    pullBookBtn.classList.add("album-pulling");
+    spinningRecord.classList.add("record-playing");
+    setTimeout(() => {
+      library.classList.add("library-leaving");
+    }, 450);
+
+    setTimeout(() => {
+      library.classList.add("hidden");
+      cover.classList.remove("hidden", "cover-opening");
+      cover.classList.add("cover-arriving");
+    }, 950);
+  }
+
+  function openBook() {
+    cover.classList.add("cover-opening");
+
+    setTimeout(() => {
+      cover.classList.add("hidden");
+      cover.classList.remove("cover-arriving");
+
+      reader.classList.remove("hidden");
+
+      pages.forEach((page) => page.classList.remove("active"));
+      pages[0].classList.add("active", "enter-next");
+
+      currentPage = 0;
+      updateControls(currentPage);
+
+      setTimeout(() => {
+        pages[0].classList.remove("enter-next");
+      }, 450);
+    }, 420);
+  }
+
+  function closeBook() {
+    reader.classList.add("reader-closing");
+
+    setTimeout(() => {
+      reader.classList.add("hidden");
+      reader.classList.remove("reader-closing");
+      ending.classList.remove("hidden");
+    }, 420);
+  }
+
+  pullBookBtn.addEventListener("click", revealBook);
+  openBtn.addEventListener("click", openBook);
+
+  if (restartBtn) {
+    restartBtn.addEventListener("click", function () {
+      ending.classList.add("hidden");
+      cover.classList.add("hidden");
+      cover.classList.remove("cover-opening", "cover-arriving");
+
+      library.classList.remove("hidden", "library-leaving");
+      pullBookBtn.classList.remove("album-pulling");
+      spinningRecord.classList.remove("record-playing");
+
+      currentPage = 0;
+      updateControls(currentPage);
+    });
+  }
+
+  prevBtn.addEventListener("click", function () {
+    if (currentPage > 0) {
+      showPage(currentPage - 1, "prev");
+    }
+  });
+
+  nextBtn.addEventListener("click", function () {
+    if (currentPage === pages.length - 1) {
+      closeBook();
+      return;
+    }
+
+    showPage(currentPage + 1, "next");
+  });
+
+  updateControls(currentPage);
+});
+</script>
+
+{% endblock %}

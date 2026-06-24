@@ -462,3 +462,259 @@ body {
     min-height: auto;
   }
 }
+
+/* Scrapbook Page */
+.scrapbook-hero {
+  padding: 90px 20px 40px;
+  background:
+    radial-gradient(circle at top left, rgba(212, 175, 55, 0.22), transparent 34%),
+    linear-gradient(135deg, #140f0a 0%, #24160c 48%, #090706 100%);
+  color: #fff7e8;
+  text-align: center;
+}
+
+.scrapbook-hero-inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.scrapbook-kicker {
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 800;
+  font-size: 0.78rem;
+  margin-bottom: 14px;
+}
+
+.scrapbook-hero h1 {
+  font-size: clamp(2.6rem, 7vw, 5.7rem);
+  line-height: 0.95;
+  margin: 0 0 18px;
+  font-weight: 900;
+}
+
+.scrapbook-hero p {
+  max-width: 720px;
+  margin: 0 auto;
+  color: rgba(255, 247, 232, 0.84);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.scrapbook-wall {
+  position: relative;
+  padding: 70px 20px 90px;
+  background:
+    linear-gradient(rgba(34, 20, 10, 0.72), rgba(34, 20, 10, 0.72)),
+    repeating-linear-gradient(
+      90deg,
+      #5b341b 0,
+      #5b341b 24px,
+      #6a3c1f 24px,
+      #6a3c1f 48px
+    );
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 28px;
+  overflow: hidden;
+}
+
+.scrap-card {
+  position: relative;
+  min-height: 220px;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.32);
+  z-index: 1;
+}
+
+.scrap-card:nth-child(1) {
+  grid-column: span 5;
+}
+
+.scrap-card:nth-child(2) {
+  grid-column: span 3;
+  margin-top: 35px;
+}
+
+.scrap-card:nth-child(3) {
+  grid-column: span 4;
+  margin-top: 10px;
+}
+
+.scrap-card:nth-child(4) {
+  grid-column: span 3;
+}
+
+.scrap-card:nth-child(5) {
+  grid-column: span 5;
+  margin-top: -20px;
+}
+
+.scrap-card:nth-child(6) {
+  grid-column: span 4;
+  margin-top: 30px;
+}
+
+.scrap-label {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #111;
+  color: #d4af37;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.screenshot-card {
+  background: #f8f1e6;
+  padding: 18px;
+}
+
+.screenshot-card img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+}
+
+.sticky-note {
+  color: #24180f;
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+}
+
+.sticky-note h3 {
+  margin: 0 0 12px;
+  font-size: 1.45rem;
+}
+
+.sticky-note p,
+.review-card p,
+.quote-card p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.yellow {
+  background: #ffe680;
+}
+
+.pink {
+  background: #ffb6cf;
+}
+
+.green {
+  background: #bde8a6;
+}
+
+.review-card {
+  background: #fffaf1;
+  color: #1b130d;
+  border: 4px solid rgba(212, 175, 55, 0.65);
+}
+
+.stars {
+  color: #d4af37;
+  letter-spacing: 0.08em;
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+}
+
+.review-card strong,
+.quote-card strong {
+  display: block;
+  margin-top: 16px;
+}
+
+.quote-card {
+  background: #15100b;
+  color: #fff7e8;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+}
+
+.quote-card p {
+  font-size: 1.28rem;
+}
+
+.tape {
+  position: absolute;
+  width: 120px;
+  height: 34px;
+  background: rgba(255, 239, 190, 0.72);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.tape-top {
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+}
+
+.tilt-left {
+  transform: rotate(-3deg);
+}
+
+.tilt-right {
+  transform: rotate(3deg);
+}
+
+.tilt-left-small {
+  transform: rotate(-1.5deg);
+}
+
+.tilt-right-small {
+  transform: rotate(1.8deg);
+}
+
+@media (max-width: 900px) {
+  .scrapbook-wall {
+    display: block;
+    padding: 45px 16px 70px;
+  }
+
+  .scrap-card {
+    margin: 0 0 28px !important;
+    transform: rotate(0deg);
+  }
+
+  .scrapbook-hero {
+    padding-top: 70px;
+  }
+}
+
+.video-card {
+  background: #f8f1e6;
+  padding: 18px;
+}
+
+.video-card video {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  background: #111;
+}
+
+.scrapbook-wall .screenshot-card,
+.scrapbook-wall .video-card {
+  align-self: start;
+}
+
+.video-card {
+  background: #f8f1e6;
+  padding: 18px;
+}
+
+.video-card video {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  background: #111;
+}
+
+.scrapbook-wall .screenshot-card,
+.scrapbook-wall .video-card {
+  align-self: start;
+}

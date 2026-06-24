@@ -1605,3 +1605,3921 @@ section {
   font-size: 1.8rem;
   letter-spacing: 0.08em;
 }
+
+/* Scrapbook Page */
+.scrapbook-hero {
+  padding: 100px 20px 55px;
+  background:
+    radial-gradient(circle at top left, rgba(212, 175, 55, 0.22), transparent 34%),
+    linear-gradient(135deg, #140f0a 0%, #24160c 48%, #090706 100%);
+  color: #fff7e8;
+  text-align: center;
+}
+
+.scrapbook-hero-inner {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.scrapbook-kicker {
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-weight: 800;
+  font-size: 0.78rem;
+  margin-bottom: 14px;
+}
+
+.scrapbook-hero h1 {
+  font-size: clamp(2.6rem, 7vw, 5.7rem);
+  line-height: 0.95;
+  margin: 0 0 18px;
+  font-weight: 900;
+}
+
+.scrapbook-hero p {
+  max-width: 720px;
+  margin: 0 auto;
+  color: rgba(255, 247, 232, 0.84);
+  font-size: 1.08rem;
+  line-height: 1.7;
+}
+
+.scrapbook-wall {
+  position: relative;
+  padding: 80px 34px 100px;
+  background:
+    linear-gradient(rgba(34, 20, 10, 0.72), rgba(34, 20, 10, 0.72)),
+    repeating-linear-gradient(
+      90deg,
+      #5b341b 0,
+      #5b341b 24px,
+      #6a3c1f 24px,
+      #6a3c1f 48px
+    );
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 32px;
+  overflow: hidden;
+}
+
+.scrap-card {
+  position: relative;
+  min-height: 220px;
+  padding: 24px;
+  border-radius: 14px;
+  box-shadow: 0 22px 45px rgba(0, 0, 0, 0.34);
+  z-index: 1;
+}
+
+.scrap-card:nth-child(1),
+.scrap-card:nth-child(5),
+.scrap-card:nth-child(9) {
+  grid-column: span 5;
+}
+
+.scrap-card:nth-child(2),
+.scrap-card:nth-child(4),
+.scrap-card:nth-child(6),
+.scrap-card:nth-child(8),
+.scrap-card:nth-child(11) {
+  grid-column: span 3;
+}
+
+.scrap-card:nth-child(3),
+.scrap-card:nth-child(7),
+.scrap-card:nth-child(10),
+.scrap-card:nth-child(12),
+.scrap-card:nth-child(13),
+.scrap-card:nth-child(14),
+.scrap-card:nth-child(15) {
+  grid-column: span 4;
+}
+
+.scrap-card:nth-child(even) {
+  margin-top: 34px;
+}
+
+.scrap-card:nth-child(5),
+.scrap-card:nth-child(10) {
+  margin-top: -12px;
+}
+
+.scrap-label {
+  display: inline-flex;
+  margin-bottom: 14px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #111;
+  color: #d4af37;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.screenshot-card,
+.video-card {
+  background: #f8f1e6;
+  padding: 18px;
+  align-self: start;
+}
+
+.screenshot-card img,
+.video-card video {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+}
+
+.video-card video {
+  background: #111;
+}
+
+.sticky-note {
+  color: #24180f;
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+}
+
+.sticky-note h3 {
+  margin: 0 0 12px;
+  font-size: 1.45rem;
+}
+
+.sticky-note p,
+.review-card p,
+.quote-card p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.yellow {
+  background: #ffe680;
+}
+
+.pink {
+  background: #ffb6cf;
+}
+
+.green {
+  background: #bde8a6;
+}
+
+.review-card {
+  background: #fffaf1;
+  color: #1b130d;
+  border: 4px solid rgba(212, 175, 55, 0.65);
+}
+
+.stars {
+  color: #d4af37;
+  letter-spacing: 0.08em;
+  font-size: 1.25rem;
+  margin-bottom: 12px;
+}
+
+.review-card strong,
+.quote-card strong {
+  display: block;
+  margin-top: 16px;
+}
+
+.quote-card {
+  background: #15100b;
+  color: #fff7e8;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+}
+
+.quote-card p {
+  font-size: 1.28rem;
+}
+
+.tape {
+  position: absolute;
+  width: 120px;
+  height: 34px;
+  background: rgba(255, 239, 190, 0.72);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+}
+
+.tape-top {
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%) rotate(-3deg);
+}
+
+.tilt-left {
+  transform: rotate(-3deg);
+}
+
+.tilt-right {
+  transform: rotate(3deg);
+}
+
+.tilt-left-small {
+  transform: rotate(-1.5deg);
+}
+
+.tilt-right-small {
+  transform: rotate(1.8deg);
+}
+
+@media (max-width: 900px) {
+  .scrapbook-hero {
+    padding: 76px 18px 42px;
+  }
+
+  .scrapbook-wall {
+    display: block;
+    padding: 45px 16px 70px;
+  }
+
+  .scrap-card {
+    margin: 0 0 28px !important;
+    transform: rotate(0deg);
+  }
+}
+
+/* Scrapbook Wall Upgrade */
+.scrapbook-hero {
+  position: relative;
+  padding: 115px 20px 70px;
+  overflow: hidden;
+  border-bottom: 8px solid rgba(212, 175, 55, 0.5);
+}
+
+.scrapbook-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 34px 34px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.scrapbook-hero-inner {
+  position: relative;
+  z-index: 1;
+}
+
+.scrapbook-wall {
+  position: relative;
+  padding: 95px 42px 120px;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 223, 128, 0.17), transparent 22%),
+    radial-gradient(circle at 82% 22%, rgba(255, 255, 255, 0.08), transparent 24%),
+    repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.025) 0,
+      rgba(255,255,255,0.025) 2px,
+      transparent 2px,
+      transparent 9px
+    ),
+    linear-gradient(135deg, #5a341d 0%, #6a3f24 42%, #3f2314 100%);
+  gap: 38px;
+}
+
+.scrapbook-wall::before {
+  content: "";
+  position: absolute;
+  inset: 24px;
+  border: 3px dashed rgba(255, 221, 143, 0.35);
+  border-radius: 24px;
+  pointer-events: none;
+}
+
+.scrapbook-wall::after {
+  content: "The Jukebox Lounge NC • Memories • Reviews • First Times • Community Love";
+  position: absolute;
+  left: 38px;
+  top: 28px;
+  color: rgba(255, 247, 232, 0.72);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  transform: rotate(-1.5deg);
+}
+
+.screenshot-card,
+.video-card {
+  border: 10px solid #fff3df;
+  border-bottom-width: 34px;
+  background: #fff3df;
+}
+
+.screenshot-card::before,
+.video-card::before,
+.sticky-note::before,
+.review-card::before,
+.quote-card::before {
+  content: "";
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, #fff7dd 0 14%, transparent 15%),
+    #d4af37;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+  z-index: 5;
+}
+
+.screenshot-card::after,
+.video-card::after {
+  content: "saved memory";
+  position: absolute;
+  left: 18px;
+  bottom: 8px;
+  color: rgba(55, 34, 15, 0.72);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 0.9rem;
+}
+
+.tape {
+  width: 138px;
+  height: 38px;
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04)),
+    rgba(255, 233, 176, 0.74);
+  border-left: 2px dashed rgba(116, 81, 28, 0.18);
+  border-right: 2px dashed rgba(116, 81, 28, 0.18);
+  z-index: 4;
+}
+
+.sticky-note {
+  border-radius: 4px 22px 8px 18px;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.18), transparent 40%),
+    repeating-linear-gradient(
+      transparent 0,
+      transparent 30px,
+      rgba(0,0,0,0.045) 31px
+    );
+}
+
+.sticky-note::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  border-width: 0 0 34px 34px;
+  border-style: solid;
+  border-color: transparent transparent rgba(0,0,0,0.16) transparent;
+}
+
+.scrap-card:nth-child(1) { grid-column: span 4; transform: rotate(-4deg); }
+.scrap-card:nth-child(2) { grid-column: span 3; margin-top: 68px; transform: rotate(3.5deg); }
+.scrap-card:nth-child(3) { grid-column: span 5; transform: rotate(2deg); }
+.scrap-card:nth-child(4) { grid-column: span 3; margin-top: -6px; transform: rotate(-2.5deg); }
+.scrap-card:nth-child(5) { grid-column: span 5; margin-top: 42px; transform: rotate(3deg); }
+.scrap-card:nth-child(6) { grid-column: span 4; margin-top: 8px; transform: rotate(-3.5deg); }
+.scrap-card:nth-child(7) { grid-column: span 4; margin-top: -24px; transform: rotate(-1.8deg); }
+.scrap-card:nth-child(8) { grid-column: span 3; margin-top: 38px; transform: rotate(4deg); }
+.scrap-card:nth-child(9) { grid-column: span 5; transform: rotate(-3deg); }
+.scrap-card:nth-child(10) { grid-column: span 4; margin-top: 48px; transform: rotate(2.5deg); }
+.scrap-card:nth-child(11) { grid-column: span 3; margin-top: -8px; transform: rotate(-4deg); }
+.scrap-card:nth-child(12),
+.scrap-card:nth-child(13),
+.scrap-card:nth-child(14) { grid-column: span 4; }
+.scrap-card:nth-child(12) { transform: rotate(2deg); }
+.scrap-card:nth-child(13) { margin-top: 44px; transform: rotate(-2.8deg); }
+.scrap-card:nth-child(14) { transform: rotate(3.8deg); }
+.scrap-card:nth-child(15) { grid-column: 3 / span 8; transform: rotate(-1.5deg); }
+
+.scrap-card:hover {
+  z-index: 8;
+  transform: rotate(0deg) scale(1.025);
+}
+
+@media (max-width: 900px) {
+  .scrapbook-wall::after {
+    left: 24px;
+    right: 24px;
+    top: 18px;
+    font-size: 0.8rem;
+  }
+
+  .screenshot-card,
+  .video-card {
+    border-width: 8px;
+    border-bottom-width: 30px;
+  }
+
+  .scrap-card:hover {
+    transform: none;
+  }
+}
+
+/* Scrapbook Calm Layout Override */
+.scrapbook-hero {
+  padding: 95px 20px 54px;
+  background:
+    radial-gradient(circle at top left, rgba(212, 175, 55, 0.16), transparent 32%),
+    linear-gradient(135deg, #0b0806 0%, #1b120b 48%, #050403 100%);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.scrapbook-hero h1 {
+  font-size: clamp(2.4rem, 5.6vw, 4.4rem);
+}
+
+.scrapbook-hero p {
+  font-size: 1rem;
+  max-width: 650px;
+}
+
+.scrapbook-wall {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 78px 28px 90px;
+  background:
+    radial-gradient(circle at 25% 15%, rgba(255, 224, 145, 0.12), transparent 24%),
+    linear-gradient(135deg, #4b2b18 0%, #5c351f 52%, #392012 100%);
+  border-left: 1px solid rgba(212, 175, 55, 0.16);
+  border-right: 1px solid rgba(212, 175, 55, 0.16);
+  gap: 26px;
+}
+
+.scrapbook-wall::before {
+  inset: 18px;
+  border: 1px dashed rgba(255, 221, 143, 0.22);
+  border-radius: 18px;
+}
+
+.scrapbook-wall::after {
+  content: "Memories • Reviews • First Times • Community Love";
+  top: 26px;
+  left: 32px;
+  font-size: 0.82rem;
+  opacity: 0.7;
+}
+
+.scrap-card {
+  min-height: auto;
+  padding: 18px;
+  border-radius: 12px;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.28);
+}
+
+.scrap-card:hover {
+  transform: none;
+  box-shadow: 0 18px 34px rgba(0, 0, 0, 0.34);
+}
+
+.screenshot-card,
+.video-card {
+  border: 8px solid #fff3df;
+  border-bottom-width: 28px;
+  padding: 0;
+}
+
+.screenshot-card img,
+.video-card video {
+  max-height: 360px;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 4px;
+}
+
+.screenshot-card::after,
+.video-card::after {
+  font-size: 0.78rem;
+  bottom: 7px;
+}
+
+.scrap-label {
+  font-size: 0.65rem;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+}
+
+.sticky-note {
+  padding: 24px;
+  min-height: 210px;
+}
+
+.sticky-note h3 {
+  font-size: 1.22rem;
+  line-height: 1.25;
+}
+
+.sticky-note p,
+.review-card p,
+.quote-card p {
+  font-size: 0.96rem;
+}
+
+.review-card,
+.quote-card {
+  padding: 24px;
+}
+
+.quote-card p {
+  font-size: 1.08rem;
+}
+
+.tape {
+  width: 100px;
+  height: 28px;
+  top: -13px;
+}
+
+.screenshot-card::before,
+.video-card::before,
+.sticky-note::before,
+.review-card::before,
+.quote-card::before {
+  width: 17px;
+  height: 17px;
+  top: -10px;
+}
+
+/* calmer card placement */
+.scrap-card:nth-child(1) { grid-column: span 4; transform: rotate(-1.4deg); }
+.scrap-card:nth-child(2) { grid-column: span 4; margin-top: 26px; transform: rotate(1.2deg); }
+.scrap-card:nth-child(3) { grid-column: span 4; transform: rotate(0.9deg); }
+
+.scrap-card:nth-child(4) { grid-column: span 3; margin-top: 0; transform: rotate(-0.8deg); }
+.scrap-card:nth-child(5) { grid-column: span 6; margin-top: 22px; transform: rotate(1deg); }
+.scrap-card:nth-child(6) { grid-column: span 3; margin-top: 0; transform: rotate(-1deg); }
+
+.scrap-card:nth-child(7) { grid-column: span 4; margin-top: 0; transform: rotate(-0.8deg); }
+.scrap-card:nth-child(8) { grid-column: span 4; margin-top: 22px; transform: rotate(1.1deg); }
+.scrap-card:nth-child(9) { grid-column: span 4; transform: rotate(-1deg); }
+
+.scrap-card:nth-child(10),
+.scrap-card:nth-child(11),
+.scrap-card:nth-child(12),
+.scrap-card:nth-child(13),
+.scrap-card:nth-child(14) {
+  grid-column: span 4;
+  margin-top: 0;
+  transform: rotate(0.8deg);
+}
+
+.scrap-card:nth-child(15) {
+  grid-column: 4 / span 6;
+  transform: rotate(-0.8deg);
+}
+
+/* hide video card until the MOV is converted */
+.video-card {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .scrapbook-wall {
+    max-width: none;
+    padding: 58px 16px 70px;
+  }
+
+  .scrapbook-wall::after {
+    top: 20px;
+    left: 22px;
+  }
+
+  .screenshot-card img,
+  .video-card video {
+    max-height: none;
+  }
+
+  .scrap-card {
+    transform: none !important;
+  }
+}
+
+/* Scrapbook Brand Color Override */
+.scrapbook-hero {
+  background:
+    radial-gradient(circle at 18% 18%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 82% 12%, rgba(28, 88, 61, 0.28), transparent 30%),
+    linear-gradient(135deg, #050505 0%, #0d1510 46%, #060403 100%);
+  color: #fff8e8;
+}
+
+.scrapbook-kicker {
+  color: #d4af37;
+  background: rgba(10, 28, 19, 0.78);
+  border-color: rgba(212, 175, 55, 0.42);
+}
+
+.scrapbook-hero h1 {
+  color: #d4af37;
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.scrapbook-hero p {
+  color: rgba(255, 248, 232, 0.84);
+}
+
+.scrapbook-wall {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(212, 175, 55, 0.13), transparent 24%),
+    radial-gradient(circle at 84% 24%, rgba(21, 92, 61, 0.28), transparent 28%),
+    linear-gradient(135deg, #050505 0%, #0b1710 48%, #080604 100%);
+  border-left: 1px solid rgba(212, 175, 55, 0.2);
+  border-right: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.scrapbook-wall::before {
+  border-color: rgba(212, 175, 55, 0.24);
+}
+
+.scrapbook-wall::after {
+  color: rgba(255, 248, 232, 0.62);
+}
+
+.screenshot-card,
+.video-card {
+  background: #fff4df;
+  border-color: #fff4df;
+}
+
+.review-card {
+  background:
+    linear-gradient(145deg, #fff8e8 0%, #f6e7c7 100%);
+  color: #151008;
+  outline-color: rgba(212, 175, 55, 0.7);
+}
+
+.quote-card {
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.18), transparent 32%),
+    linear-gradient(145deg, #050505 0%, #101d15 100%);
+  color: #fff8e8;
+  border-color: rgba(212, 175, 55, 0.48);
+}
+
+.yellow {
+  background-color: #f6df8b;
+}
+
+.pink {
+  background-color: #ead6b8;
+}
+
+.green {
+  background-color: #9fc8a6;
+}
+
+.sticky-note {
+  color: #17120a;
+}
+
+.sticky-note h3 {
+  color: #0d2b1c;
+}
+
+.scrap-label {
+  background: #050505;
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+}
+
+.stars {
+  color: #d4af37;
+}
+
+.tape {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04)),
+    rgba(212, 175, 55, 0.42);
+}
+
+.screenshot-card::before,
+.video-card::before,
+.sticky-note::before,
+.review-card::before,
+.quote-card::before {
+  background:
+    radial-gradient(circle at 35% 35%, #fff8df 0 14%, transparent 15%),
+    #d4af37;
+}
+
+.screenshot-card::after,
+.video-card::after {
+  color: rgba(12, 26, 18, 0.7);
+}
+
+/* Scrapbook Visual Rebuild */
+.scrapbook-showcase {
+  background:
+    radial-gradient(circle at 15% 15%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 85% 20%, rgba(20, 95, 61, 0.3), transparent 30%),
+    linear-gradient(135deg, #050505 0%, #0a120d 50%, #050302 100%);
+  color: #fff7e8;
+  padding: 96px 22px 70px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.scrapbook-showcase-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.scrapbook-intro {
+  max-width: 790px;
+  margin-bottom: 38px;
+}
+
+.scrapbook-intro h1 {
+  color: #d4af37;
+  font-size: clamp(2.8rem, 7vw, 6rem);
+  line-height: 0.92;
+  margin: 10px 0 18px;
+  letter-spacing: -0.06em;
+}
+
+.scrapbook-intro p {
+  max-width: 680px;
+  color: rgba(255, 247, 232, 0.84);
+  font-size: 1.1rem;
+  line-height: 1.7;
+}
+
+.scrapbook-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.scrapbook-tags span {
+  border: 1px solid rgba(212, 175, 55, 0.34);
+  background: rgba(10, 32, 22, 0.72);
+  color: #fff7e8;
+  border-radius: 999px;
+  padding: 8px 13px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.featured-memory {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+  gap: 28px;
+  align-items: center;
+}
+
+.featured-image-card,
+.featured-quote-card,
+.wall-card {
+  position: relative;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+}
+
+.featured-image-card {
+  background: #fff2dc;
+  padding: 16px 16px 42px;
+  border-radius: 18px;
+  transform: rotate(-1.2deg);
+}
+
+.featured-image-card img {
+  width: 100%;
+  max-height: 570px;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+  border-radius: 12px;
+}
+
+.featured-image-card::after {
+  content: "featured shoutout";
+  position: absolute;
+  left: 24px;
+  bottom: 13px;
+  color: rgba(20, 20, 20, 0.7);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 0.95rem;
+}
+
+.featured-quote-card {
+  border-radius: 24px;
+  padding: 38px;
+  background:
+    radial-gradient(circle at top right, rgba(212, 175, 55, 0.2), transparent 34%),
+    linear-gradient(145deg, #101f16 0%, #050505 100%);
+}
+
+.quote-mark {
+  color: #d4af37;
+  font-size: 5rem;
+  line-height: 0.7;
+  margin: 0 0 8px;
+}
+
+.featured-quote-card h2 {
+  color: #fff7e8;
+  font-size: clamp(1.55rem, 3vw, 2.6rem);
+  line-height: 1.12;
+  margin: 0;
+}
+
+.quote-credit {
+  color: #d4af37;
+  font-weight: 800;
+  margin-top: 22px;
+}
+
+.memory-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #050505;
+  border-top: 1px solid rgba(212, 175, 55, 0.18);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+.memory-strip article {
+  padding: 34px 28px;
+  border-right: 1px solid rgba(212, 175, 55, 0.16);
+}
+
+.memory-strip span {
+  color: #d4af37;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  font-size: 0.78rem;
+}
+
+.memory-strip h3 {
+  color: #fff7e8;
+  margin: 10px 0 8px;
+  font-size: 1.25rem;
+}
+
+.memory-strip p {
+  color: rgba(255, 247, 232, 0.68);
+  margin: 0;
+  line-height: 1.55;
+}
+
+.scrapbook-board {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(212, 175, 55, 0.12), transparent 26%),
+    linear-gradient(135deg, #060606 0%, #0d1912 55%, #050302 100%);
+  padding: 76px 22px 88px;
+}
+
+.board-heading {
+  max-width: 1180px;
+  margin: 0 auto 34px;
+}
+
+.board-heading h2 {
+  color: #fff7e8;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  margin: 8px 0 0;
+}
+
+.scrapbook-grid {
+  max-width: 1180px;
+  margin: 0 auto;
+  columns: 3 280px;
+  column-gap: 24px;
+}
+
+.wall-card {
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 24px;
+  break-inside: avoid;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
+.photo-card {
+  background: #fff2dc;
+  padding: 13px 13px 38px;
+}
+
+.photo-card img {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+}
+
+.photo-card::after {
+  content: "saved memory";
+  position: absolute;
+  bottom: 10px;
+  left: 18px;
+  color: rgba(20, 20, 20, 0.62);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 0.78rem;
+}
+
+.note-card,
+.review-card-new {
+  padding: 26px;
+}
+
+.gold-note {
+  background: linear-gradient(145deg, #f3d26d, #fff0b1);
+  color: #17120a;
+}
+
+.green-note {
+  background: linear-gradient(145deg, #9fc8a6, #d7edcf);
+  color: #102218;
+}
+
+.note-card h3 {
+  font-size: 1.35rem;
+  margin: 8px 0 12px;
+}
+
+.note-card p {
+  line-height: 1.55;
+  margin: 0;
+}
+
+.review-card-new {
+  background: linear-gradient(145deg, #fff8e8, #f4e4c2);
+  color: #151008;
+}
+
+.review-card-new p {
+  line-height: 1.6;
+}
+
+.memory-label {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #050505;
+  color: #d4af37;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.photo-card .memory-label,
+.featured-image-card .memory-label {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 2;
+}
+
+.wall-card:nth-child(odd) {
+  transform: rotate(-0.8deg);
+}
+
+.wall-card:nth-child(even) {
+  transform: rotate(0.8deg);
+}
+
+.wall-card:hover {
+  transform: rotate(0deg) translateY(-3px);
+}
+
+.scrapbook-cta {
+  text-align: center;
+  background:
+    radial-gradient(circle at center, rgba(212, 175, 55, 0.16), transparent 35%),
+    #050505;
+  color: #fff7e8;
+  padding: 70px 20px;
+}
+
+.scrapbook-cta h2 {
+  color: #d4af37;
+  font-size: clamp(1.9rem, 4vw, 3rem);
+  margin: 8px 0 12px;
+}
+
+.scrapbook-cta p {
+  max-width: 580px;
+  margin: 0 auto;
+  color: rgba(255, 247, 232, 0.72);
+  line-height: 1.6;
+}
+
+@media (max-width: 850px) {
+  .featured-memory,
+  .memory-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .memory-strip article {
+    border-right: 0;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.16);
+  }
+
+  .featured-image-card {
+    transform: none;
+  }
+
+  .wall-card,
+  .wall-card:nth-child(odd),
+  .wall-card:nth-child(even),
+  .wall-card:hover {
+    transform: none;
+  }
+}
+
+/* Scrapbook Looser Wall Override */
+.scrapbook-board {
+  position: relative;
+  overflow: hidden;
+}
+
+.scrapbook-board::before {
+  content: "";
+  position: absolute;
+  inset: 34px 22px;
+  border: 1px dashed rgba(212, 175, 55, 0.18);
+  border-radius: 28px;
+  pointer-events: none;
+}
+
+.scrapbook-grid {
+  columns: initial;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 18px;
+  align-items: start;
+  position: relative;
+  padding-top: 20px;
+}
+
+.wall-card {
+  display: block;
+  width: auto;
+  margin: 0;
+  overflow: visible;
+  border-radius: 16px;
+}
+
+.photo-card,
+.note-card,
+.review-card-new {
+  overflow: hidden;
+}
+
+.photo-card {
+  padding: 12px 12px 36px;
+}
+
+.photo-card img {
+  max-height: 300px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.large-card img,
+.wide-card img {
+  max-height: 380px;
+}
+
+.wall-card::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 92px;
+  height: 26px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(212, 175, 55, 0.34);
+  border-left: 2px dashed rgba(255,255,255,0.18);
+  border-right: 2px dashed rgba(255,255,255,0.18);
+  z-index: 4;
+}
+
+.note-card::before,
+.review-card-new::before {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #d4af37;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.32);
+}
+
+.wall-card:nth-child(1) {
+  grid-column: 1 / span 5;
+  transform: rotate(-2.6deg);
+  margin-top: 18px;
+}
+
+.wall-card:nth-child(2) {
+  grid-column: 6 / span 3;
+  transform: rotate(2.4deg);
+  margin-top: 72px;
+  z-index: 3;
+}
+
+.wall-card:nth-child(3) {
+  grid-column: 9 / span 4;
+  transform: rotate(-1.6deg);
+  margin-top: 24px;
+}
+
+.wall-card:nth-child(4) {
+  grid-column: 2 / span 4;
+  transform: rotate(2deg);
+  margin-top: -8px;
+}
+
+.wall-card:nth-child(5) {
+  grid-column: 5 / span 6;
+  transform: rotate(-1.4deg);
+  margin-top: 44px;
+  z-index: 2;
+}
+
+.wall-card:nth-child(6) {
+  grid-column: 10 / span 3;
+  transform: rotate(2.8deg);
+  margin-top: -18px;
+}
+
+.wall-card:nth-child(7) {
+  grid-column: 1 / span 4;
+  transform: rotate(-2deg);
+  margin-top: 20px;
+}
+
+.wall-card:nth-child(8) {
+  grid-column: 4 / span 4;
+  transform: rotate(1.8deg);
+  margin-top: -28px;
+  z-index: 4;
+}
+
+.wall-card:nth-child(9) {
+  grid-column: 8 / span 4;
+  transform: rotate(-2.4deg);
+  margin-top: 38px;
+}
+
+.wall-card:nth-child(10) {
+  grid-column: 2 / span 4;
+  transform: rotate(2.2deg);
+  margin-top: -10px;
+}
+
+.wall-card:nth-child(11) {
+  grid-column: 6 / span 5;
+  transform: rotate(-1.8deg);
+  margin-top: 30px;
+}
+
+.wall-card:hover {
+  transform: rotate(0deg) translateY(-5px) scale(1.015);
+  z-index: 10;
+}
+
+.memory-label {
+  box-shadow: 0 6px 14px rgba(0,0,0,0.26);
+}
+
+.note-card {
+  min-height: 240px;
+}
+
+.gold-note {
+  background:
+    linear-gradient(rgba(255,255,255,0.22), transparent 42%),
+    repeating-linear-gradient(
+      transparent 0,
+      transparent 28px,
+      rgba(0,0,0,0.05) 29px
+    ),
+    #f3d26d;
+}
+
+.green-note {
+  background:
+    linear-gradient(rgba(255,255,255,0.2), transparent 42%),
+    repeating-linear-gradient(
+      transparent 0,
+      transparent 28px,
+      rgba(0,0,0,0.045) 29px
+    ),
+    #9fc8a6;
+}
+
+.review-card-new {
+  min-height: 250px;
+}
+
+@media (max-width: 900px) {
+  .scrapbook-grid {
+    display: block;
+  }
+
+  .wall-card {
+    margin-bottom: 24px;
+    transform: none !important;
+  }
+
+  .photo-card img {
+    max-height: none;
+  }
+}
+
+/* Scrapbook Book Experience */
+.scrapbook-book-app {
+  background:
+    radial-gradient(circle at top left, rgba(212, 175, 55, 0.14), transparent 26%),
+    radial-gradient(circle at top right, rgba(26, 94, 65, 0.2), transparent 24%),
+    linear-gradient(135deg, #050505 0%, #0c1510 48%, #050302 100%);
+  min-height: 100vh;
+  padding: 40px 18px 70px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.scrapbook-cover-screen {
+  min-height: calc(100vh - 120px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scrapbook-cover-book {
+  position: relative;
+  width: min(100%, 620px);
+  min-height: 720px;
+  border-radius: 22px;
+  padding: 70px 40px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background:
+    linear-gradient(145deg, #050505 0%, #111b15 45%, #050505 100%);
+  border: 2px solid rgba(212, 175, 55, 0.35);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.48),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.18);
+  overflow: hidden;
+}
+
+.scrapbook-cover-book::before {
+  content: "";
+  position: absolute;
+  left: 22px;
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #6d5317 0%, #d4af37 50%, #6d5317 100%);
+}
+
+.cover-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(212, 175, 55, 0.18), transparent 28%);
+  pointer-events: none;
+}
+
+.cover-kicker {
+  position: relative;
+  z-index: 1;
+  color: #d4af37;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 800;
+  font-size: 0.82rem;
+  margin-bottom: 18px;
+}
+
+.scrapbook-cover-book h1 {
+  position: relative;
+  z-index: 1;
+  color: #fff6df;
+  font-size: clamp(3rem, 8vw, 5.8rem);
+  line-height: 0.94;
+  margin: 0 0 18px;
+}
+
+.cover-subtitle {
+  position: relative;
+  z-index: 1;
+  color: rgba(255, 246, 223, 0.78);
+  max-width: 380px;
+  margin: 0 auto 28px;
+  line-height: 1.7;
+}
+
+.open-book-btn {
+  position: relative;
+  z-index: 1;
+  align-self: center;
+  border: 0;
+  background: #d4af37;
+  color: #111;
+  padding: 14px 26px;
+  border-radius: 999px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.3);
+}
+
+.reader-topbar {
+  max-width: 1240px;
+  margin: 0 auto 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  color: #fff7e8;
+}
+
+.reader-label {
+  color: #d4af37;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.reader-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.reader-btn {
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff7e8;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.reader-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.page-indicator {
+  color: rgba(255, 247, 232, 0.72);
+  font-size: 0.95rem;
+}
+
+.scrapbook-spread-wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.scrapbook-spread {
+  display: none;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  background: #d8c3a0;
+  border-radius: 26px;
+  overflow: hidden;
+  box-shadow: 0 26px 80px rgba(0, 0, 0, 0.45);
+}
+
+.scrapbook-spread.active {
+  display: grid;
+}
+
+.paper-page {
+  position: relative;
+  min-height: 760px;
+  padding: 34px 28px 34px;
+  background:
+    linear-gradient(rgba(255,255,255,0.06), rgba(255,255,255,0.02)),
+    #f5e8d2;
+}
+
+.left-page {
+  border-right: 2px solid rgba(99, 67, 31, 0.18);
+}
+
+.paper-page::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,0,0,0.03) 1px, transparent 1px);
+  background-size: 100% 34px;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.paper-tab {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  margin-bottom: 18px;
+  padding: 8px 12px;
+  background: #111;
+  color: #d4af37;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.small-tab {
+  margin-bottom: 12px;
+}
+
+.polaroid {
+  position: relative;
+  z-index: 1;
+  background: #fff3df;
+  padding: 12px 12px 36px;
+  border-radius: 10px;
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.18);
+  margin-bottom: 22px;
+}
+
+.polaroid::before {
+  content: "";
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  width: 90px;
+  height: 24px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(212, 175, 55, 0.34);
+  border-left: 2px dashed rgba(255,255,255,0.18);
+  border-right: 2px dashed rgba(255,255,255,0.18);
+}
+
+.polaroid img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  max-height: 430px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.featured-polaroid img {
+  max-height: 620px;
+}
+
+.polaroid span {
+  display: block;
+  margin-top: 10px;
+  color: rgba(30, 20, 10, 0.8);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 0.92rem;
+}
+
+.small-polaroid {
+  max-width: 80%;
+}
+
+.tilt-left {
+  transform: rotate(-2deg);
+}
+
+.tilt-right {
+  transform: rotate(2deg);
+}
+
+.handwritten-note,
+.mini-note,
+.review-card-book {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 22px;
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.12);
+}
+
+.big-note {
+  background: linear-gradient(145deg, #fff6dd, #f2e1ba);
+  border-radius: 18px;
+  padding: 28px;
+}
+
+.quote-mark {
+  color: #d4af37;
+  font-size: 4rem;
+  line-height: 0.7;
+  margin: 0 0 10px;
+}
+
+.big-note h2 {
+  margin: 0;
+  color: #17120a;
+  font-size: clamp(1.5rem, 2.4vw, 2.4rem);
+  line-height: 1.18;
+}
+
+.note-credit {
+  margin-top: 18px;
+  color: #7c5c18;
+  font-weight: 800;
+}
+
+.mini-note {
+  padding: 22px;
+  border-radius: 10px;
+}
+
+.gold-sticky {
+  background: #efd271;
+  color: #17120a;
+}
+
+.green-sticky {
+  background: #aad0a8;
+  color: #112218;
+}
+
+.cream-note {
+  background: #fff5e6;
+  color: #17120a;
+}
+
+.mini-note strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.mini-note p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.review-card-book {
+  background: #fff8e8;
+  border-radius: 18px;
+  padding: 24px;
+  color: #17120a;
+}
+
+.review-card-book p {
+  line-height: 1.6;
+}
+
+.stars {
+  color: #d4af37;
+  letter-spacing: 0.08em;
+  font-size: 1.2rem;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 950px) {
+  .scrapbook-spread.active {
+    grid-template-columns: 1fr;
+  }
+
+  .left-page {
+    border-right: 0;
+    border-bottom: 2px solid rgba(99, 67, 31, 0.18);
+  }
+
+  .paper-page {
+    min-height: auto;
+  }
+
+  .reader-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .scrapbook-cover-book {
+    min-height: 620px;
+  }
+}
+
+/* Scrapbook Flashy VIP Upgrade */
+.scrapbook-book-app {
+  position: relative;
+  overflow: hidden;
+}
+
+.scrapbook-book-app::before {
+  content: "♪  ♫  ✦  ♬  ★  ✨  ♫  ✦";
+  position: fixed;
+  inset: auto 0 28px 0;
+  text-align: center;
+  color: rgba(212, 175, 55, 0.22);
+  font-size: clamp(1.5rem, 4vw, 3.5rem);
+  letter-spacing: 1.2rem;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.scrapbook-cover-book {
+  transform-style: preserve-3d;
+  animation: coverFloat 4s ease-in-out infinite;
+  border: 2px solid rgba(212, 175, 55, 0.58);
+  box-shadow:
+    0 0 0 1px rgba(212, 175, 55, 0.18),
+    0 26px 90px rgba(0, 0, 0, 0.62),
+    0 0 55px rgba(212, 175, 55, 0.18),
+    inset 0 0 35px rgba(212, 175, 55, 0.08);
+}
+
+.scrapbook-cover-book::after {
+  content: "";
+  position: absolute;
+  inset: -60px;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.05) 36%,
+    rgba(212, 175, 55, 0.32) 44%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 62%
+  );
+  transform: translateX(-80%) rotate(8deg);
+  animation: goldSweep 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.cover-glow::before,
+.cover-glow::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(212, 175, 55, 0.82);
+  box-shadow:
+    0 0 18px rgba(212, 175, 55, 0.8),
+    0 0 42px rgba(212, 175, 55, 0.35);
+  animation: sparklePulse 2.8s ease-in-out infinite;
+}
+
+.cover-glow::before {
+  width: 8px;
+  height: 8px;
+  top: 18%;
+  right: 18%;
+}
+
+.cover-glow::after {
+  width: 6px;
+  height: 6px;
+  bottom: 24%;
+  left: 22%;
+  animation-delay: 1.2s;
+}
+
+.scrapbook-cover-book h1 {
+  color: #d4af37;
+  text-shadow:
+    0 2px 0 rgba(255, 248, 220, 0.18),
+    0 10px 26px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(212, 175, 55, 0.22);
+}
+
+.cover-kicker {
+  text-shadow: 0 0 18px rgba(212, 175, 55, 0.32);
+}
+
+.open-book-btn {
+  position: relative;
+  overflow: hidden;
+  transform: translateZ(20px);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.34),
+    0 0 28px rgba(212, 175, 55, 0.28);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.open-book-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent, rgba(255,255,255,0.45), transparent);
+  transform: translateX(-120%);
+  transition: transform 0.45s ease;
+}
+
+.open-book-btn:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow:
+    0 18px 38px rgba(0, 0, 0, 0.42),
+    0 0 38px rgba(212, 175, 55, 0.42);
+}
+
+.open-book-btn:hover::after {
+  transform: translateX(120%);
+}
+
+.scrapbook-spread.active {
+  animation: pageReveal 0.55s ease both;
+  transform-origin: center;
+}
+
+.scrapbook-spread {
+  position: relative;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow:
+    0 28px 90px rgba(0, 0, 0, 0.55),
+    0 0 38px rgba(212, 175, 55, 0.12);
+}
+
+.scrapbook-spread::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 28px;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(circle at center, rgba(0,0,0,0.22), transparent 58%),
+    linear-gradient(90deg, rgba(0,0,0,0.18), transparent, rgba(0,0,0,0.18));
+  z-index: 3;
+  pointer-events: none;
+}
+
+.paper-page {
+  background:
+    radial-gradient(circle at 20% 12%, rgba(212, 175, 55, 0.12), transparent 22%),
+    linear-gradient(rgba(255,255,255,0.08), rgba(255,255,255,0.01)),
+    #f5e8d2;
+}
+
+.paper-page::after {
+  content: "✦";
+  position: absolute;
+  right: 22px;
+  top: 18px;
+  color: rgba(212, 175, 55, 0.38);
+  font-size: 1.4rem;
+}
+
+.polaroid {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.polaroid:hover {
+  transform: rotate(0deg) scale(1.025);
+  box-shadow:
+    0 20px 42px rgba(0, 0, 0, 0.24),
+    0 0 24px rgba(212, 175, 55, 0.16);
+}
+
+.paper-tab {
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.16);
+}
+
+.big-note,
+.mini-note,
+.review-card-book {
+  border: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.reader-btn {
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.reader-btn:not(:disabled):hover {
+  transform: translateY(-2px);
+  background: rgba(212, 175, 55, 0.14);
+  border-color: rgba(212, 175, 55, 0.58);
+}
+
+@keyframes coverFloat {
+  0%, 100% {
+    transform: translateY(0) rotate(-0.4deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.4deg);
+  }
+}
+
+@keyframes goldSweep {
+  0%, 45% {
+    transform: translateX(-90%) rotate(8deg);
+  }
+  70%, 100% {
+    transform: translateX(90%) rotate(8deg);
+  }
+}
+
+@keyframes sparklePulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+@keyframes pageReveal {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) rotateY(5deg) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1200px) rotateY(0deg) translateY(0);
+  }
+}
+
+@media (max-width: 950px) {
+  .scrapbook-book-app::before {
+    letter-spacing: 0.35rem;
+    font-size: 1.4rem;
+  }
+
+  .scrapbook-spread::before {
+    display: none;
+  }
+
+  .paper-page::after {
+    display: none;
+  }
+}
+
+/* Scrapbook Cover Logo */
+.scrapbook-cover-logo {
+  position: relative;
+  z-index: 1;
+  width: min(210px, 58vw);
+  height: auto;
+  margin: 0 auto 22px;
+  display: block;
+  filter:
+    drop-shadow(0 10px 24px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 18px rgba(212, 175, 55, 0.28));
+}
+
+@media (max-width: 700px) {
+  .scrapbook-cover-logo {
+    width: min(175px, 64vw);
+    margin-bottom: 18px;
+  }
+}
+
+/* Scrapbook Wall Option */
+.wall-hero {
+  background:
+    radial-gradient(circle at 15% 18%, rgba(212, 175, 55, 0.18), transparent 28%),
+    radial-gradient(circle at 85% 12%, rgba(24, 98, 67, 0.28), transparent 30%),
+    linear-gradient(135deg, #050505 0%, #0c1710 52%, #050302 100%);
+  color: #fff7e8;
+  text-align: center;
+  padding: 86px 20px 58px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.wall-hero-inner {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.wall-logo {
+  width: min(175px, 56vw);
+  display: block;
+  margin: 0 auto 20px;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 18px rgba(212, 175, 55, 0.24));
+}
+
+.wall-kicker {
+  color: #d4af37;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  font-weight: 900;
+  margin: 0 0 12px;
+}
+
+.wall-hero h1 {
+  color: #d4af37;
+  font-size: clamp(2.5rem, 6vw, 5.4rem);
+  line-height: 0.95;
+  margin: 0 0 18px;
+  letter-spacing: -0.04em;
+}
+
+.wall-hero p {
+  max-width: 680px;
+  margin: 0 auto;
+  color: rgba(255, 247, 232, 0.78);
+  line-height: 1.7;
+  font-size: 1.05rem;
+}
+
+.memory-wall-section {
+  background:
+    radial-gradient(circle at 20% 10%, rgba(212, 175, 55, 0.12), transparent 25%),
+    radial-gradient(circle at 80% 26%, rgba(20, 88, 61, 0.24), transparent 28%),
+    linear-gradient(135deg, #050505 0%, #0b1710 52%, #050302 100%);
+  padding: 72px 20px 90px;
+}
+
+.memory-wall {
+  position: relative;
+  max-width: 1180px;
+  min-height: 1180px;
+  margin: 0 auto;
+  padding: 42px;
+  border-radius: 28px;
+  border: 1px dashed rgba(212, 175, 55, 0.22);
+  background:
+    radial-gradient(circle at 40% 20%, rgba(255, 255, 255, 0.04), transparent 28%),
+    rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 0 48px rgba(212, 175, 55, 0.04);
+}
+
+.memory-wall::before {
+  content: "Memories • Reviews • First Times • Community Love";
+  position: absolute;
+  top: 18px;
+  left: 34px;
+  color: rgba(255, 247, 232, 0.58);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  transform: rotate(-1.2deg);
+}
+
+.wall-item {
+  position: absolute;
+  width: 280px;
+  border-radius: 16px;
+  box-shadow: 0 22px 50px rgba(0, 0, 0, 0.42);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.wall-item:hover {
+  z-index: 50;
+  transform: rotate(0deg) scale(1.035) !important;
+  box-shadow: 0 30px 70px rgba(0, 0, 0, 0.55), 0 0 26px rgba(212, 175, 55, 0.16);
+}
+
+.wall-item::before {
+  content: "";
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  width: 90px;
+  height: 26px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(212, 175, 55, 0.38);
+  border-left: 2px dashed rgba(255, 255, 255, 0.2);
+  border-right: 2px dashed rgba(255, 255, 255, 0.2);
+  z-index: 4;
+}
+
+.wall-item span {
+  display: inline-flex;
+  margin-bottom: 10px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: #050505;
+  color: #d4af37;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wall-photo {
+  background: #fff2dc;
+  padding: 12px 12px 34px;
+}
+
+.wall-photo span {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 3;
+}
+
+.wall-photo img {
+  width: 100%;
+  display: block;
+  border-radius: 10px;
+  max-height: 330px;
+  object-fit: cover;
+  object-position: top;
+}
+
+.wall-photo::after {
+  content: "saved memory";
+  position: absolute;
+  bottom: 9px;
+  left: 18px;
+  color: rgba(20, 20, 20, 0.62);
+  font-family: "Comic Sans MS", "Bradley Hand", cursive;
+  font-size: 0.78rem;
+}
+
+.wall-note,
+.wall-review {
+  padding: 24px;
+}
+
+.wall-note h3 {
+  margin: 8px 0 12px;
+  color: #102218;
+  font-size: 1.3rem;
+}
+
+.wall-note p,
+.wall-review p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.wall-note-gold {
+  background: linear-gradient(145deg, #f3d26d, #fff0b1);
+  color: #17120a;
+}
+
+.wall-note-green {
+  background: linear-gradient(145deg, #9fc8a6, #d7edcf);
+  color: #102218;
+}
+
+.wall-review {
+  background: linear-gradient(145deg, #fff8e8, #f4e4c2);
+  color: #151008;
+}
+
+.wall-review strong {
+  display: block;
+  margin-top: 14px;
+}
+
+.wall-big {
+  width: 360px;
+}
+
+.wall-wide {
+  width: 430px;
+}
+
+.wall-item:nth-child(1) { left: 5%; top: 7%; transform: rotate(-2.5deg); z-index: 6; }
+.wall-item:nth-child(2) { left: 41%; top: 10%; transform: rotate(2deg); z-index: 8; }
+.wall-item:nth-child(3) { right: 5%; top: 8%; transform: rotate(-1.4deg); z-index: 5; }
+.wall-item:nth-child(4) { left: 9%; top: 39%; transform: rotate(2.5deg); z-index: 7; }
+.wall-item:nth-child(5) { left: 34%; top: 33%; transform: rotate(-1.6deg); z-index: 9; }
+.wall-item:nth-child(6) { right: 5%; top: 38%; transform: rotate(2.8deg); z-index: 6; }
+.wall-item:nth-child(7) { left: 3%; top: 64%; transform: rotate(-2deg); z-index: 5; }
+.wall-item:nth-child(8) { left: 29%; top: 66%; transform: rotate(1.8deg); z-index: 7; }
+.wall-item:nth-child(9) { right: 8%; top: 68%; transform: rotate(-2.4deg); z-index: 6; }
+.wall-item:nth-child(10) { left: 16%; top: 88%; transform: rotate(2.2deg); z-index: 4; }
+.wall-item:nth-child(11) { left: 44%; top: 91%; transform: rotate(-1.8deg); z-index: 5; }
+.wall-item:nth-child(12) { right: 6%; top: 92%; transform: rotate(1.7deg); z-index: 4; }
+
+.wall-cta {
+  text-align: center;
+  background:
+    radial-gradient(circle at center, rgba(212, 175, 55, 0.16), transparent 35%),
+    #050505;
+  color: #fff7e8;
+  padding: 68px 20px;
+}
+
+.wall-cta h2 {
+  color: #d4af37;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  margin: 8px 0 12px;
+}
+
+.wall-cta p {
+  max-width: 580px;
+  margin: 0 auto;
+  color: rgba(255, 247, 232, 0.72);
+  line-height: 1.6;
+}
+
+@media (max-width: 950px) {
+  .memory-wall {
+    min-height: auto;
+    padding: 54px 16px 24px;
+  }
+
+  .memory-wall::before {
+    left: 18px;
+    top: 18px;
+    font-size: 0.8rem;
+  }
+
+  .wall-item,
+  .wall-big,
+  .wall-wide {
+    position: relative;
+    left: auto !important;
+    right: auto !important;
+    top: auto !important;
+    width: 100%;
+    margin: 0 0 24px;
+    transform: none !important;
+  }
+}
+
+/* Real Scrapbook Flipbook Upgrade */
+.scrapbook-book-app {
+  perspective: 1800px;
+}
+
+.scrapbook-cover-screen {
+  perspective: 1800px;
+}
+
+.scrapbook-cover-book {
+  transform-origin: left center;
+}
+
+.scrapbook-cover-screen.cover-opening .scrapbook-cover-book,
+.scrapbook-cover-screen .scrapbook-cover-book {
+  will-change: transform;
+}
+
+.scrapbook-cover-screen.cover-opening .scrapbook-cover-book {
+  animation: openCoverReal 0.58s ease forwards;
+}
+
+.scrapbook-spread-wrap {
+  perspective: 1800px;
+  position: relative;
+}
+
+.scrapbook-spread {
+  position: relative;
+  transform-style: preserve-3d;
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+.scrapbook-spread.active {
+  display: grid;
+  animation: bookSettle 0.45s ease both;
+}
+
+.scrapbook-spread.turning-next {
+  display: grid;
+  animation: turnPageNext 0.45s ease both;
+  pointer-events: none;
+}
+
+.scrapbook-spread.turning-prev {
+  display: grid;
+  animation: turnPagePrev 0.45s ease both;
+  pointer-events: none;
+}
+
+.scrapbook-spread.enter-next {
+  animation: enterPageNext 0.52s ease both;
+}
+
+.scrapbook-spread.enter-prev {
+  animation: enterPagePrev 0.52s ease both;
+}
+
+.paper-page {
+  min-height: 760px;
+  background:
+    radial-gradient(circle at 12% 10%, rgba(212, 175, 55, 0.09), transparent 24%),
+    radial-gradient(circle at 90% 88%, rgba(100, 62, 24, 0.08), transparent 26%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(65, 42, 20, 0.035) 0,
+      rgba(65, 42, 20, 0.035) 1px,
+      transparent 1px,
+      transparent 34px
+    ),
+    linear-gradient(145deg, #fff4dc 0%, #f0dcc0 100%);
+  box-shadow:
+    inset 0 0 40px rgba(99, 67, 31, 0.14),
+    0 26px 70px rgba(0, 0, 0, 0.38);
+}
+
+.left-page {
+  border-radius: 24px 0 0 24px;
+  border-right: 0;
+  transform-origin: right center;
+}
+
+.right-page {
+  border-radius: 0 24px 24px 0;
+  transform-origin: left center;
+}
+
+.left-page::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: -1px;
+  width: 34px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(57, 35, 17, 0.18));
+  pointer-events: none;
+  z-index: 3;
+}
+
+.right-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -1px;
+  width: 34px;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(57, 35, 17, 0.18), transparent);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.scrapbook-spread::before {
+  content: "";
+  position: absolute;
+  top: 22px;
+  bottom: 22px;
+  left: 50%;
+  width: 28px;
+  transform: translateX(-50%);
+  background:
+    radial-gradient(circle at 50% 8%, rgba(212, 175, 55, 0.75) 0 7px, transparent 8px),
+    radial-gradient(circle at 50% 22%, rgba(212, 175, 55, 0.75) 0 7px, transparent 8px),
+    radial-gradient(circle at 50% 36%, rgba(212, 175, 55, 0.75) 0 7px, transparent 8px),
+    radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.75) 0 7px, transparent 8px),
+    radial-gradient(circle at 50% 64%, rgba(212, 175, 55, 0.75) 0 7px, transparent 8px),
+    radial-gradient(circle at 50% 78%, rgba(212, 175, 55, 0.75) 0 7px, transparent 8px),
+    radial-gradient(circle at 50% 92%, rgba(212, 175, 55, 0.75) 0 7px, transparent 8px),
+    linear-gradient(90deg, rgba(0,0,0,0.24), rgba(255,255,255,0.08), rgba(0,0,0,0.24));
+  border-radius: 999px;
+  z-index: 9;
+  pointer-events: none;
+  box-shadow: 0 0 18px rgba(0,0,0,0.28);
+}
+
+.paper-page::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px dashed rgba(91, 62, 29, 0.16);
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.polaroid {
+  border: 1px solid rgba(90, 58, 25, 0.08);
+}
+
+.polaroid::after {
+  content: "";
+  position: absolute;
+  inset: 7px 7px auto auto;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 35%, #fff8df 0 14%, transparent 15%),
+    #d4af37;
+  box-shadow: 0 4px 9px rgba(0,0,0,0.28);
+}
+
+.paper-tab {
+  transform: rotate(-1deg);
+}
+
+.big-note {
+  transform: rotate(1.4deg);
+}
+
+.mini-note {
+  transform: rotate(-1.1deg);
+}
+
+.review-card-book {
+  transform: rotate(1deg);
+}
+
+.featured-polaroid {
+  transform: rotate(-1.8deg);
+}
+
+.scrapbook-spread[data-page="2"] .right-page .polaroid {
+  margin-top: 52px;
+}
+
+.scrapbook-spread[data-page="3"] .small-polaroid {
+  margin-left: 82px;
+  margin-top: -10px;
+}
+
+.scrapbook-spread[data-page="4"] .right-page .small-polaroid {
+  margin-left: auto;
+  margin-top: -6px;
+}
+
+.reader-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.reader-btn:not(:disabled)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent, rgba(212,175,55,0.26), transparent);
+  transform: translateX(-120%);
+  transition: transform 0.35s ease;
+}
+
+.reader-btn:not(:disabled):hover::after {
+  transform: translateX(120%);
+}
+
+@keyframes openCoverReal {
+  0% {
+    transform: rotateY(0deg) translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateY(-75deg) translateY(8px);
+    opacity: 0;
+  }
+}
+
+@keyframes bookSettle {
+  0% {
+    opacity: 0.95;
+    transform: perspective(1800px) rotateX(2deg) translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1800px) rotateX(0deg) translateY(0);
+  }
+}
+
+@keyframes turnPageNext {
+  0% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: perspective(1800px) rotateY(-22deg) translateX(-24px);
+  }
+}
+
+@keyframes turnPagePrev {
+  0% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: perspective(1800px) rotateY(22deg) translateX(24px);
+  }
+}
+
+@keyframes enterPageNext {
+  0% {
+    opacity: 0;
+    transform: perspective(1800px) rotateY(24deg) translateX(28px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg) translateX(0);
+  }
+}
+
+@keyframes enterPagePrev {
+  0% {
+    opacity: 0;
+    transform: perspective(1800px) rotateY(-24deg) translateX(-28px);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1800px) rotateY(0deg) translateX(0);
+  }
+}
+
+@media (max-width: 950px) {
+  .scrapbook-spread::before {
+    display: none;
+  }
+
+  .left-page,
+  .right-page {
+    border-radius: 20px;
+  }
+
+  .left-page::after,
+  .right-page::before {
+    display: none;
+  }
+
+  .scrapbook-spread.turning-next,
+  .scrapbook-spread.turning-prev,
+  .scrapbook-spread.enter-next,
+  .scrapbook-spread.enter-prev {
+    animation: bookSettle 0.35s ease both;
+  }
+}
+
+/* Scrapbook Smaller Size Override */
+.scrapbook-book-app {
+  padding: 28px 18px 56px;
+}
+
+.scrapbook-cover-screen {
+  min-height: calc(100vh - 150px);
+}
+
+.scrapbook-cover-book {
+  width: min(100%, 500px);
+  min-height: 580px;
+  padding: 52px 34px;
+}
+
+.scrapbook-cover-logo {
+  width: min(160px, 50vw);
+  margin-bottom: 16px;
+}
+
+.scrapbook-cover-book h1 {
+  font-size: clamp(2.45rem, 6vw, 4.35rem);
+}
+
+.cover-kicker {
+  font-size: 0.72rem;
+  margin-bottom: 12px;
+}
+
+.cover-subtitle {
+  font-size: 0.95rem;
+  margin-bottom: 22px;
+}
+
+.open-book-btn {
+  padding: 12px 22px;
+  font-size: 0.92rem;
+}
+
+.reader-topbar,
+.scrapbook-spread-wrap {
+  max-width: 1040px;
+}
+
+.scrapbook-spread {
+  max-width: 1040px;
+  margin: 0 auto;
+}
+
+.paper-page {
+  min-height: 620px;
+  padding: 26px 24px;
+}
+
+.polaroid {
+  padding: 10px 10px 30px;
+  margin-bottom: 18px;
+}
+
+.polaroid img {
+  max-height: 320px;
+}
+
+.featured-polaroid img {
+  max-height: 455px;
+}
+
+.small-polaroid {
+  max-width: 72%;
+}
+
+.big-note {
+  padding: 22px;
+}
+
+.big-note h2 {
+  font-size: clamp(1.25rem, 2vw, 1.9rem);
+}
+
+.quote-mark {
+  font-size: 3.2rem;
+}
+
+.mini-note,
+.review-card-book {
+  padding: 18px;
+}
+
+.paper-tab {
+  font-size: 0.65rem;
+  padding: 7px 10px;
+  margin-bottom: 14px;
+}
+
+.reader-btn {
+  padding: 9px 14px;
+  font-size: 0.9rem;
+}
+
+.page-indicator {
+  font-size: 0.88rem;
+}
+
+@media (max-width: 950px) {
+  .scrapbook-cover-book {
+    min-height: 520px;
+  }
+
+  .paper-page {
+    min-height: auto;
+  }
+
+  .featured-polaroid img,
+  .polaroid img {
+    max-height: none;
+  }
+}
+
+/* Scrapbook Cleaner + Smaller Final Pass */
+.scrapbook-book-app {
+  padding: 22px 18px 48px;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(212, 175, 55, 0.11), transparent 25%),
+    radial-gradient(circle at 84% 18%, rgba(26, 94, 65, 0.16), transparent 26%),
+    linear-gradient(135deg, #050505 0%, #07100b 52%, #050302 100%);
+}
+
+.scrapbook-book-app::before {
+  opacity: 0.45;
+  font-size: clamp(1.2rem, 3vw, 2.4rem);
+  bottom: 18px;
+}
+
+.scrapbook-cover-screen {
+  min-height: calc(100vh - 130px);
+}
+
+.scrapbook-cover-book {
+  width: min(100%, 430px);
+  min-height: 505px;
+  padding: 42px 30px;
+  border-radius: 20px;
+  animation: none;
+  box-shadow:
+    0 22px 70px rgba(0, 0, 0, 0.5),
+    0 0 32px rgba(212, 175, 55, 0.12),
+    inset 0 0 24px rgba(212, 175, 55, 0.06);
+}
+
+.scrapbook-cover-book::before {
+  left: 18px;
+  width: 8px;
+}
+
+.scrapbook-cover-book::after {
+  opacity: 0.55;
+}
+
+.scrapbook-cover-logo {
+  width: min(125px, 42vw);
+  margin-bottom: 14px;
+}
+
+.cover-kicker {
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  margin-bottom: 10px;
+}
+
+.scrapbook-cover-book h1 {
+  font-size: clamp(2.05rem, 5.2vw, 3.45rem);
+  letter-spacing: -0.05em;
+  margin-bottom: 14px;
+}
+
+.cover-subtitle {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.open-book-btn {
+  padding: 11px 20px;
+  font-size: 0.88rem;
+}
+
+.reader-topbar,
+.scrapbook-spread-wrap {
+  max-width: 930px;
+}
+
+.reader-topbar {
+  margin-bottom: 14px;
+}
+
+.reader-label {
+  font-size: 0.78rem;
+}
+
+.reader-btn {
+  padding: 8px 13px;
+  font-size: 0.84rem;
+}
+
+.page-indicator {
+  font-size: 0.82rem;
+}
+
+.scrapbook-spread {
+  max-width: 930px;
+}
+
+.paper-page {
+  min-height: 545px;
+  padding: 22px 22px;
+}
+
+.scrapbook-spread::before {
+  top: 18px;
+  bottom: 18px;
+  width: 22px;
+}
+
+.paper-page::after {
+  inset: 12px;
+  border-radius: 16px;
+}
+
+.paper-tab {
+  font-size: 0.6rem;
+  padding: 6px 9px;
+  margin-bottom: 12px;
+}
+
+.polaroid {
+  padding: 9px 9px 27px;
+  margin-bottom: 15px;
+  border-radius: 9px;
+}
+
+.polaroid::before {
+  width: 72px;
+  height: 20px;
+  top: -10px;
+}
+
+.polaroid img {
+  max-height: 275px;
+}
+
+.featured-polaroid img {
+  max-height: 390px;
+}
+
+.polaroid span {
+  font-size: 0.78rem;
+  margin-top: 7px;
+}
+
+.small-polaroid {
+  max-width: 66%;
+}
+
+.big-note {
+  padding: 20px;
+  border-radius: 15px;
+}
+
+.quote-mark {
+  font-size: 2.75rem;
+}
+
+.big-note h2 {
+  font-size: clamp(1.1rem, 1.8vw, 1.55rem);
+  line-height: 1.2;
+}
+
+.note-credit {
+  margin-top: 13px;
+  font-size: 0.88rem;
+}
+
+.mini-note,
+.review-card-book {
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.mini-note strong,
+.review-card-book strong {
+  font-size: 0.9rem;
+}
+
+.mini-note p,
+.review-card-book p {
+  font-size: 0.88rem;
+  line-height: 1.48;
+}
+
+.stars {
+  font-size: 1rem;
+  margin-bottom: 8px;
+}
+
+.scrapbook-spread[data-page="2"] .right-page .polaroid {
+  margin-top: 30px;
+}
+
+.scrapbook-spread[data-page="3"] .small-polaroid {
+  margin-left: 54px;
+}
+
+.reader-closing {
+  animation: closeReaderBook 0.42s ease forwards;
+}
+
+.scrapbook-ending {
+  min-height: calc(100vh - 130px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scrapbook-ending-card {
+  width: min(100%, 460px);
+  min-height: 480px;
+  text-align: center;
+  padding: 44px 32px;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at center top, rgba(212, 175, 55, 0.16), transparent 32%),
+    linear-gradient(145deg, #050505 0%, #101d15 52%, #050505 100%);
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  color: #fff7e8;
+  box-shadow:
+    0 24px 75px rgba(0, 0, 0, 0.55),
+    0 0 34px rgba(212, 175, 55, 0.14);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.scrapbook-ending-logo {
+  width: min(130px, 44vw);
+  margin-bottom: 18px;
+  filter:
+    drop-shadow(0 10px 22px rgba(0, 0, 0, 0.45))
+    drop-shadow(0 0 16px rgba(212, 175, 55, 0.22));
+}
+
+.scrapbook-ending-card h2 {
+  color: #d4af37;
+  font-size: clamp(1.8rem, 4.6vw, 3rem);
+  line-height: 1.05;
+  margin: 6px 0 14px;
+}
+
+.scrapbook-ending-card p {
+  color: rgba(255, 247, 232, 0.78);
+  line-height: 1.6;
+  max-width: 360px;
+}
+
+@keyframes closeReaderBook {
+  from {
+    opacity: 1;
+    transform: perspective(1600px) rotateY(0deg) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: perspective(1600px) rotateY(-18deg) scale(0.94);
+  }
+}
+
+@media (max-width: 950px) {
+  .scrapbook-cover-book {
+    min-height: 470px;
+  }
+
+  .scrapbook-ending-card {
+    min-height: 430px;
+  }
+
+  .paper-page {
+    min-height: auto;
+  }
+
+  .featured-polaroid img,
+  .polaroid img {
+    max-height: none;
+  }
+}
+
+/* Scrapbook cleaner page controls + full photos */
+.scrapbook-reader {
+  position: relative;
+}
+
+/* remove Memory 01 / Memory 02 tabs */
+.scrapbook-reader .paper-tab {
+  display: none !important;
+}
+
+/* keep the photo fully visible instead of cropped */
+.scrapbook-reader .polaroid img {
+  width: 100%;
+  height: auto !important;
+  max-height: 430px;
+  object-fit: contain !important;
+  object-position: center !important;
+  background: #111;
+}
+
+/* let the featured images show more without cutting off */
+.scrapbook-reader .featured-polaroid img {
+  max-height: 500px;
+}
+
+/* simplify the top bar so it only feels like page info */
+.reader-topbar {
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.reader-label {
+  display: none;
+}
+
+.reader-controls {
+  width: 100%;
+  justify-content: center;
+}
+
+/* move buttons to the sides */
+.reader-btn {
+  position: fixed;
+  top: 52%;
+  z-index: 100;
+  width: 54px;
+  height: 54px;
+  border-radius: 999px;
+  padding: 0;
+  font-size: 0;
+  background: rgba(5, 5, 5, 0.82);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  color: #d4af37;
+  box-shadow:
+    0 16px 32px rgba(0, 0, 0, 0.38),
+    0 0 22px rgba(212, 175, 55, 0.16);
+}
+
+#prevPageBtn {
+  left: 32px;
+}
+
+#nextPageBtn {
+  right: 32px;
+}
+
+#prevPageBtn::before {
+  content: "‹";
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+#nextPageBtn::before {
+  content: "›";
+  font-size: 2.4rem;
+  line-height: 1;
+}
+
+.reader-btn:disabled {
+  opacity: 0.22;
+}
+
+.page-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 247, 232, 0.72);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 999px;
+  padding: 8px 14px;
+}
+
+/* last page still says Close Book, but as a side button */
+#nextPageBtn.close-book-arrow {
+  width: auto;
+  min-width: 110px;
+  padding: 0 18px;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+#nextPageBtn.close-book-arrow::before {
+  content: "";
+}
+
+@media (max-width: 950px) {
+  .reader-btn {
+    position: fixed;
+    top: auto;
+    bottom: 22px;
+    width: 48px;
+    height: 48px;
+  }
+
+  #prevPageBtn {
+    left: 22px;
+  }
+
+  #nextPageBtn {
+    right: 22px;
+  }
+
+  #nextPageBtn.close-book-arrow {
+    min-width: 104px;
+  }
+
+  .scrapbook-reader .polaroid img,
+  .scrapbook-reader .featured-polaroid img {
+    max-height: none;
+  }
+}
+
+/* Transparent Logo Polish */
+.scrapbook-cover-logo,
+.scrapbook-ending-logo {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 18px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 0 20px rgba(212, 175, 55, 0.32));
+}
+
+.scrapbook-cover-logo {
+  width: min(155px, 44vw);
+  margin-bottom: 18px;
+  transform: translateY(-4px);
+}
+
+.scrapbook-ending-logo {
+  width: min(145px, 44vw);
+  margin-bottom: 20px;
+}
+
+/* Make cover text sit better under transparent logo */
+.scrapbook-cover-book .cover-kicker {
+  margin-top: 2px;
+}
+
+.scrapbook-cover-book h1 {
+  margin-top: 4px;
+}
+
+/* Add subtle gold halo behind logo */
+.scrapbook-cover-book .cover-glow::after {
+  width: 120px;
+  height: 120px;
+  top: 17%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(212, 175, 55, 0.22), transparent 68%);
+  box-shadow: none;
+  animation: none;
+}
+
+/* Bigger Scrapbook Transparent Logo */
+.scrapbook-cover-logo {
+  width: min(230px, 62vw) !important;
+  margin-bottom: 20px !important;
+}
+
+.scrapbook-ending-logo {
+  width: min(200px, 58vw) !important;
+  margin-bottom: 22px !important;
+}
+
+.scrapbook-cover-book .cover-glow::after {
+  width: 190px !important;
+  height: 190px !important;
+}
+
+/* Scrapbook Wall Cleaner Layout Override */
+.memory-wall-section {
+  padding: 58px 20px 76px;
+}
+
+.memory-wall {
+  max-width: 1080px;
+  min-height: 980px;
+  padding: 56px 36px 46px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 18% 12%, rgba(212, 175, 55, 0.1), transparent 26%),
+    radial-gradient(circle at 82% 18%, rgba(26, 94, 65, 0.16), transparent 30%),
+    rgba(255, 255, 255, 0.018);
+}
+
+.wall-item {
+  width: 235px;
+  border-radius: 14px;
+}
+
+.wall-photo {
+  padding: 10px 10px 30px;
+}
+
+.wall-photo img {
+  max-height: 255px;
+  object-fit: contain;
+  object-position: center;
+  background: #050505;
+}
+
+.wall-big {
+  width: 300px;
+}
+
+.wall-wide {
+  width: 340px;
+}
+
+.wall-item span {
+  font-size: 0.58rem;
+  padding: 6px 9px;
+}
+
+.wall-photo span {
+  top: 18px;
+  left: 18px;
+}
+
+.wall-photo::after {
+  bottom: 7px;
+  font-size: 0.72rem;
+}
+
+.wall-item::before {
+  width: 72px;
+  height: 21px;
+  top: -10px;
+}
+
+.wall-note,
+.wall-review {
+  padding: 20px;
+}
+
+.wall-note h3 {
+  font-size: 1.12rem;
+}
+
+.wall-note p,
+.wall-review p {
+  font-size: 0.88rem;
+}
+
+/* cleaner placement */
+.wall-item:nth-child(1) { left: 4%; top: 8%; transform: rotate(-1.4deg); }
+.wall-item:nth-child(2) { left: 38%; top: 7%; transform: rotate(1.2deg); }
+.wall-item:nth-child(3) { right: 5%; top: 8%; transform: rotate(-1deg); }
+
+.wall-item:nth-child(4) { left: 7%; top: 36%; transform: rotate(1.4deg); }
+.wall-item:nth-child(5) { left: 34%; top: 34%; transform: rotate(-1.1deg); }
+.wall-item:nth-child(6) { right: 6%; top: 38%; transform: rotate(1.5deg); }
+
+.wall-item:nth-child(7) { left: 5%; top: 66%; transform: rotate(-1.2deg); }
+.wall-item:nth-child(8) { left: 31%; top: 65%; transform: rotate(1.1deg); }
+.wall-item:nth-child(9) { right: 8%; top: 66%; transform: rotate(-1.2deg); }
+
+.wall-item:nth-child(10) { left: 17%; top: 88%; transform: rotate(1.1deg); }
+.wall-item:nth-child(11) { left: 43%; top: 88%; transform: rotate(-1deg); }
+.wall-item:nth-child(12) { right: 8%; top: 88%; transform: rotate(1deg); }
+
+/* tone down hover */
+.wall-item:hover {
+  transform: rotate(0deg) scale(1.018) !important;
+}
+
+/* cleaner CTA */
+.wall-cta {
+  padding: 54px 20px 60px;
+}
+
+.wall-cta h2 {
+  font-size: clamp(1.7rem, 3.5vw, 2.6rem);
+  line-height: 1.1;
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.wall-cta p {
+  font-size: 0.98rem;
+}
+
+/* prevent CTA from feeling attached to wall */
+.memory-wall-section + .wall-cta {
+  border-top: 1px solid rgba(212, 175, 55, 0.18);
+}
+
+@media (max-width: 950px) {
+  .memory-wall {
+    min-height: auto;
+    padding: 54px 16px 24px;
+  }
+
+  .wall-item,
+  .wall-big,
+  .wall-wide {
+    width: 100%;
+  }
+
+  .wall-photo img {
+    max-height: none;
+  }
+}
+
+/* Clean Wall: Real Folder Images Only */
+.clean-memory-wall {
+  min-height: 900px;
+  max-width: 1060px;
+  padding: 58px 42px;
+}
+
+.clean-memory-wall::before {
+  content: "Real moments from The Jukebox Lounge NC";
+  font-size: 0.9rem;
+  color: rgba(255, 247, 232, 0.55);
+}
+
+.clean-memory-wall .wall-item {
+  width: 255px;
+}
+
+.clean-memory-wall .wall-big {
+  width: 330px;
+}
+
+.clean-memory-wall .wall-photo {
+  padding: 10px 10px 28px;
+}
+
+.clean-memory-wall .wall-photo img {
+  width: 100%;
+  max-height: 265px;
+  object-fit: contain;
+  object-position: center;
+  background: #050505;
+}
+
+.clean-memory-wall .wall-photo span {
+  display: none;
+}
+
+.clean-memory-wall .wall-item::before {
+  width: 76px;
+  height: 22px;
+  top: -10px;
+}
+
+.clean-memory-wall .wall-photo::after {
+  content: "saved memory";
+  font-size: 0.72rem;
+}
+
+/* cleaner positions with less crowding */
+.clean-memory-wall .wall-item:nth-child(1) { left: 6%; top: 8%; transform: rotate(-1.5deg); }
+.clean-memory-wall .wall-item:nth-child(2) { left: 39%; top: 7%; transform: rotate(1deg); }
+.clean-memory-wall .wall-item:nth-child(3) { right: 7%; top: 9%; transform: rotate(-1deg); }
+
+.clean-memory-wall .wall-item:nth-child(4) { left: 12%; top: 38%; transform: rotate(1.2deg); }
+.clean-memory-wall .wall-item:nth-child(5) { left: 41%; top: 36%; transform: rotate(-1.1deg); }
+.clean-memory-wall .wall-item:nth-child(6) { right: 9%; top: 40%; transform: rotate(1.2deg); }
+
+.clean-memory-wall .wall-item:nth-child(7) { left: 8%; top: 68%; transform: rotate(-1deg); }
+.clean-memory-wall .wall-item:nth-child(8) { left: 38%; top: 66%; transform: rotate(1deg); }
+.clean-memory-wall .wall-item:nth-child(9) { right: 10%; top: 69%; transform: rotate(-1.1deg); }
+
+@media (max-width: 950px) {
+  .clean-memory-wall {
+    min-height: auto;
+  }
+
+  .clean-memory-wall .wall-item,
+  .clean-memory-wall .wall-big {
+    width: 100%;
+  }
+
+  .clean-memory-wall .wall-photo img {
+    max-height: none;
+  }
+}
+
+/* Real 3D Book Upgrade for Scrapbook */
+.scrapbook-reader {
+  position: relative;
+  perspective: 2200px;
+}
+
+.scrapbook-spread-wrap {
+  max-width: 980px;
+  margin: 0 auto;
+  perspective: 2200px;
+  perspective-origin: center center;
+}
+
+.scrapbook-spread {
+  position: relative;
+  max-width: 980px;
+  margin: 0 auto;
+  transform-style: preserve-3d;
+  transform: rotateX(8deg) rotateY(0deg);
+  transition: transform 0.45s ease;
+  filter: drop-shadow(0 35px 55px rgba(0, 0, 0, 0.42));
+}
+
+/* book base shadow */
+.scrapbook-spread::after {
+  content: "";
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: -28px;
+  height: 44px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.18) 45%, transparent 75%);
+  transform: rotateX(90deg);
+  filter: blur(8px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* center spine */
+.scrapbook-spread::before {
+  content: "";
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 50%;
+  width: 34px;
+  transform: translateX(-50%) translateZ(18px);
+  background:
+    linear-gradient(90deg,
+      rgba(45, 27, 11, 0.55) 0%,
+      rgba(122, 91, 51, 0.18) 20%,
+      rgba(245, 226, 192, 0.3) 50%,
+      rgba(122, 91, 51, 0.18) 80%,
+      rgba(45, 27, 11, 0.55) 100%);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 10px rgba(0,0,0,0.28),
+    0 0 10px rgba(0,0,0,0.18);
+  z-index: 8;
+  pointer-events: none;
+}
+
+.paper-page {
+  position: relative;
+  min-height: 560px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(255,255,255,0.45), transparent 26%),
+    radial-gradient(circle at 88% 84%, rgba(185, 145, 84, 0.12), transparent 24%),
+    linear-gradient(145deg, #f8eedb 0%, #f1dfc0 100%);
+  box-shadow:
+    inset 0 0 30px rgba(133, 97, 48, 0.10),
+    0 18px 40px rgba(0,0,0,0.16);
+  transform-style: preserve-3d;
+}
+
+.left-page {
+  border-radius: 18px 0 0 18px;
+  transform-origin: right center;
+  border-right: 1px solid rgba(94, 64, 28, 0.14);
+}
+
+.right-page {
+  border-radius: 0 18px 18px 0;
+  transform-origin: left center;
+  border-left: 1px solid rgba(94, 64, 28, 0.14);
+}
+
+/* inner page shadow toward the spine */
+.left-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 42px;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(68, 44, 18, 0.18));
+  z-index: 2;
+  pointer-events: none;
+}
+
+.right-page::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 42px;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(68, 44, 18, 0.18), transparent);
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* subtle paper border */
+.paper-page::after {
+  content: "";
+  position: absolute;
+  inset: 12px;
+  border: 1px solid rgba(125, 92, 48, 0.12);
+  border-radius: 12px;
+  pointer-events: none;
+}
+
+/* make polaroids feel placed on page */
+.polaroid {
+  background: #fff5e4;
+  box-shadow:
+    0 14px 24px rgba(0,0,0,0.14),
+    0 2px 0 rgba(255,255,255,0.42) inset;
+  transform-style: preserve-3d;
+}
+
+.polaroid img {
+  width: 100%;
+  height: auto !important;
+  object-fit: contain !important;
+  object-position: center !important;
+  background: #111;
+}
+
+/* stronger 3D feel on open book */
+.scrapbook-spread.active {
+  display: grid;
+  animation: bookOpenSettle 0.45s ease both;
+}
+
+/* outgoing page */
+.scrapbook-spread.turning-next {
+  display: grid;
+  animation: pageTurnNext3D 0.55s ease both;
+  z-index: 12;
+}
+
+.scrapbook-spread.turning-prev {
+  display: grid;
+  animation: pageTurnPrev3D 0.55s ease both;
+  z-index: 12;
+}
+
+/* incoming page */
+.scrapbook-spread.enter-next {
+  display: grid;
+  animation: pageEnterNext3D 0.55s ease both;
+}
+
+.scrapbook-spread.enter-prev {
+  display: grid;
+  animation: pageEnterPrev3D 0.55s ease both;
+}
+
+/* cover should feel like an actual book */
+.scrapbook-cover-book {
+  transform-style: preserve-3d;
+  box-shadow:
+    0 28px 70px rgba(0,0,0,0.55),
+    inset 0 0 0 1px rgba(212, 175, 55, 0.16),
+    inset -12px 0 20px rgba(255,255,255,0.04),
+    inset 12px 0 20px rgba(0,0,0,0.22);
+}
+
+.scrapbook-cover-book::before {
+  box-shadow:
+    6px 0 16px rgba(0,0,0,0.22),
+    inset 0 0 10px rgba(255,255,255,0.08);
+}
+
+/* cover opening effect */
+.scrapbook-cover-screen.cover-opening .scrapbook-cover-book {
+  animation: coverOpen3D 0.6s ease forwards;
+}
+
+/* animations */
+@keyframes coverOpen3D {
+  0% {
+    transform: rotateY(0deg) rotateX(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: rotateY(-72deg) rotateX(4deg) translateX(-30px);
+    opacity: 0;
+  }
+}
+
+@keyframes bookOpenSettle {
+  0% {
+    opacity: 0.8;
+    transform: rotateX(13deg) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: rotateX(8deg) scale(1);
+  }
+}
+
+@keyframes pageTurnNext3D {
+  0% {
+    opacity: 1;
+    transform: rotateX(8deg) rotateY(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: rotateX(8deg) rotateY(-18deg) translateX(-18px);
+  }
+}
+
+@keyframes pageTurnPrev3D {
+  0% {
+    opacity: 1;
+    transform: rotateX(8deg) rotateY(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: rotateX(8deg) rotateY(18deg) translateX(18px);
+  }
+}
+
+@keyframes pageEnterNext3D {
+  0% {
+    opacity: 0;
+    transform: rotateX(8deg) rotateY(18deg) translateX(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: rotateX(8deg) rotateY(0deg) translateX(0);
+  }
+}
+
+@keyframes pageEnterPrev3D {
+  0% {
+    opacity: 0;
+    transform: rotateX(8deg) rotateY(-18deg) translateX(-18px);
+  }
+  100% {
+    opacity: 1;
+    transform: rotateX(8deg) rotateY(0deg) translateX(0);
+  }
+}
+
+@media (max-width: 950px) {
+  .scrapbook-spread,
+  .scrapbook-spread.active,
+  .scrapbook-spread.enter-next,
+  .scrapbook-spread.enter-prev,
+  .scrapbook-spread.turning-next,
+  .scrapbook-spread.turning-prev {
+    transform: none !important;
+    animation: none !important;
+  }
+
+  .scrapbook-spread::before,
+  .scrapbook-spread::after,
+  .left-page::before,
+  .right-page::before {
+    display: none;
+  }
+
+  .paper-page {
+    box-shadow: 0 14px 30px rgba(0,0,0,0.14);
+  }
+}
+
+/* Jukebox Memory Library Entrance */
+.jukebox-library-screen {
+  min-height: calc(100vh - 110px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 36px 20px 58px;
+  overflow: hidden;
+  perspective: 1800px;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(212, 175, 55, 0.17), transparent 25%),
+    radial-gradient(circle at 17% 36%, rgba(18, 91, 60, 0.24), transparent 27%),
+    radial-gradient(circle at 85% 42%, rgba(18, 91, 60, 0.18), transparent 25%),
+    linear-gradient(145deg, #020302 0%, #07110b 48%, #030201 100%);
+}
+
+.jukebox-library-stage {
+  position: relative;
+  width: min(100%, 920px);
+  text-align: center;
+}
+
+.jukebox-library-heading {
+  position: relative;
+  z-index: 4;
+  margin-bottom: 24px;
+}
+
+.jukebox-library-heading p {
+  color: #d4af37;
+  margin: 0 0 7px;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.jukebox-library-heading h1 {
+  color: #fff6df;
+  margin: 0 0 8px;
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: 0.95;
+}
+
+.jukebox-library-heading span {
+  color: rgba(255, 246, 223, 0.66);
+  font-size: 0.9rem;
+}
+
+.jukebox-machine {
+  position: relative;
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 7px;
+  border-radius: 210px 210px 28px 28px;
+  background:
+    linear-gradient(135deg, #8a671d, #f0cb52 30%, #6c4c0b 70%, #d4af37);
+  box-shadow:
+    0 34px 90px rgba(0, 0, 0, 0.62),
+    0 0 50px rgba(212, 175, 55, 0.18);
+}
+
+.jukebox-arch {
+  position: relative;
+  min-height: 610px;
+  padding: 42px 30px 30px;
+  overflow: hidden;
+  border-radius: 200px 200px 23px 23px;
+  background:
+    radial-gradient(circle at 50% 17%, rgba(212, 175, 55, 0.22), transparent 28%),
+    linear-gradient(145deg, #111d15 0%, #050505 58%, #0c0804 100%);
+  border: 2px solid rgba(255, 238, 173, 0.26);
+}
+
+.jukebox-glow-ring {
+  position: absolute;
+  inset: 17px 19px auto;
+  height: 310px;
+  border-radius: 190px 190px 45% 45%;
+  border: 5px solid rgba(212, 175, 55, 0.62);
+  box-shadow:
+    0 0 18px rgba(212, 175, 55, 0.4),
+    inset 0 0 24px rgba(212, 175, 55, 0.16);
+}
+
+.record-display {
+  position: relative;
+  z-index: 2;
+  width: 220px;
+  height: 220px;
+  margin: 10px auto 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.42);
+  border: 2px solid rgba(212, 175, 55, 0.32);
+  box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.7);
+}
+
+.spinning-record {
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    repeating-radial-gradient(
+      circle,
+      #090909 0,
+      #090909 4px,
+      #171717 5px,
+      #171717 7px
+    );
+  box-shadow:
+    0 15px 26px rgba(0, 0, 0, 0.5),
+    inset 0 0 0 2px rgba(255,255,255,0.05);
+}
+
+.record-playing {
+  animation: spinRecord 3.2s linear infinite;
+}
+
+.record-label {
+  width: 68px;
+  height: 68px;
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  color: #10100b;
+  background: #d4af37;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.record-label small {
+  font-size: 0.52rem;
+}
+
+.album-shelf {
+  position: relative;
+  z-index: 5;
+  min-height: 220px;
+  padding: 18px 20px 26px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 15px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.04), transparent),
+    rgba(0, 0, 0, 0.44);
+  border: 1px solid rgba(212, 175, 55, 0.22);
+  border-radius: 18px;
+  box-shadow:
+    inset 0 -18px 22px rgba(0,0,0,0.46),
+    0 18px 30px rgba(0,0,0,0.25);
+}
+
+.album-shelf::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  height: 12px;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #d4af37, #614509);
+}
+
+.shelf-album {
+  width: 105px;
+  height: 142px;
+  padding: 13px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 247, 226, 0.7);
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: linear-gradient(145deg, #111913, #050505);
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.featured-scrapbook-album {
+  position: relative;
+  width: 176px;
+  height: 190px;
+  padding: 18px 12px 13px;
+  border: 2px solid rgba(212, 175, 55, 0.62);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff4d7;
+  cursor: pointer;
+  background:
+    radial-gradient(circle at 50% 22%, rgba(212, 175, 55, 0.2), transparent 32%),
+    linear-gradient(145deg, #0d1e14, #030303);
+  box-shadow:
+    0 17px 30px rgba(0,0,0,0.48),
+    0 0 24px rgba(212,175,55,0.18);
+  transition: transform 0.32s ease, box-shadow 0.32s ease;
+}
+
+.featured-scrapbook-album:hover {
+  transform: translateY(-10px) scale(1.03);
+  box-shadow:
+    0 25px 42px rgba(0,0,0,0.55),
+    0 0 34px rgba(212,175,55,0.32);
+}
+
+.featured-scrapbook-album img {
+  width: 88px;
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.4));
+}
+
+.featured-scrapbook-album strong {
+  color: #d4af37;
+  font-size: 1rem;
+  line-height: 1.02;
+}
+
+.featured-scrapbook-album small {
+  margin-top: 6px;
+  color: rgba(255, 244, 215, 0.68);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.pull-book-label {
+  position: absolute;
+  left: 50%;
+  bottom: -38px;
+  width: max-content;
+  transform: translateX(-50%);
+  color: #d4af37;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.album-pulling {
+  animation: pullAlbumForward 0.95s ease forwards;
+  pointer-events: none;
+}
+
+.jukebox-controls {
+  position: relative;
+  z-index: 5;
+  margin-top: 28px;
+  padding: 13px 18px;
+  border-radius: 10px;
+  color: rgba(255, 247, 226, 0.7);
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(212, 175, 55, 0.24);
+}
+
+.jukebox-controls span {
+  display: block;
+  color: #d4af37;
+  font-size: 0.58rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+}
+
+.jukebox-controls strong {
+  font-size: 0.82rem;
+}
+
+.library-instruction {
+  margin: 20px 0 0;
+  color: rgba(255, 247, 226, 0.58);
+  font-size: 0.82rem;
+}
+
+.library-light {
+  position: absolute;
+  top: 25%;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  filter: blur(22px);
+  opacity: 0.18;
+  pointer-events: none;
+}
+
+.library-light-left {
+  left: -130px;
+  background: #d4af37;
+}
+
+.library-light-right {
+  right: -130px;
+  background: #1d7d56;
+}
+
+.library-leaving {
+  animation: libraryFadeAway 0.7s ease forwards;
+}
+
+.cover-arriving .scrapbook-cover-book {
+  animation: bookArriveFromShelf 0.72s ease both;
+}
+
+.scrapbook-music-toggle {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 500;
+  border: 1px solid rgba(212, 175, 55, 0.48);
+  border-radius: 999px;
+  padding: 10px 15px;
+  color: #d4af37;
+  background: rgba(3, 7, 4, 0.88);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(0,0,0,0.36);
+}
+
+.scrapbook-music-toggle.music-muted {
+  opacity: 0.65;
+}
+
+@keyframes spinRecord {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pullAlbumForward {
+  0% {
+    transform: translateY(0) translateZ(0) scale(1);
+  }
+  45% {
+    transform: translateY(-20px) translateZ(80px) scale(1.1);
+  }
+  100% {
+    transform: translateY(-40px) translateZ(430px) scale(1.75);
+    opacity: 0;
+  }
+}
+
+@keyframes libraryFadeAway {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes bookArriveFromShelf {
+  0% {
+    opacity: 0;
+    transform: perspective(1600px) translateZ(-500px) scale(0.55);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(1600px) translateZ(0) scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .jukebox-library-screen {
+    padding: 25px 12px 48px;
+  }
+
+  .jukebox-machine {
+    max-width: 430px;
+  }
+
+  .jukebox-arch {
+    min-height: 530px;
+    padding: 34px 16px 24px;
+  }
+
+  .record-display {
+    width: 175px;
+    height: 175px;
+  }
+
+  .spinning-record {
+    width: 142px;
+    height: 142px;
+  }
+
+  .album-shelf {
+    gap: 8px;
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  .shelf-album {
+    width: 72px;
+    height: 114px;
+    font-size: 0.58rem;
+  }
+
+  .featured-scrapbook-album {
+    width: 145px;
+    height: 165px;
+  }
+
+  .featured-scrapbook-album img {
+    width: 70px;
+  }
+}

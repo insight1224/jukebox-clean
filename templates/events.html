@@ -14,7 +14,7 @@
 
     <div class="events-refresh-grid">
       {% for event in events %}
-      {% if event.name != "Battle of the DJs" %}
+      {% if event.status == "upcoming" %}
       <article class="event-refresh-card">
         <a href="{{ url_for('event_detail', event_name=event.name) }}" class="event-refresh-link">
           <div class="event-refresh-image">
@@ -26,7 +26,13 @@
           </div>
 
           <div class="event-refresh-content">
-            <span class="event-refresh-pill">Limited Availability</span>
+            <span class="event-refresh-pill">
+              {% if event.tickets_coming_soon %}
+                Tickets Coming Soon
+              {% else %}
+                Limited Availability
+              {% endif %}
+            </span>
 
             {% if event.flyer == "/static/images/flyer-juneteenth-finale.png" %}
             <h3>Juneteenth Celebration</h3>
@@ -40,7 +46,13 @@
             {% endif %}
             {% endif %}
 
-            <span class="event-refresh-btn">View Event</span>
+            <span class="event-refresh-btn">
+              {% if event.tickets_coming_soon %}
+                View Event Details
+              {% else %}
+                View Event
+              {% endif %}
+            </span>
           </div>
         </a>
       </article>
@@ -74,7 +86,7 @@
 
     <div class="events-refresh-grid">
       {% for event in events %}
-      {% if event.name == "Battle of the DJs" %}
+      {% if event.status == "past" %}
       <article class="event-refresh-card past">
         <div class="event-refresh-image">
           {% if event.flyer.startswith('/static/') %}

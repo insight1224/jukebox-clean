@@ -14,19 +14,76 @@
 
 <section class="gallery-section">
   <div class="gallery-panel">
-    <h2>Featured Events</h2>
+    <p class="gallery-panel-kicker">Event Memories</p>
+    <h2>Featured Event Galleries</h2>
+    <p class="gallery-subtitle">
+      Revisit the Grand Opening Series through photos, videos, and event recaps.
+    </p>
 
-    <div class="event-gallery-grid">
+    <div class="event-gallery-grid featured-event-grid">
       <a class="event-gallery-card" href="/gallery/battle-of-the-djs">
         <div class="event-gallery-thumb">
           <img src="{{ url_for('static', filename='images/flyer-part1.jpg') }}" alt="Battle of the DJs flyer">
         </div>
         <div class="event-gallery-info">
           <h3>Battle of the DJs</h3>
-          <p>DJ Event Experience</p>
+          <p>Grand Opening Series — Part 1</p>
           <span>View Gallery</span>
         </div>
       </a>
+
+      <a class="event-gallery-card" href="/gallery/quiet-storm">
+        <div class="event-gallery-thumb">
+          <img src="{{ url_for('static', filename='images/flyer-part2.jpg') }}" alt="The Quiet Storm Live flyer">
+        </div>
+        <div class="event-gallery-info">
+          <h3>The Quiet Storm Live</h3>
+          <p>Grand Opening Series — Part 2</p>
+          <span>View Gallery</span>
+        </div>
+      </a>
+
+      <a class="event-gallery-card" href="/gallery/juneteenth-celebration">
+        <div class="event-gallery-thumb">
+          <img src="{{ url_for('static', filename='images/flyer-juneteenth-finale.png') }}" alt="Juneteenth Celebration flyer">
+        </div>
+        <div class="event-gallery-info">
+          <h3>Juneteenth Celebration</h3>
+          <p>Grand Opening Series — Finale</p>
+          <span>View Gallery</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="gallery-memory-divider"></div>
+
+    <div class="gallery-memory-heading">
+      <p class="gallery-panel-kicker">Beyond the Events</p>
+      <h2>Jukebox Memories</h2>
+      <p class="gallery-subtitle">
+        Open the interactive scrapbook and flip through the moments, milestones, and community love that helped bring The Jukebox Lounge NC to life.
+      </p>
+    </div>
+
+    <div class="memory-experience-grid">
+      <a class="memory-experience-card scrapbook-feature-card" href="/scrapbook">
+        <div class="memory-experience-visual">
+          <div class="memory-record">
+            <span>Memories</span>
+          </div>
+          <p>The Jukebox Scrapbook</p>
+        </div>
+
+        <div class="memory-experience-info">
+          <span class="memory-experience-badge">Interactive Experience</span>
+          <h3>Open the Jukebox Scrapbook</h3>
+          <p>
+            Pull the scrapbook from the jukebox and flip through the moments that helped build the experience.
+          </p>
+          <strong>Open the Scrapbook</strong>
+        </div>
+      </a>
+
     </div>
   </div>
 </section>

@@ -71,6 +71,15 @@
     </div>
     {% endif %}
 
+    <div class="ticket-policy-notice">
+        <strong>All Ticket Sales Are Final</strong>
+        <p>
+            Tickets are nonrefundable and nonexchangeable. Refunds are not provided
+            when a guest is unable to attend for personal reasons. By purchasing a
+            ticket, you agree to the full Ticket Purchase &amp; Refund Policy below.
+        </p>
+    </div>
+
     <div class="ticket-grid {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}">
         {% if is_quiet_storm %}
         <div class="ticket-box">
@@ -101,6 +110,8 @@
             <p>${{ "%.2f"|format(t.price) }}</p>
             {% if event.name == "Battle of the DJs" %}
             <span class="btn disabled">Online Sales Closed</span>
+            {% elif event.tickets_coming_soon %}
+            <span class="btn disabled">Coming Soon</span>
             {% elif t.sold_out %}
             <span class="btn disabled">Sold Out</span>
             {% else %}
@@ -121,6 +132,47 @@
         {% endfor %}
         {% endif %}
     </div>
+
+    <section class="full-ticket-policy" id="ticket-refund-policy">
+        <p class="ticket-policy-kicker">Please Review Before Purchasing</p>
+        <h2>Ticket Purchase &amp; Refund Policy</h2>
+
+        <p class="ticket-policy-emphasis">
+            All ticket sales are final. Tickets are nonrefundable and nonexchangeable.
+        </p>
+
+        <p>
+            Refunds will not be issued when a guest is unable to attend for reasons
+            unrelated to The Jukebox Lounge NC. This includes, but is not limited to,
+            scheduling conflicts, illness, transportation issues, changes in personal
+            circumstances, failure to meet age or identification requirements, or
+            removal from an event for violating venue or event policies.
+        </p>
+
+        <p>
+            A guest’s inability or decision not to attend does not make the purchase
+            eligible for a refund.
+        </p>
+
+        <p>Refunds will only be considered when:</p>
+
+        <ul>
+            <li>The event is canceled by The Jukebox Lounge NC and is not rescheduled;</li>
+            <li>The purchaser was charged incorrectly or more than once; or</li>
+            <li>A refund is otherwise required by applicable law.</li>
+        </ul>
+
+        <p>
+            If an event is postponed or rescheduled, purchased tickets will remain
+            valid for the new date. Any additional options will be communicated
+            directly to ticket holders.
+        </p>
+
+        <p class="ticket-policy-agreement">
+            By completing a ticket purchase, the purchaser acknowledges and agrees
+            to this policy.
+        </p>
+    </section>
 </section>
 
 {% endblock %}

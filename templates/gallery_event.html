@@ -21,23 +21,14 @@
       <p class="section-kicker">Event Recap</p>
       <h1>{{ title }}</h1>
 
-      <p>
-        Battle of the DJs brought together music lovers, DJs, and supporters for
-        an unforgettable night of competition, energy, and community.
-      </p>
-
-      <p>
-        Guests enjoyed curated DJ sets, crowd interaction, and an atmosphere built
-        around great music and grown vibes. The event showcased local talent while
-        creating memorable moments throughout the night.
-      </p>
+      {% for paragraph in recap_paragraphs %}
+      <p>{{ paragraph }}</p>
+      {% endfor %}
 
       <div class="event-highlights">
-        <span>🎧 DJ Performances</span>
-        <span>🔥 Crowd Energy</span>
-        <span>🎶 Feel-Good Music</span>
-        <span>📸 Photo Moments</span>
-        <span>🤝 Community</span>
+        {% for highlight in highlights %}
+        <span>{{ highlight }}</span>
+        {% endfor %}
       </div>
     </div>
 

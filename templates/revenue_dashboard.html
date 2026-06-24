@@ -31,12 +31,12 @@
       </div>
 
                         <nav class="sidebar-nav">
-        <a href="/admin/dashboard-redesign">Dashboard</a>
-        <a href="/admin/dashboard-redesign/events">Events</a>
-        <a href="/admin/dashboard-redesign/revenue" class="active">Revenue</a>
-        <a href="/admin/dashboard-redesign/messages">Messages</a>
-        <a href="/admin/dashboard-redesign/members">Members</a>
-        <a href="/admin/dashboard-redesign/contacts">Contact Log</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard/events">Events</a>
+        <a href="/dashboard/revenue" class="active">Revenue</a>
+        <a href="/dashboard/messages">Messages</a>
+        <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/contacts">Contact Log</a>
               <a href="/admin/unmapped-square">Unmapped Tickets</a>
       </nav>
     </aside>
@@ -47,7 +47,7 @@
           <strong>Revenue Tab Preview</strong>
           <span>This screen keeps all event, ticket, membership, and past revenue summaries in one place.</span>
         </div>
-        <a href="/admin/dashboard-redesign">Back to Dashboard</a>
+        <a href="/dashboard">Back to Dashboard</a>
       </div>
 
       <header class="topbar">
@@ -59,7 +59,7 @@
 
         <div class="topbar-actions">
           <button class="btn secondary js-export-revenue-report" type="button" id="exportRevenueOverview">Export Report</button>
-          <a class="btn primary" href="/admin/dashboard-redesign/income-summary" target="_blank">Income Summary Report</a>
+          <a class="btn primary" href="/dashboard/income-summary" target="_blank">Income Summary Report</a>
 
         </div>
       </header>
@@ -287,7 +287,7 @@
             <p>Track ticket revenue, expenses, payment methods, and profit.</p>
           </div>
           <div class="section-actions">
-            <a class="btn secondary" href="/admin/dashboard-redesign/events">Back to Events</a>
+            <a class="btn secondary" href="/dashboard/events">Back to Events</a>
             <button class="btn secondary js-export-revenue-report" type="button" id="exportEventRevenueButton">Export Report</button>
             <button class="btn secondary" type="button" id="addCashRevenueButton" onclick="document.getElementById('cashRevenueModalOverlay').classList.add('active')">Add Cash Revenue</button>
             <button class="btn primary" type="button" id="addExpenseButton" onclick="document.getElementById('expenseModalOverlay').classList.add('active')">Add Expense</button>
@@ -301,10 +301,21 @@
             <span>Tickets + memberships + tips/other + cash</span>
           </div>
 
-          <div class="revenue-card">
-            <p>Expenses</p>
+          <div
+            class="revenue-card js-open-revenue-modal"
+            data-target="total-expense-breakdown"
+            data-title="Total Expenses"
+            role="button"
+            tabindex="0"
+            style="cursor: pointer;"
+          >
+            <p>Total Expenses</p>
             <h4 id="expenseTotal">${{ "%.2f"|format(metrics.total_expenses) }}</h4>
-            <span>Expenses not added yet</span>
+            <span>
+              ${{ "%.2f"|format(metrics.total_expenses - metrics.business_expenses) }} event
+              + ${{ "%.2f"|format(metrics.business_expenses) }} business
+              · Click for details
+            </span>
           </div>
 
           <div class="revenue-card">
@@ -352,7 +363,7 @@
               </div>
               <div>
                 <p>Total Tickets</p>
-                <strong>{{ event.total_tickets_sold }}</strong>
+                <strong>{{ event.total_tickets|default(event.total_tickets_sold) }}</strong>
                 <span>All ticket categories</span>
               </div>
             </div>
@@ -477,7 +488,7 @@
               </div>
               <div>
                 <p>Total Tickets</p>
-                <strong>{{ event.total_tickets_sold }}</strong>
+                <strong>{{ event.total_tickets|default(event.total_tickets_sold) }}</strong>
                 <span>All ticket categories</span>
               </div>
             </div>
@@ -581,6 +592,89 @@
             </div>
           </div>
           {% endfor %}
+
+          <div class="revenue-detail-content" id="total-expense-breakdown">
+            <div class="event-detail-stats">
+              <div>
+                <p>Total Expenses</p>
+                <strong>${{ "%.2f"|format(metrics.total_expenses) }}</strong>
+                <span>Event and non-event expenses</span>
+              </div>
+
+              <div>
+                <p>Event Expenses</p>
+                <strong>${{ "%.2f"|format(metrics.total_expenses - metrics.business_expenses) }}</strong>
+                <span>Expenses assigned to events</span>
+              </div>
+
+              <div>
+                <p>Business Expenses</p>
+                <strong>${{ "%.2f"|format(metrics.business_expenses) }}</strong>
+                <span>General non-event expenses</span>
+              </div>
+            </div>
+
+            <div class="event-detail-grid">
+              <div class="event-detail-panel">
+                <h5>Event Expense Breakdown</h5>
+
+                {% for expense in expense_rows %}
+                <div class="breakdown-row stacked-breakdown-row">
+                  <span>
+                    <strong>{{ expense.event_name }}</strong>
+                    <small>{{ expense.category }}</small>
+
+                    {% if expense.notes %}
+                    <small>{{ expense.notes }}</small>
+                    {% endif %}
+
+                    <small>{{ expense.payment_method or "Other" }}</small>
+                  </span>
+
+                  <strong>
+                    ${{ "%.2f"|format((expense.amount_cents or 0) / 100) }}
+                  </strong>
+                </div>
+                {% else %}
+                <div class="breakdown-row">
+                  <span>No event expenses saved yet.</span>
+                  <strong>$0.00</strong>
+                </div>
+                {% endfor %}
+              </div>
+
+              <div class="event-detail-panel">
+                <h5>Non-Event Business Expenses</h5>
+
+                {% for expense in business_expense_rows %}
+                <div class="breakdown-row stacked-breakdown-row">
+                  <span>
+                    <strong>{{ expense.category }}</strong>
+
+                    {% if expense.notes %}
+                    <small>{{ expense.notes }}</small>
+                    {% endif %}
+
+                    {% if expense.expense_date %}
+                    <small>{{ expense.expense_date }}</small>
+                    {% endif %}
+
+                    <small>{{ expense.payment_method or "Other" }}</small>
+                  </span>
+
+                  <strong>
+                    ${{ "%.2f"|format((expense.amount_cents or 0) / 100) }}
+                  </strong>
+                </div>
+                {% else %}
+                <div class="breakdown-row">
+                  <span>No non-event business expenses saved yet.</span>
+                  <strong>$0.00</strong>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -643,9 +737,9 @@
         <div class="event-modal small-modal">
           <div class="event-modal-header">
             <div>
-              <p class="eyebrow">Add Expense</p>
-              <h3>Add Event Expense</h3>
-              <p>Track expenses by event so profit totals stay accurate.</p>
+              <p class="eyebrow">Expense Tracking</p>
+              <h3>Add Expense</h3>
+              <p>Add an event-related expense or a general non-event business expense.</p>
             </div>
             <button class="event-modal-close" type="button" id="expenseModalClose">Close</button>
           </div>
@@ -1141,7 +1235,9 @@
       "Marketing",
       "Administrative",
       "Contractor / Support",
-      "Supplies",
+      "Insurance",
+      "Professional Services",
+      "Office Supplies",
       "Other Business Expense"
     ];
 

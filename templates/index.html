@@ -18,53 +18,103 @@
 </section>
 
 <!-- JUKEBOX EXPERIENCE -->
-<section class="jukebox-machine">
+<section class="home-jukebox-experience">
 
-    <div class="jukebox-stage">
+  <div class="home-jukebox-heading">
+    <p class="home-jukebox-kicker">Choose Your Sound</p>
+    <h2>The Jukebox Selector</h2>
+    <p>Select a record, watch it load into the jukebox, and press play.</p>
+  </div>
 
-        <!-- LEFT SPEAKER -->
-        <div class="speaker speaker-left"></div>
+  <div class="home-jukebox-machine">
 
-        <!-- CENTER -->
-        <div class="jukebox-center">
+    <div class="home-jukebox-arch">
+      <div class="home-jukebox-light-ring"></div>
 
-            <!-- DISPLAY -->
-            <div class="jukebox-display">
-                <h2>JUKEBOX SELECTOR</h2>
-                <p id="nowPlayingText">INSERT COIN</p>
-            </div>
+      <div class="home-record-window">
+        <div class="home-spinning-record" id="homeSpinningRecord">
+          <div class="home-record-label">
+            <span>Now</span>
+            <strong>Playing</strong>
+          </div>
+        </div>
+      </div>
 
-            <!-- APPLE MUSIC PLAYER (SCREEN) -->
-            <div id="musicPlayer" class="music-player-box">
-                <p style="opacity:0.6;">Select a record to play</p>
-            </div>
 
+
+      <div class="home-jukebox-fillers" aria-hidden="true">
+        <div class="home-jukebox-speaker speaker-left-deco">
+          <span></span><span></span><span></span><span></span>
         </div>
 
-        <!-- RIGHT SPEAKER -->
-        <div class="speaker speaker-right"></div>
+        <div class="home-jukebox-control-panel">
+          <div class="home-jukebox-mini-display">JUKEBOX CONTROLS</div>
 
-    </div>
+          <div class="home-jukebox-buttons">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
 
-    <!-- CONTROLS -->
-    <div class="jukebox-controls">
-        <button onclick="scrollRecordsLeft()">⟵</button>
-<button onclick="scrollRecordsRight()">⟶</button>
-    </div>
-
-    <!-- SCROLLING RECORDS -->
-    <div class="jukebox-scroll" id="jukeboxScroll">
-
-        {% for i in range(1,16) %}
-        <div class="album">
-            <img src="/static/images/album{{ i }}.jpg">
-            <button class="play-btn" onclick="playSong({{ i-1 }})">▶</button>
+          <div class="home-jukebox-eq">
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
         </div>
-        {% endfor %}
 
+        <div class="home-jukebox-speaker speaker-right-deco">
+          <span></span><span></span><span></span><span></span>
+        </div>
+      </div>
+
+      <div id="musicPlayer" class="home-music-player home-player-hidden"></div>
+
+      <div class="home-record-shelf-wrap">
+        <button
+          class="home-record-arrow"
+          type="button"
+          onclick="scrollRecordsLeft()"
+          aria-label="Scroll records left"
+        >
+          ‹
+        </button>
+
+        <div class="home-record-shelf" id="jukeboxScroll">
+          {% for i in range(1,16) %}
+          <button
+            class="home-album"
+            type="button"
+            onclick="playSong({{ i-1 }}, this)"
+            aria-label="Play record {{ i }}"
+          >
+            <img
+              src="{{ url_for('static', filename='images/album' ~ i ~ '.jpg') }}"
+              alt="Record selection {{ i }}"
+            >
+            <span class="home-album-play">▶</span>
+          </button>
+          {% endfor %}
+        </div>
+
+        <button
+          class="home-record-arrow"
+          type="button"
+          onclick="scrollRecordsRight()"
+          aria-label="Scroll records right"
+        >
+          ›
+        </button>
+      </div>
+
+      <p class="home-jukebox-instruction">
+        Pick a record to hear the vibe.
+      </p>
     </div>
+
+  </div>
 
 </section>
+
 <!-- EXPERIENCE -->
 <section class="section experience">
     <h2 class="section-title">The Experience</h2>
@@ -101,48 +151,75 @@
     </div>
 </section>
 
-<!-- GRAND OPENING -->
-<section class="section">
+<!-- GRAND OPENING MEMORIES -->
+<section class="section grand-opening-memories">
 
-    <h2 class="section-title">Grand Opening Series</h2>
+    <p class="section-kicker">Grand Opening Memories</p>
+    <h2 class="section-title">Where It All Began</h2>
 
     <p class="grand-opening-text">
-        <span class="accent">Three nights.</span>  
-        <span class="accent">Three experiences.</span>  
-        <span class="accent">One unforgettable launch.</span>
+        Three signature events launched The Jukebox Lounge NC.
+        Revisit the music, energy, and memories from our Grand Opening Series.
     </p>
 
     <div class="poster-grid">
 
-        <!-- PART 1 -->
-        <div class="poster-card">
-            <h3 style="color:gold;">Part 1 — Battle of the DJs</h3>
-            <p>Showcase your sound and compete for the crown.</p>
+        <article class="poster-card memory-card">
+            <span class="memory-badge">Grand Opening • Part 1</span>
+            <h3>Battle of the DJs</h3>
+            <p>Four DJs. Three rounds. One unforgettable opening night.</p>
 
-            <div class="poster-image-wrapper" onclick="openFlyer('/static/images/flyer-part1.jpg')">
-                <img src="/static/images/flyer-part1.jpg">
-            </div>
-        </div>
+            <button
+              class="poster-image-wrapper"
+              type="button"
+              onclick="openFlyer('/static/images/flyer-part1.jpg')"
+              aria-label="View Battle of the DJs flyer"
+            >
+                <img src="/static/images/flyer-part1.jpg" alt="Battle of the DJs flyer">
+            </button>
 
-        <!-- PART 2 -->
-        <div class="poster-card">
-            <h3 style="color:gold;">Part 2 - The Quiet Storm Live</h3>
-            <p>The Intimate R&B Experience</p>
+            <a href="/gallery/battle-of-the-djs" class="memory-link-btn">
+              View Battle Memories
+            </a>
+        </article>
 
-            <div class="poster-image-wrapper" onclick="openFlyer('/static/images/flyer-part2.jpg')">
-                <img src="/static/images/flyer-part2.jpg">
-            </div>
-        </div>
+        <article class="poster-card memory-card">
+            <span class="memory-badge">Grand Opening • Part 2</span>
+            <h3>The Quiet Storm Live</h3>
+            <p>An intimate evening of live R&amp;B, smooth vocals, and grown energy.</p>
 
-        <!-- PART 3 -->
-        <div class="poster-card">
-            <h3 style="color:gold;">Part 3 — Juneteenth Celebration</h3>
-            <p>Theme: Grown &amp; Sexy</p>
+            <button
+              class="poster-image-wrapper"
+              type="button"
+              onclick="openFlyer('/static/images/flyer-part2.jpg')"
+              aria-label="View The Quiet Storm Live flyer"
+            >
+                <img src="/static/images/flyer-part2.jpg" alt="The Quiet Storm Live flyer">
+            </button>
 
-            <div class="poster-image-wrapper" onclick="openFlyer('/static/images/flyer-juneteenth-finale.png')">
-                <img src="/static/images/flyer-juneteenth-finale.png">
-            </div>
-        </div>
+            <a href="/gallery/quiet-storm" class="memory-link-btn">
+              View Quiet Storm Memories
+            </a>
+        </article>
+
+        <article class="poster-card memory-card">
+            <span class="memory-badge">Grand Opening • Finale</span>
+            <h3>Juneteenth Celebration</h3>
+            <p>A celebration of culture, confidence, community, and all shades of beautiful.</p>
+
+            <button
+              class="poster-image-wrapper"
+              type="button"
+              onclick="openFlyer('/static/images/flyer-juneteenth-finale.png')"
+              aria-label="View Juneteenth Celebration flyer"
+            >
+                <img src="/static/images/flyer-juneteenth-finale.png" alt="Juneteenth Celebration flyer">
+            </button>
+
+            <a href="/gallery/juneteenth-celebration" class="memory-link-btn">
+              View Finale Memories
+            </a>
+        </article>
 
     </div>
 
@@ -153,6 +230,9 @@
   <div class="testimonials-wrap">
     <p class="section-kicker">What People Are Saying</p>
     <h2>The Vibe Speaks for Itself</h2>
+    <p class="reviews-intro">
+      Real feedback from real Jukebox Lounge experiences.
+    </p>
 
     <div class="google-reviews-embed">
       <div class="sk-ww-google-reviews" data-embed-id="25687546"></div>
@@ -163,18 +243,16 @@
 
 
 
-<section class="featured-partners-section">
-  <div class="featured-partners-wrap">
-    <p class="section-kicker">Community Partners</p>
-    <h2>Proudly Partnering With</h2>
-    <p>Partner spotlight coming soon.</p>
-    <a href="/sponsors" class="partner-link-btn">Become a Partner</a>
-  </div>
-</section>
 <!-- VIP -->
 <section class="vip">
     <div class="vip-box">
+        <p class="vip-kicker">Stay Connected</p>
         <h2>Join the VIP Email List</h2>
+
+        <p class="vip-description">
+          Be the first to hear about tickets, private events, giveaways,
+          and special announcements.
+        </p>
 
         <a href="/vip" class="partner-link-btn">Join the VIP List</a>
 
@@ -186,7 +264,7 @@
 
 <!-- SOCIAL -->
 <section class="social">
-    <h3>Follow The Movement</h3>
+    <h3>Follow the Jukebox Movement</h3>
 
     <div class="social-links">
         <a href="https://www.instagram.com/thejukeboxloungenc" target="_blank">
@@ -205,129 +283,122 @@
 <audio id="clickSound" src="/static/sounds/click.mp3"></audio>
 <audio id="vinylSound" src="/static/sounds/vinyl.mp3"></audio>
 
-<!-- SCROLL SCRIPT -->
+<!-- NEW HOMEPAGE JUKEBOX SCRIPT -->
 <script>
-document.addEventListener("click", () => {
-    const click = document.getElementById("clickSound");
-    const vinyl = document.getElementById("vinylSound");
+const jukeboxSongs = [
+  "Rock With You",
+  "Sweet Love",
+  "Outstanding",
+  "Before I Let You Go",
+  "Never Too Much",
+  "Can We Talk",
+  "I Like",
+  "Weak",
+  "Mo Money Mo Problems",
+  "Real Love",
+  "Dilemma",
+  "You Don't Have To Call",
+  "Blame It",
+  "So Fresh, So Clean",
+  "Crazy In Love"
+];
 
-    if (click) click.load();
-    if (vinyl) vinyl.load();
-}, { once: true });
+const jukeboxLinks = [
+  "https://embed.music.apple.com/us/album/rock-with-you/186166282?i=186166358",
+  "https://embed.music.apple.com/us/album/sweet-love/317229859?i=317230043",
+  "https://embed.music.apple.com/us/album/outstanding/1424520684?i=1424520692",
+  "https://embed.music.apple.com/us/album/before-i-let-go/724904374?i=724905057",
+  "https://embed.music.apple.com/us/album/never-too-much/190652453?i=190652482",
+  "https://embed.music.apple.com/us/album/can-we-talk/301001045?i=301001052",
+  "https://embed.music.apple.com/us/album/i-like/1452813546?i=1452813664",
+  "https://embed.music.apple.com/us/album/weak/266799911?i=266800009",
+  "https://embed.music.apple.com/us/album/mo-money-mo-problems-feat-ma%24e-puff-daddy/906888433?i=906888513",
+  "https://embed.music.apple.com/us/album/real-love/1440817005?i=1440817021",
+  "https://embed.music.apple.com/us/album/dilemma-feat-kelly-rowland/1440769782?i=1440770466",
+  "https://embed.music.apple.com/us/album/u-dont-have-to-call/268532446?i=268532614",
+  "https://embed.music.apple.com/us/album/blame-it-feat-t-pain/298451478?i=298451835",
+  "https://embed.music.apple.com/us/album/so-fresh-so-clean/255836651?i=255836736",
+  "https://embed.music.apple.com/us/album/crazy-in-love-feat-ja%C3%BF-z/201274359?i=201274644"
+];
 
 function scrollRecordsLeft() {
-    document.getElementById("jukeboxScroll")
-        .scrollBy({ left: -300, behavior: 'smooth' });
+  const shelf = document.getElementById("jukeboxScroll");
+  if (shelf) {
+    shelf.scrollBy({ left: -320, behavior: "smooth" });
+  }
 }
 
 function scrollRecordsRight() {
-    document.getElementById("jukeboxScroll")
-        .scrollBy({ left: 300, behavior: 'smooth' });
+  const shelf = document.getElementById("jukeboxScroll");
+  if (shelf) {
+    shelf.scrollBy({ left: 320, behavior: "smooth" });
+  }
 }
 
-function playSong(index) {
+function playSong(index, selectedAlbum) {
+  const click = document.getElementById("clickSound");
+  const vinyl = document.getElementById("vinylSound");
+  const player = document.getElementById("musicPlayer");
+  const record = document.getElementById("homeSpinningRecord");
 
-    const click = document.getElementById("clickSound");
-    const vinyl = document.getElementById("vinylSound");
-    const player = document.getElementById("musicPlayer");
+  if (!player || !jukeboxSongs[index] || !jukeboxLinks[index]) {
+    return;
+  }
 
-    const songs = [
-        "Rock With You",
-        "Sweet Love",
-        "Outstanding",
-        "Before I Let You Go",
-        "Never Too Much",
-        "Can We Talk",
-        "I Like",
-        "Weak",
-        "Mo Money Mo Problems",
-        "Real Love",
-        "Dilemma",
-        "You Don't Have To Call",
-        "Blame It",
-        "So Fresh, So Clean",
-        "Crazy In Love"
-    ];
+  document.querySelectorAll(".home-album").forEach((album) => {
+    album.classList.remove("selected");
+  });
 
-    const links = [
-        "https://embed.music.apple.com/us/album/rock-with-you/186166282?i=186166358",
-        "https://embed.music.apple.com/us/album/sweet-love/317229859?i=317230043",
-        "https://embed.music.apple.com/us/album/outstanding/1424520684?i=1424520692",
-        "https://embed.music.apple.com/us/album/before-i-let-go/724904374?i=724905057",
-        "https://embed.music.apple.com/us/album/never-too-much/190652453?i=190652482",
-        "https://embed.music.apple.com/us/album/can-we-talk/301001045?i=301001052",
-        "https://embed.music.apple.com/us/album/i-like/1452813546?i=1452813664",
-        "https://embed.music.apple.com/us/album/weak/266799911?i=266800009",
-        "https://embed.music.apple.com/us/album/mo-money-mo-problems-feat-ma%24e-puff-daddy/906888433?i=906888513",
-        "https://embed.music.apple.com/us/album/real-love/1440817005?i=1440817021",
-        "https://embed.music.apple.com/us/album/dilemma-feat-kelly-rowland/1440769782?i=1440770466",
-        "https://embed.music.apple.com/us/album/u-dont-have-to-call/268532446?i=268532614",
-        "https://embed.music.apple.com/us/album/blame-it-feat-t-pain/298451478?i=298451835",
-        "https://embed.music.apple.com/us/album/so-fresh-so-clean/255836651?i=255836736",
-        "https://embed.music.apple.com/us/album/crazy-in-love-feat-ja%C3%BF-z/201274359?i=201274644"
-    ];
+  if (selectedAlbum) {
+    selectedAlbum.classList.add("selected");
+    selectedAlbum.scrollIntoView({
+      behavior: "smooth",
+      block: "nearest",
+      inline: "center"
+    });
+  }
 
-    // 🔊 CLICK SOUND
-    if (click) {
-        click.pause();
-        click.currentTime = 0;
-        click.play();
+  if (click) {
+    click.pause();
+    click.currentTime = 0;
+    click.play().catch(() => {});
+  }
+
+  if (record) {
+    record.classList.remove("is-playing");
+    void record.offsetWidth;
+    record.classList.add("is-playing");
+  }
+
+  setTimeout(() => {
+    if (vinyl) {
+      vinyl.pause();
+      vinyl.currentTime = 0;
+      vinyl.play().catch(() => {});
     }
+  }, 250);
 
-    // 📝 Update text
-    document.getElementById("nowPlayingText").innerText =
-        "▶ NOW SPINNING: " + songs[index];
-
-    // 💿 VINYL SOUND
-    setTimeout(() => {
-        if (vinyl) {
-            vinyl.pause();
-            vinyl.currentTime = 0;
-            vinyl.play();
-        }
-    }, 500);
-
-    // 📱 LOAD APPLE MUSIC PLAYER
-    setTimeout(() => {
-        player.innerHTML = `
-            <iframe
-                allow="autoplay *; encrypted-media *;"
-                frameborder="0"
-                height="175"
-                style="width:100%; max-width:500px; border-radius:12px;"
-                src="${links[index]}">
-            </iframe>
-        `;
-    }, 800);
+  setTimeout(() => {
+    player.classList.remove("home-player-hidden");
+    player.innerHTML = `
+      <iframe
+        allow="autoplay *; encrypted-media *;"
+        frameborder="0"
+        height="150"
+        loading="lazy"
+        title="${jukeboxSongs[index]} Apple Music player"
+        src="${jukeboxLinks[index]}">
+      </iframe>
+    `;
+  }, 450);
 }
-window.addEventListener("load", () => {
-    const container = document.getElementById("jukeboxScroll");
-    const firstAlbum = document.querySelector(".album");
 
-    if (firstAlbum && container) {
+document.addEventListener("DOMContentLoaded", function () {
+  const shelf = document.getElementById("jukeboxScroll");
 
-        // 👇 force exact centered position
-        const containerRect = container.getBoundingClientRect();
-        const albumRect = firstAlbum.getBoundingClientRect();
-
-        const offset = albumRect.left - containerRect.left;
-        const scroll = offset - (container.offsetWidth / 2) + (firstAlbum.offsetWidth / 2);
-
-        container.scrollLeft += scroll;
-    }
-
-    // run AFTER positioning
-    setTimeout(updateActiveAlbum, 100);
+  if (shelf) {
+    shelf.scrollLeft = 0;
+  }
 });
-
-const speakers = document.querySelectorAll(".speaker");
-
-// reset speakers
-speakers.forEach(s => s.classList.remove("active"));
-
-// turn them on
-setTimeout(() => {
-    speakers.forEach(s => s.classList.add("active"));
-}, 100);
 </script>
 {% endblock %}
