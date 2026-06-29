@@ -8305,16 +8305,69 @@ def admin_dashboard_revenue():
         other_cash_total = sum(float(item.get("amount", 0) or 0) for item in other_cash_rows)
         event_cash_total = ticket_cash_total + other_cash_total
 
-        # Keep cash door tickets separate from online General Admission.
-        if ticket_cash_total > 0 or ticket_cash_quantity > 0:
+        # Cash is a payment source, not a ticket type. Merge each cash/door
+        # entry into its actual ticket type from the saved notes.
+        if ticket_cash_rows:
             event.setdefault("tickets", [])
-            event["tickets"].append({
-                "name": "Door - Cash",
-                "quantity": ticket_cash_quantity,
-                "estimated_attendance": ticket_cash_quantity,
-                "price": 0,
-                "revenue": ticket_cash_total,
-            })
+
+            for cash_item in ticket_cash_rows:
+                cash_quantity = int(cash_item.get("quantity", 0) or 0)
+                cash_amount = float(cash_item.get("amount", 0) or 0)
+                cash_notes = cash_item.get("notes") or ""
+                cash_ticket_type = "General Admission"
+
+                for note_part in cash_notes.split("|"):
+                    note_part = note_part.strip()
+
+                    if ":" not in note_part:
+                        continue
+
+                    note_key, note_value = note_part.split(":", 1)
+
+                    if (
+                        note_key.strip().lower() == "ticket type"
+                        and note_value.strip()
+                    ):
+                        cash_ticket_type = note_value.strip()
+                        break
+
+                matching_ticket = next(
+                    (
+                        ticket
+                        for ticket in event["tickets"]
+                        if (ticket.get("name") or "").strip().lower()
+                        == cash_ticket_type.lower()
+                    ),
+                    None,
+                )
+
+                if matching_ticket:
+                    matching_ticket["quantity"] = (
+                        int(matching_ticket.get("quantity", 0) or 0)
+                        + cash_quantity
+                    )
+                    matching_ticket["estimated_attendance"] = (
+                        int(
+                            matching_ticket.get(
+                                "estimated_attendance",
+                                matching_ticket.get("quantity", 0),
+                            )
+                            or 0
+                        )
+                        + cash_quantity
+                    )
+                    matching_ticket["revenue"] = (
+                        float(matching_ticket.get("revenue", 0) or 0)
+                        + cash_amount
+                    )
+                else:
+                    event["tickets"].append({
+                        "name": cash_ticket_type,
+                        "quantity": cash_quantity,
+                        "estimated_attendance": cash_quantity,
+                        "price": 0,
+                        "revenue": cash_amount,
+                    })
 
         # Bottom-left box: other/non-ticket revenue only
         event["cash_revenue"] = other_cash_rows
