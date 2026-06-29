@@ -8813,30 +8813,9 @@ def admin_dashboard_events():
         event["comp_ticket_count"] = comp_ticket_count
         event["guest_list_count"] = comp_ticket_count
 
-        if comp_ticket_count > 0:
-            existing_breakdown_names = {
-                (item.get("name") or "").strip().lower()
-                for item in event.get("ticket_breakdown", []) or []
-            }
-
-            if "comp tickets" not in existing_breakdown_names:
-                event.setdefault("ticket_breakdown", []).append({
-                    "name": "Comp Tickets",
-                    "quantity": comp_ticket_count,
-                    "revenue": 0.0,
-                })
-
-            existing_ticket_names = {
-                (item.get("name") or "").strip().lower()
-                for item in event.get("tickets", []) or []
-            }
-
-            if "comp tickets" not in existing_ticket_names:
-                event.setdefault("tickets", []).append({
-                    "name": "Comp Tickets",
-                    "quantity": comp_ticket_count,
-                    "revenue": 0.0,
-                })
+        # Comp tickets are already included under their actual ticket type,
+        # such as Early Bird, General Admission, or VIP. Keep the Comp count
+        # only as an informational guest-list metric so it is not counted twice.
 
         existing_ticket_items = event.get("tickets", []) or []
         has_ticket_breakdown = any(
