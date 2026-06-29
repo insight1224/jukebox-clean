@@ -4026,6 +4026,114 @@ def add_attendee_manual():
     return redirect("/checkin?msg=Ticket added successfully.")
 
 
+@app.route("/checkin-edit/<int:id>", methods=["POST"])
+@requires_roles("admin", "manager", "door")
+def edit_checkin_attendee(id):
+    event_name = (request.form.get("event_name") or "").strip()
+    customer_name = (request.form.get("customer_name") or "").strip()
+    ticket_type = (request.form.get("ticket_type") or "").strip()
+    raw_quantity = (request.form.get("quantity") or "1").strip()
+
+    if not event_name or not customer_name or not ticket_type:
+        return {"ok": False, "error": "missing_required_fields"}, 400
+
+    try:
+        quantity = int(float(raw_quantity))
+    except Exception:
+        return {"ok": False, "error": "invalid_quantity"}, 400
+
+    quantity = max(1, quantity)
+
+    if "vip" in ticket_type.lower() and quantity < 6:
+        quantity = 6
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT checked_in_count
+        FROM attendees
+        WHERE id = ?
+        """,
+        (id,),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return {"ok": False, "error": "not_found"}, 404
+
+    checked_in_count = max(0, int(row[0] or 0))
+    checked_in_count = min(checked_in_count, quantity)
+
+    if checked_in_count <= 0:
+        status = "Not Checked In"
+    elif checked_in_count >= quantity:
+        status = "Checked In"
+    else:
+        status = "Partially Checked In"
+
+    cursor.execute(
+        """
+        UPDATE attendees
+        SET event_name = ?,
+            name = ?,
+            customer_name = ?,
+            ticket_type = ?,
+            quantity = ?,
+            checked_in_count = ?,
+            status = ?
+        WHERE id = ?
+        """,
+        (
+            event_name,
+            customer_name,
+            customer_name,
+            ticket_type,
+            quantity,
+            checked_in_count,
+            status,
+            id,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "id": id,
+        "event_name": event_name,
+        "customer_name": customer_name,
+        "ticket_type": ticket_type,
+        "quantity": quantity,
+        "checked_in_count": checked_in_count,
+        "status": status,
+    }
+
+
+@app.route("/checkin-delete/<int:id>", methods=["POST"])
+@requires_roles("admin", "manager", "door")
+def delete_checkin_attendee(id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "DELETE FROM attendees WHERE id = ?",
+        (id,),
+    )
+    deleted = cursor.rowcount
+
+    conn.commit()
+    conn.close()
+
+    if not deleted:
+        return {"ok": False, "error": "not_found"}, 404
+
+    return {"ok": True, "id": id}
+
+
 @app.route("/checkin/<int:id>")
 @requires_roles("admin", "manager", "door")
 def checkin_attendee(id):
@@ -7034,6 +7142,346 @@ def api_delete_event_cash_revenue(cash_id):
     conn.close()
 
     return {"status": "ok", "deleted_id": cash_id}, 200
+
+
+
+def parse_comp_cash_id(ticket_id):
+    ticket_id = (ticket_id or "").strip()
+
+    if not ticket_id.startswith("COMP_"):
+        return None
+
+    parts = ticket_id.split("_")
+
+    if len(parts) < 3:
+        return None
+
+    try:
+        return int(parts[1])
+    except (TypeError, ValueError):
+        return None
+
+
+def update_comp_note_values(notes, customer_name, ticket_type):
+    note_parts = []
+    customer_updated = False
+    ticket_type_updated = False
+
+    for raw_part in (notes or "").split("|"):
+        part = raw_part.strip()
+
+        if not part:
+            continue
+
+        if ":" not in part:
+            note_parts.append(part)
+            continue
+
+        key, value = part.split(":", 1)
+        normalized_key = key.strip().lower()
+
+        if normalized_key == "customer":
+            note_parts.append(f"Customer: {customer_name}")
+            customer_updated = True
+        elif normalized_key == "ticket type":
+            note_parts.append(f"Ticket Type: {ticket_type}")
+            ticket_type_updated = True
+        else:
+            note_parts.append(part)
+
+    if not customer_updated:
+        note_parts.append(f"Customer: {customer_name}")
+
+    if not ticket_type_updated:
+        note_parts.append(f"Ticket Type: {ticket_type}")
+
+    return " | ".join(note_parts)
+
+
+@app.route("/api/comp-ticket-group/edit", methods=["POST"])
+@requires_auth
+def api_edit_comp_ticket_group():
+    data = request.get_json(silent=True) or request.form
+
+    ticket_id = (data.get("ticket_id") or "").strip()
+    customer_name = (data.get("customer_name") or "").strip()
+    ticket_type = (data.get("ticket_type") or "").strip()
+
+    try:
+        quantity = int(data.get("quantity") or 0)
+    except (TypeError, ValueError):
+        quantity = 0
+
+    cash_id = parse_comp_cash_id(ticket_id)
+
+    if cash_id is None:
+        return {
+            "status": "error",
+            "error": "Only Comp tickets can be edited here.",
+        }, 400
+
+    if not customer_name or not ticket_type:
+        return {
+            "status": "error",
+            "error": "Customer name and ticket type are required.",
+        }, 400
+
+    if quantity < 1:
+        return {
+            "status": "error",
+            "error": "Quantity must be at least 1.",
+        }, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT event_name, name, ticket_type
+        FROM event_tickets
+        WHERE ticket_id LIKE ?
+        ORDER BY id ASC
+        LIMIT 1
+        """,
+        (f"COMP_{cash_id}_%",),
+    )
+    original_ticket = cur.fetchone()
+
+    if not original_ticket:
+        conn.close()
+        return {
+            "status": "error",
+            "error": "Comp ticket was not found.",
+        }, 404
+
+    original_event_name = (original_ticket["event_name"] or "").strip()
+    original_name = (original_ticket["name"] or "").strip()
+    original_ticket_type = (original_ticket["ticket_type"] or "").strip()
+
+    cur.execute(
+        """
+        SELECT notes
+        FROM event_cash_revenue
+        WHERE id = ?
+          AND LOWER(TRIM(category)) = 'comp'
+        """,
+        (cash_id,),
+    )
+    cash_row = cur.fetchone()
+
+    if not cash_row:
+        conn.close()
+        return {
+            "status": "error",
+            "error": "The matching Comp record was not found.",
+        }, 404
+
+    updated_notes = update_comp_note_values(
+        cash_row["notes"],
+        customer_name,
+        ticket_type,
+    )
+
+    cur.execute(
+        """
+        UPDATE event_cash_revenue
+        SET quantity = ?,
+            notes = ?
+        WHERE id = ?
+          AND LOWER(TRIM(category)) = 'comp'
+        """,
+        (quantity, updated_notes, cash_id),
+    )
+
+    # Rebuild only the event-ticket rows belonging to this exact Comp record.
+    cur.execute(
+        "DELETE FROM event_tickets WHERE ticket_id LIKE ?",
+        (f"COMP_{cash_id}_%",),
+    )
+
+    for comp_index in range(1, quantity + 1):
+        comp_ticket_id = f"COMP_{cash_id}_{comp_index}"
+        comp_payment_id = f"COMP_{cash_id}:{comp_index}"
+
+        cur.execute(
+            """
+            INSERT INTO event_tickets (
+                name,
+                email,
+                ticket_type,
+                amount_cents,
+                ticket_id,
+                status,
+                payment_id,
+                checkin_url,
+                qr_url,
+                event_name,
+                checked_in,
+                checked_in_count
+            )
+            VALUES (?, ?, ?, 0, ?, 'not_checked_in', ?, ?, ?, ?, 0, 0)
+            """,
+            (
+                customer_name,
+                "",
+                ticket_type,
+                comp_ticket_id,
+                comp_payment_id,
+                f"/checkin/{comp_ticket_id}",
+                f"/qr/{comp_ticket_id}",
+                original_event_name,
+            ),
+        )
+
+    # Update the single attendee row created with this Comp record.
+    cur.execute(
+        """
+        SELECT id
+        FROM attendees
+        WHERE LOWER(TRIM(COALESCE(event_name, ''))) = LOWER(TRIM(?))
+          AND LOWER(TRIM(COALESCE(customer_name, name, ''))) = LOWER(TRIM(?))
+          AND LOWER(TRIM(COALESCE(ticket_type, ''))) = LOWER(TRIM(?))
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (
+            original_event_name,
+            original_name,
+            original_ticket_type,
+        ),
+    )
+    attendee_row = cur.fetchone()
+
+    if attendee_row:
+        cur.execute(
+            """
+            UPDATE attendees
+            SET name = ?,
+                customer_name = ?,
+                ticket_type = ?,
+                quantity = ?,
+                checked_in_count = MIN(COALESCE(checked_in_count, 0), ?),
+                status = CASE
+                    WHEN MIN(COALESCE(checked_in_count, 0), ?) <= 0
+                        THEN 'Not Checked In'
+                    WHEN MIN(COALESCE(checked_in_count, 0), ?) >= ?
+                        THEN 'Checked In'
+                    ELSE 'Partially Checked In'
+                END
+            WHERE id = ?
+            """,
+            (
+                customer_name,
+                customer_name,
+                ticket_type,
+                quantity,
+                quantity,
+                quantity,
+                quantity,
+                quantity,
+                attendee_row["id"],
+            ),
+        )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "ok",
+        "ticket_id": f"COMP_{cash_id}_1",
+        "customer_name": customer_name,
+        "ticket_type": ticket_type,
+        "quantity": quantity,
+    }, 200
+
+
+@app.route("/api/comp-ticket-group/delete", methods=["POST", "DELETE"])
+@requires_auth
+def api_delete_comp_ticket_group():
+    data = request.get_json(silent=True) or request.form
+    ticket_id = (data.get("ticket_id") or "").strip()
+    cash_id = parse_comp_cash_id(ticket_id)
+
+    if cash_id is None:
+        return {
+            "status": "error",
+            "error": "Only Comp tickets can be deleted here.",
+        }, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT event_name, name, ticket_type
+        FROM event_tickets
+        WHERE ticket_id LIKE ?
+        ORDER BY id ASC
+        LIMIT 1
+        """,
+        (f"COMP_{cash_id}_%",),
+    )
+    original_ticket = cur.fetchone()
+
+    if not original_ticket:
+        conn.close()
+        return {
+            "status": "error",
+            "error": "Comp ticket was not found.",
+        }, 404
+
+    original_event_name = (original_ticket["event_name"] or "").strip()
+    original_name = (original_ticket["name"] or "").strip()
+    original_ticket_type = (original_ticket["ticket_type"] or "").strip()
+
+    cur.execute(
+        "DELETE FROM event_tickets WHERE ticket_id LIKE ?",
+        (f"COMP_{cash_id}_%",),
+    )
+
+    cur.execute(
+        """
+        DELETE FROM event_cash_revenue
+        WHERE id = ?
+          AND LOWER(TRIM(category)) = 'comp'
+        """,
+        (cash_id,),
+    )
+
+    # Remove only the newest matching attendee row created for this Comp entry.
+    cur.execute(
+        """
+        SELECT id
+        FROM attendees
+        WHERE LOWER(TRIM(COALESCE(event_name, ''))) = LOWER(TRIM(?))
+          AND LOWER(TRIM(COALESCE(customer_name, name, ''))) = LOWER(TRIM(?))
+          AND LOWER(TRIM(COALESCE(ticket_type, ''))) = LOWER(TRIM(?))
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (
+            original_event_name,
+            original_name,
+            original_ticket_type,
+        ),
+    )
+    attendee_row = cur.fetchone()
+
+    if attendee_row:
+        cur.execute(
+            "DELETE FROM attendees WHERE id = ?",
+            (attendee_row["id"],),
+        )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "status": "ok",
+        "deleted_cash_id": cash_id,
+    }, 200
 
 
 @app.route("/api/event-ticket-checkin", methods=["POST"])

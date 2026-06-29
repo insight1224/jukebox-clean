@@ -234,7 +234,7 @@
           <div>
             <p class="eyebrow">Ticket Sales</p>
             <h3>Add Ticket Sale</h3>
-            <p>Track ticket sales by event, payment method, and sales source.</p>
+            <p>Choose the ticket type once, then select how it was paid. Use Comp for free tickets.</p>
           </div>
         </div>
 
@@ -247,13 +247,22 @@
           </select>
 
           <input id="ticketSaleCustomer" type="text" placeholder="Customer name" />
+
           <select id="ticketSaleType" disabled>
             <option value="">Select an event first</option>
           </select>
-          <input id="ticketSaleQuantity" type="number" min="0" step="1" placeholder="Quantity" />
+
+          <input
+            id="ticketSaleQuantity"
+            type="number"
+            min="1"
+            step="1"
+            value="1"
+            placeholder="Quantity"
+          />
 
           <select id="ticketSaleSource">
-            <option value="">Payment Method / Source</option>
+            <option value="">Select Payment Type</option>
             <option>Cash</option>
             <option>Card</option>
             <option>Cash App</option>
@@ -264,11 +273,29 @@
             <option>Other</option>
           </select>
 
-          <input id="ticketSaleAmount" type="number" min="0" step="0.01" placeholder="Amount paid" />
+          <input
+            id="ticketSaleAmount"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Amount paid"
+          />
+
           <input id="ticketSaleNotes" type="text" placeholder="Staff / notes" />
 
+          <div
+            class="note-preview"
+            id="compTicketNotice"
+            hidden
+          >
+            This automatically adds the guest to the guest list and check-in list.
+            Do not add this ticket again as a separate paid ticket.
+          </div>
+
           <button class="btn primary" type="button" id="saveTicketSaleButton">Save Ticket Sale</button>
-          <div class="note-preview" id="ticketSaleStatus">Ticket sale entries save to revenue tracking.</div>
+          <div class="note-preview" id="ticketSaleStatus">
+            Select one ticket type and one payment type for each entry.
+          </div>
         </form>
       </section>
 
@@ -385,16 +412,32 @@
                 <span>Ticket Type</span>
                 <span>Quantity</span>
                 <span>Source</span>
+                <span>Actions</span>
               </div>
 
               {% for guest in event.guests %}
-              <div class="table-row guest-list-row">
-                <span>{{ guest.name }}</span>
+              <div
+                class="table-row guest-list-row"
+                data-guest-name="{{ guest.name|e }}"
+                data-ticket-type="{{ guest.ticket_type|e }}"
+                data-quantity="{{ guest.quantity }}"
+                data-source="{{ guest.source|e }}"
+                data-ticket-id="{{ (guest.ticket_ids|first)|default('', true)|e }}"
+              >
+                <span class="guest-name-cell">{{ guest.name }}</span>
                 <span>{{ guest.email }}</span>
                 <span>{{ guest.phone or "—" }}</span>
-                <span>{{ guest.ticket_type }}</span>
-                <span>{{ guest.quantity }}</span>
+                <span class="guest-ticket-type-cell">{{ guest.ticket_type }}</span>
+                <span class="guest-quantity-cell">{{ guest.quantity }}</span>
                 <span>{{ guest.source }}</span>
+                <span class="guest-actions-cell">
+                  {% if (guest.source or "")|lower == "comp" %}
+                  <button type="button" class="guest-action-button edit js-edit-comp-guest">Edit</button>
+                  <button type="button" class="guest-action-button delete js-delete-comp-guest">Delete</button>
+                  {% else %}
+                  <span class="guest-action-locked">—</span>
+                  {% endif %}
+                </span>
               </div>
               {% else %}
               <div class="table-row guest-list-row">
@@ -403,6 +446,7 @@
                 <span>—</span>
                 <span>—</span>
                 <span>0</span>
+                <span>—</span>
                 <span>—</span>
               </div>
               {% endfor %}
@@ -905,6 +949,7 @@
     const ticketSaleAmount = document.getElementById("ticketSaleAmount");
     const ticketSaleNotes = document.getElementById("ticketSaleNotes");
     const ticketSaleStatus = document.getElementById("ticketSaleStatus");
+    const compTicketNotice = document.getElementById("compTicketNotice");
     const eventTicketTypes = {{ event_ticket_types|default({})|tojson }};
 
     function updateTicketSaleTypes() {
@@ -913,7 +958,9 @@
       }
 
       const selectedEvent = (ticketSaleEvent?.value || "").trim();
-      const ticketTypes = eventTicketTypes[selectedEvent] || [];
+      const ticketTypes = (eventTicketTypes[selectedEvent] || []).filter(
+        (ticketType) => String(ticketType || "").trim().toLowerCase() !== "comp"
+      );
 
       ticketSaleType.innerHTML = "";
 
@@ -950,8 +997,39 @@
       ticketSaleType.disabled = false;
     }
 
+    function updateCompTicketFields() {
+      const isComp =
+        (ticketSaleSource?.value || "").trim().toLowerCase() === "comp";
+
+      if (ticketSaleAmount) {
+        if (isComp) {
+          ticketSaleAmount.value = "0.00";
+          ticketSaleAmount.disabled = true;
+        } else {
+          ticketSaleAmount.disabled = false;
+
+          if (ticketSaleAmount.value === "0.00") {
+            ticketSaleAmount.value = "";
+          }
+        }
+      }
+
+      if (compTicketNotice) {
+        compTicketNotice.hidden = !isComp;
+      }
+
+      if (ticketSaleStatus) {
+        ticketSaleStatus.textContent = isComp
+          ? "Comp selected: this creates one free ticket and automatically adds the guest to check-in."
+          : "Select one ticket type and one payment type for each entry.";
+      }
+    }
+
     ticketSaleEvent?.addEventListener("change", updateTicketSaleTypes);
+    ticketSaleSource?.addEventListener("change", updateCompTicketFields);
+
     updateTicketSaleTypes();
+    updateCompTicketFields();
 
     if (saveTicketSaleButton) {
       saveTicketSaleButton.addEventListener("click", async () => {
@@ -973,13 +1051,28 @@
           return;
         }
 
+        if (ticketType.toLowerCase() === "comp") {
+          alert("Comp is a payment type, not a ticket type. Please select the actual ticket type.");
+          return;
+        }
+
         if (!source) {
-          alert("Please select a payment method/source.");
+          alert("Please select a payment type.");
+          return;
+        }
+
+        if (!Number.isInteger(quantity) || quantity < 1) {
+          alert("Please enter a ticket quantity of at least 1.");
+          return;
+        }
+
+        if (source.toLowerCase() === "comp" && !customer) {
+          alert("Please enter the customer's name for a Comp ticket.");
           return;
         }
 
         if (amount <= 0 && source.toLowerCase() !== "comp") {
-          alert("Please enter an amount paid.");
+          alert("Please enter the amount paid.");
           return;
         }
 
@@ -1029,9 +1122,12 @@
 
           ticketSaleCustomer.value = "";
           ticketSaleType.value = "";
-          ticketSaleQuantity.value = "";
+          ticketSaleQuantity.value = "1";
+          ticketSaleSource.value = "";
+          ticketSaleAmount.disabled = false;
           ticketSaleAmount.value = "";
           ticketSaleNotes.value = "";
+          updateCompTicketFields();
 
           window.location.reload();
         } catch (error) {
@@ -1301,6 +1397,152 @@
         saveNewEventButton.textContent = "Save Event Setup";
       }
     });
-  </script>
+
+    document.addEventListener("click", async (event) => {
+      const editButton = event.target.closest(".js-edit-comp-guest");
+
+      if (editButton) {
+        event.preventDefault();
+
+        const row = editButton.closest(".guest-list-row");
+        if (!row) return;
+
+        const ticketId = row.dataset.ticketId || "";
+
+        const customerName = window.prompt(
+          "Customer name:",
+          row.dataset.guestName || ""
+        );
+
+        if (customerName === null) return;
+
+        const ticketType = window.prompt(
+          "Ticket type:",
+          row.dataset.ticketType || ""
+        );
+
+        if (ticketType === null) return;
+
+        const quantity = window.prompt(
+          "Quantity:",
+          row.dataset.quantity || "1"
+        );
+
+        if (quantity === null) return;
+
+        if (
+          !customerName.trim() ||
+          !ticketType.trim() ||
+          !quantity.trim()
+        ) {
+          window.alert(
+            "Customer name, ticket type, and quantity are required."
+          );
+          return;
+        }
+
+        editButton.disabled = true;
+
+        try {
+          const response = await fetch("/api/comp-ticket-group/edit", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              ticket_id: ticketId,
+              customer_name: customerName.trim(),
+              ticket_type: ticketType.trim(),
+              quantity: quantity.trim()
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(
+              result.error || "The Comp ticket could not be updated."
+            );
+          }
+
+          row.dataset.ticketId = result.ticket_id;
+          row.dataset.guestName = result.customer_name;
+          row.dataset.ticketType = result.ticket_type;
+          row.dataset.quantity = result.quantity;
+
+          row.querySelector(".guest-name-cell").textContent =
+            result.customer_name;
+
+          row.querySelector(".guest-ticket-type-cell").textContent =
+            result.ticket_type;
+
+          row.querySelector(".guest-quantity-cell").textContent =
+            result.quantity;
+
+          editButton.disabled = false;
+
+          window.alert("Comp ticket updated successfully.");
+        } catch (error) {
+          editButton.disabled = false;
+          window.alert(
+            error.message || "The Comp ticket could not be updated."
+          );
+        }
+
+        return;
+      }
+
+      const deleteButton = event.target.closest(".js-delete-comp-guest");
+
+      if (deleteButton) {
+        event.preventDefault();
+
+        const row = deleteButton.closest(".guest-list-row");
+        if (!row) return;
+
+        const guestName = row.dataset.guestName || "this guest";
+        const ticketType = row.dataset.ticketType || "Comp";
+
+        const confirmed = window.confirm(
+          `Delete ${guestName}'s ${ticketType} Comp ticket?\n\n` +
+          "This removes it from the guest list, check-in list, " +
+          "ticket totals, and Comp revenue record."
+        );
+
+        if (!confirmed) return;
+
+        deleteButton.disabled = true;
+
+        try {
+          const response = await fetch("/api/comp-ticket-group/delete", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              ticket_id: row.dataset.ticketId || ""
+            })
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.status !== "ok") {
+            throw new Error(
+              result.error || "The Comp ticket could not be deleted."
+            );
+          }
+
+          row.remove();
+          window.alert("Comp ticket deleted successfully.");
+        } catch (error) {
+          deleteButton.disabled = false;
+          window.alert(
+            error.message || "The Comp ticket could not be deleted."
+          );
+        }
+      }
+    });
+
+</script>
 </body>
 </html>

@@ -3015,7 +3015,44 @@ button[data-action="delete"]:hover {
 }
 
 #guestListModalOverlay .guest-list-row {
-  grid-template-columns: 1.2fr 1.5fr 0.7fr 1.1fr 0.6fr 0.8fr !important;
+  grid-template-columns: 1.15fr 1.35fr 0.65fr 1fr 0.55fr 0.65fr 1fr !important;
+}
+
+#guestListModalOverlay .guest-actions-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+#guestListModalOverlay .guest-action-button {
+  border: 1px solid rgba(212, 175, 85, 0.35);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#guestListModalOverlay .guest-action-button.edit {
+  background: rgba(212, 175, 85, 0.16);
+  color: #f1d27b;
+}
+
+#guestListModalOverlay .guest-action-button.delete {
+  background: rgba(170, 55, 55, 0.18);
+  border-color: rgba(220, 85, 85, 0.35);
+  color: #ffaaaa;
+}
+
+#guestListModalOverlay .guest-action-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+#guestListModalOverlay .guest-action-locked {
+  color: rgba(255, 245, 220, 0.35) !important;
 }
 
 #vipListModalOverlay .guest-list-row {

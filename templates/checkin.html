@@ -5,6 +5,24 @@
 {% block content %}
 <link rel="stylesheet" href="{{ url_for('static', filename='checkin.css') }}">
 
+<style>
+.action-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.btn-edit-ticket {
+    background: #b88a32;
+    color: #111;
+}
+
+.btn-delete-ticket {
+    background: #8f2525;
+    color: #fff;
+}
+</style>
+
 <section class="checkin-shell">
     <div class="checkin-card">
         <h1>Event Check-In</h1>
@@ -51,10 +69,16 @@
                 </thead>
                 <tbody>
                     {% for attendee in attendees %}
-                    <tr data-attendee-id="{{ attendee['id'] }}">
-                        <td>{{ attendee["event_name"] }}</td>
+                    <tr
+                        data-attendee-id="{{ attendee['id'] }}"
+                        data-event-name="{{ attendee['event_name']|e }}"
+                        data-customer-name="{{ attendee['name']|e }}"
+                        data-ticket-type="{{ attendee['ticket_type']|e }}"
+                        data-quantity="{{ attendee['quantity'] }}"
+                    >
+                        <td class="event-name-cell">{{ attendee["event_name"] }}</td>
                         <td class="attendee-name">{{ attendee["name"] }}</td>
-                        <td>{{ attendee["ticket_type"] }}</td>
+                        <td class="ticket-type-cell">{{ attendee["ticket_type"] }}</td>
                         <td class="qty-cell">{{ attendee["quantity"] }}</td>
                         <td class="count-cell">{{ attendee["checked_in_count"] }} / {{ attendee["quantity"] }}</td>
                         <td class="status-cell">
@@ -68,12 +92,18 @@
                             <div class="status-progress">{{ attendee["checked_in_count"] }} / {{ attendee["quantity"] }} Checked In</div>
                         </td>
                         <td class="action-cell">
-                            {% if attendee["checked_in_count"] < attendee["quantity"] %}
-                            <button type="button" class="btn btn-checkin js-checkin" data-action="checkin">Check In</button>
-                            {% endif %}
-                            {% if attendee["checked_in_count"] > 0 %}
-                            <button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>
-                            {% endif %}
+                            <div class="action-buttons">
+                                {% if attendee["checked_in_count"] < attendee["quantity"] %}
+                                <button type="button" class="btn btn-checkin js-checkin" data-action="checkin">Check In</button>
+                                {% endif %}
+
+                                {% if attendee["checked_in_count"] > 0 %}
+                                <button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>
+                                {% endif %}
+
+                                <button type="button" class="btn btn-edit-ticket js-edit-ticket">Edit</button>
+                                <button type="button" class="btn btn-delete-ticket js-delete-ticket">Delete</button>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -85,21 +115,26 @@
 
 <script>
 const searchInput = document.getElementById("attendeeSearch");
-const rows = document.querySelectorAll("#attendeeTable tbody tr");
 
 searchInput.addEventListener("input", function () {
   const q = this.value.trim().toLowerCase();
+  const rows = document.querySelectorAll("#attendeeTable tbody tr");
+
   rows.forEach((row) => {
-    const nameCell = row.querySelector(".attendee-name");
-    const match = (nameCell?.textContent || "").toLowerCase().includes(q);
-    row.style.display = match ? "" : "none";
+    const rowText = row.textContent.toLowerCase();
+    row.style.display = rowText.includes(q) ? "" : "none";
   });
 });
 
 function statusMarkup(status, checked, qty) {
   let cls = "status-not-checked";
-  if (status === "Checked In") cls = "status-checked";
-  else if (status === "Partially Checked In") cls = "status-partial";
+
+  if (status === "Checked In") {
+    cls = "status-checked";
+  } else if (status === "Partially Checked In") {
+    cls = "status-partial";
+  }
+
   return `
     <span class="status ${cls}">${status}</span>
     <div class="status-progress">${checked} / ${qty} Checked In</div>
@@ -107,35 +142,199 @@ function statusMarkup(status, checked, qty) {
 }
 
 function actionMarkup(checked, qty) {
-  let html = "";
-  if (checked < qty) html += '<button type="button" class="btn btn-checkin js-checkin" data-action="checkin">Check In</button> ';
-  if (checked > 0) html += '<button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>';
-  return html.trim();
+  let html = '<div class="action-buttons">';
+
+  if (checked < qty) {
+    html += '<button type="button" class="btn btn-checkin js-checkin" data-action="checkin">Check In</button>';
+  }
+
+  if (checked > 0) {
+    html += '<button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>';
+  }
+
+  html += '<button type="button" class="btn btn-edit-ticket js-edit-ticket">Edit</button>';
+  html += '<button type="button" class="btn btn-delete-ticket js-delete-ticket">Delete</button>';
+  html += "</div>";
+
+  return html;
 }
 
-document.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".js-checkin");
-  if (!btn) return;
-  e.preventDefault();
-  const row = btn.closest("tr[data-attendee-id]");
+document.addEventListener("click", async (event) => {
+  const editButton = event.target.closest(".js-edit-ticket");
+
+  if (editButton) {
+    event.preventDefault();
+
+    const row = editButton.closest("tr[data-attendee-id]");
+    if (!row) return;
+
+    const id = row.dataset.attendeeId;
+
+    const eventName = window.prompt("Event name:", row.dataset.eventName || "");
+    if (eventName === null) return;
+
+    const customerName = window.prompt("Customer name:", row.dataset.customerName || "");
+    if (customerName === null) return;
+
+    const ticketType = window.prompt("Ticket type:", row.dataset.ticketType || "");
+    if (ticketType === null) return;
+
+    const quantity = window.prompt("Quantity:", row.dataset.quantity || "1");
+    if (quantity === null) return;
+
+    if (
+      !eventName.trim() ||
+      !customerName.trim() ||
+      !ticketType.trim() ||
+      !quantity.trim()
+    ) {
+      window.alert("Event name, customer name, ticket type, and quantity are required.");
+      return;
+    }
+
+    editButton.disabled = true;
+
+    try {
+      const response = await fetch(`/checkin-edit/${id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+          event_name: eventName,
+          customer_name: customerName,
+          ticket_type: ticketType,
+          quantity: quantity
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "edit_failed");
+      }
+
+      row.dataset.eventName = data.event_name;
+      row.dataset.customerName = data.customer_name;
+      row.dataset.ticketType = data.ticket_type;
+      row.dataset.quantity = data.quantity;
+
+      row.querySelector(".event-name-cell").textContent = data.event_name;
+      row.querySelector(".attendee-name").textContent = data.customer_name;
+      row.querySelector(".ticket-type-cell").textContent = data.ticket_type;
+      row.querySelector(".qty-cell").textContent = data.quantity;
+      row.querySelector(".count-cell").textContent =
+        `${data.checked_in_count} / ${data.quantity}`;
+
+      row.querySelector(".status-cell").innerHTML =
+        statusMarkup(
+          data.status,
+          data.checked_in_count,
+          data.quantity
+        );
+
+      row.querySelector(".action-cell").innerHTML =
+        actionMarkup(
+          data.checked_in_count,
+          data.quantity
+        );
+    } catch (error) {
+      window.alert("The ticket could not be updated. Please try again.");
+      editButton.disabled = false;
+    }
+
+    return;
+  }
+
+  const deleteButton = event.target.closest(".js-delete-ticket");
+
+  if (deleteButton) {
+    event.preventDefault();
+
+    const row = deleteButton.closest("tr[data-attendee-id]");
+    if (!row) return;
+
+    const customerName = row.dataset.customerName || "this attendee";
+    const ticketType = row.dataset.ticketType || "ticket";
+
+    const confirmed = window.confirm(
+      `Delete ${customerName}'s ${ticketType} ticket?\n\nThis cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    deleteButton.disabled = true;
+
+    try {
+      const response = await fetch(
+        `/checkin-delete/${row.dataset.attendeeId}`,
+        { method: "POST" }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || "delete_failed");
+      }
+
+      row.remove();
+    } catch (error) {
+      window.alert("The ticket could not be deleted. Please try again.");
+      deleteButton.disabled = false;
+    }
+
+    return;
+  }
+
+  const checkinButton = event.target.closest(".js-checkin");
+
+  if (!checkinButton) return;
+
+  event.preventDefault();
+
+  const row = checkinButton.closest("tr[data-attendee-id]");
   if (!row) return;
+
   const id = row.dataset.attendeeId;
-  const action = btn.dataset.action;
-  btn.disabled = true;
+  const action = checkinButton.dataset.action;
+
+  checkinButton.disabled = true;
+
   try {
-    const res = await fetch(`/checkin-action/${id}`, {
+    const response = await fetch(`/checkin-action/${id}`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
       body: new URLSearchParams({ action })
     });
-    const data = await res.json();
-    if (!res.ok || !data.ok) throw new Error("update_failed");
+
+    const data = await response.json();
+
+    if (!response.ok || !data.ok) {
+      throw new Error("update_failed");
+    }
+
+    row.dataset.quantity = data.quantity;
     row.querySelector(".qty-cell").textContent = data.quantity;
-    row.querySelector(".count-cell").textContent = `${data.checked_in_count} / ${data.quantity}`;
-    row.querySelector(".status-cell").innerHTML = statusMarkup(data.status, data.checked_in_count, data.quantity);
-    row.querySelector(".action-cell").innerHTML = actionMarkup(data.checked_in_count, data.quantity);
-  } catch (err) {
-    btn.disabled = false;
+    row.querySelector(".count-cell").textContent =
+      `${data.checked_in_count} / ${data.quantity}`;
+
+    row.querySelector(".status-cell").innerHTML =
+      statusMarkup(
+        data.status,
+        data.checked_in_count,
+        data.quantity
+      );
+
+    row.querySelector(".action-cell").innerHTML =
+      actionMarkup(
+        data.checked_in_count,
+        data.quantity
+      );
+  } catch (error) {
+    window.alert("The check-in status could not be updated.");
+    checkinButton.disabled = false;
   }
 });
 </script>
