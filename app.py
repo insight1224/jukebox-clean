@@ -8285,7 +8285,8 @@ def admin_dashboard_revenue():
             )
 
             is_ticket_revenue = (
-                not is_other_revenue
+                category != "comp"
+                and not is_other_revenue
                 and (
                     "door" in category
                     or "door" in notes
