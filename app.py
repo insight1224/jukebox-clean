@@ -23,7 +23,7 @@ from functools import wraps
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
-from flask import Flask, Response, redirect, render_template, request, url_for
+from flask import Flask, Response, redirect, render_template, request, url_for, session
 try:
     from google.oauth2.credentials import Credentials as GoogleCredentials
     from google.auth.transport.requests import Request as GoogleRequest
@@ -247,13 +247,18 @@ def requires_roles(*allowed_roles):
     def decorator(f):
         @wraps(f)
         def decorated(*args, **kwargs):
-            auth = request.authorization
-            if not auth:
-                return authenticate()
+            role = (session.get("auth_role") or "").strip().lower()
 
-            role = get_auth_role(auth.username, auth.password)
             if not role:
-                return authenticate()
+                if request.path.startswith("/api/"):
+                    return {
+                        "ok": False,
+                        "error": "Your dashboard session has expired. Please log in again.",
+                        "login_url": "/dashboard/login",
+                    }, 401
+
+                next_url = request.full_path if request.query_string else request.path
+                return redirect(url_for("dashboard_login", next=next_url))
 
             if allowed_roles and role not in allowed_roles:
                 return Response("Access denied", 403)
@@ -837,6 +842,16 @@ def purchase_ticket(event_name, ticket_name):
     conn.close()
 
 app = Flask(__name__)
+app.secret_key = (
+    os.getenv("FLASK_SECRET_KEY", "").strip()
+    or os.getenv("SECRET_KEY", "").strip()
+    or secrets.token_hex(32)
+)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=os.getenv("FLASK_ENV", "").strip().lower() == "production",
+)
 
 @app.errorhandler(500)
 def handle_internal_server_error(err):
@@ -9685,6 +9700,53 @@ def thank_you_page():
 @app.route("/vip/")
 def vip_page():
     return render_template("vip.html")
+
+
+@app.route("/dashboard/login", methods=["GET", "POST"])
+def dashboard_login():
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        next_url = (request.form.get("next") or "").strip()
+
+        role = get_auth_role(username, password)
+
+        if not role:
+            return render_template(
+                "dashboard_login.html",
+                error="The username or password was incorrect.",
+                next_url=next_url,
+            ), 401
+
+        session.clear()
+        session["auth_role"] = role
+        session["auth_username"] = username
+        session.permanent = False
+
+        if not next_url.startswith("/") or next_url.startswith("//"):
+            next_url = "/dashboard"
+
+        return redirect(next_url)
+
+    next_url = (request.args.get("next") or "/dashboard").strip()
+
+    if session.get("auth_role"):
+        return redirect("/dashboard")
+
+    return render_template(
+        "dashboard_login.html",
+        error="",
+        next_url=next_url,
+    )
+
+
+@app.route("/dashboard/logout")
+def dashboard_logout():
+    session.clear()
+    response = redirect(url_for("dashboard_login", logged_out="1"))
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
 
 if __name__ == "__main__":
     app.run(debug=True, port=5050, use_reloader=False)

@@ -5036,3 +5036,36 @@ button[data-action="delete"]:hover {
   overflow-y: auto;
   padding-right: 6px;
 }
+
+/* Dashboard logout */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-nav {
+  flex: 1;
+}
+
+.sidebar-logout {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.sidebar-logout a {
+  display: block;
+  padding: 11px 14px;
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  border-radius: 9px;
+  color: #e8cf7b;
+  text-align: center;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.sidebar-logout a:hover {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: #d4af37;
+  color: #fff3c5;
+}
