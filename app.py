@@ -8496,7 +8496,7 @@ def admin_dashboard_revenue():
         expense_rows=expense_rows,
         business_expense_rows=business_expense_rows,
         cash_rows=cash_rows,
-        events=upcoming_events,
+        events=events,
         past_events=past_events,
         past_expenses_total=past_expenses_total,
         past_revenue_total=past_revenue_total,
