@@ -1517,6 +1517,7 @@ LEAD_STATUS_MAP = {
     "DJ Application": ("New", "Contacted", "Booked", "Declined"),
     "Vendor Application": ("New", "Contacted", "Booked", "Declined"),
     "Contact Message": ("New", "Replied", "Closed"),
+    "Event Suggestion": ("New", "Replied", "Closed"),
     "VIP Signup": ("Active", "Inactive"),
     "Membership Signup": ("Active", "Inactive"),
 }
@@ -1532,6 +1533,8 @@ def lead_category(lead_type):
         return "VIP Signup"
     if "membership" in t:
         return "Membership Signup"
+    if "event suggestion" in t or "event idea" in t:
+        return "Event Suggestion"
     return "Contact Message"
 
 
@@ -5032,24 +5035,39 @@ def vip_signup():
 @app.route("/event-interest", methods=["POST"])
 def event_interest():
     try:
-        raw_name = request.form.get("event_name")
+        raw_name = (request.form.get("event_name") or "").strip()
+
+        if not raw_name:
+            return redirect("/events")
+
         event_name = clean_event_name(raw_name)
 
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
-        cursor.execute("""
-INSERT INTO event_requests (event_name, status)
-VALUES (?, 'New')
-""", (event_name,))
+        cursor.execute(
+            """
+            INSERT INTO event_requests (event_name, status)
+            VALUES (?, 'New')
+            """,
+            (event_name,),
+        )
         conn.commit()
         conn.close()
+
+        create_lead_record(
+            "Event Suggestion",
+            "Website Event Idea",
+            "",
+            event_name,
+            "New",
+        )
     except Exception as exc:
         print("[event-interest] submit failed:", exc)
         traceback.print_exc()
 
-    return render_thank_you_safe(
-        "SUBMITTED",
-        "Your input helps shape future Jukebox events.",
+    return render_template(
+        "event_suggestion_thank_you.html",
+        event_name=event_name if "event_name" in locals() else "",
     )
 @app.route("/vote-event", methods=["POST"])
 def vote_event():
@@ -8976,6 +8994,7 @@ def admin_dashboard_messages():
 
     message_types = [
         "Contact Message",
+        "Event Suggestion",
         "DJ Application",
         "Vendor Application",
     ]
@@ -9011,7 +9030,7 @@ def admin_dashboard_messages():
         row
         for row in lead_rows
         if int(row.get("archived") or 0) == 1
-        and row.get("type") == "Contact Message"
+        and row.get("type") in ("Contact Message", "Event Suggestion")
         and (row.get("status") or "").strip().lower() == "closed"
     ]
 
@@ -9033,6 +9052,7 @@ def admin_dashboard_messages():
     message_stats = {
         "new_messages": new_messages_count,
         "contact_messages": count_active("Contact Message"),
+        "event_suggestions": count_active("Event Suggestion"),
         "dj_applications": count_active("DJ Application"),
         "vendor_applications": count_active("Vendor Application"),
         "vip_signups": count_active("VIP Signup"),

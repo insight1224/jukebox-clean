@@ -30,6 +30,7 @@
       </nav>
 
       <div class="sidebar-logout">
+        <a href="/" class="sidebar-website-link">Back to Website</a>
         <a href="/dashboard/logout">Log Out</a>
       </div>
     </aside>
@@ -63,6 +64,12 @@
           <p>Contact Messages</p>
           <h3>{{ message_stats.contact_messages }}</h3>
           <span>General website inquiries</span>
+        </button>
+
+        <button class="stat-card message-filter-card" type="button" data-message-filter="Event Suggestion">
+          <p>Event Suggestions</p>
+          <h3>{{ message_stats.event_suggestions }}</h3>
+          <span>Ideas submitted from the Events page</span>
         </button>
 
         <button class="stat-card message-filter-card" type="button" data-message-filter="DJ Application">
@@ -135,9 +142,9 @@
 
               <select class="message-action-select" aria-label="Message action">
                 <option value="">Actions</option>
-                {% if message.type == 'Contact Message' %}
+                {% if message.type in ['Contact Message', 'Event Suggestion'] %}
                   <option value="status:New">New</option>
-                  <option value="status:Replied">Replied</option>
+                  <option value="status:Replied">Reviewed</option>
                   <option value="status:Closed">Close</option>
                   <option value="delete">Delete</option>
                 {% elif message.type in ['DJ Application', 'Vendor Application'] %}
@@ -154,7 +161,7 @@
           {% else %}
           <div class="empty-state">
             <h4>No active messages</h4>
-            <p>New website inquiries, DJ applications, vendor applications, and VIP signups will appear here.</p>
+            <p>New website inquiries, event suggestions, DJ applications, and vendor applications will appear here.</p>
           </div>
           {% endfor %}
         </div>

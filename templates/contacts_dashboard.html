@@ -128,6 +128,7 @@
                 data-contact-name="{{ contact.name or 'Contact' }}"
                 data-contact-type="{{ contact.contact_type or 'Talent' }}"
                 data-contact-email="{{ contact.email or '' }}"
+                data-contact-phone="{{ contact.phone or '' }}"
                 data-contact-details="{{ contact.details or '' }}"
                 data-contact-notes="{{ contact.notes or '' }}"
               >
@@ -176,6 +177,7 @@
                 data-contact-name="{{ contact.name or 'Contact' }}"
                 data-contact-type="{{ contact.contact_type or 'Vendor' }}"
                 data-contact-email="{{ contact.email or '' }}"
+                data-contact-phone="{{ contact.phone or '' }}"
                 data-contact-details="{{ contact.details or '' }}"
                 data-contact-notes="{{ contact.notes or '' }}"
               >
@@ -307,6 +309,19 @@
     let activeContactRow = null;
     let activeContactEmail = "";
 
+    function escapeContactHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function formatContactText(value) {
+      return escapeContactHtml(value).replace(/\n/g, "<br>");
+    }
+
     function bindContactButtons() {
       document.querySelectorAll(".js-view-contact").forEach((button) => {
         if (button.dataset.bound === "true") return;
@@ -317,6 +332,7 @@
           const name = row.getAttribute("data-contact-name") || "Contact";
           const type = row.getAttribute("data-contact-type") || "Contact";
           const email = row.getAttribute("data-contact-email") || "No email";
+          const phone = row.getAttribute("data-contact-phone") || "No phone";
           const details = row.getAttribute("data-contact-details") || "No details saved.";
           const notes = row.getAttribute("data-contact-notes") || "";
           const contactId = row.getAttribute("data-contact-id") || "";
@@ -334,21 +350,25 @@
             <div class="contact-profile-grid">
               <div>
                 <span>Name</span>
-                <strong>${name}</strong>
+                <strong>${escapeContactHtml(name)}</strong>
               </div>
               <div>
                 <span>Email</span>
-                <strong>${email}</strong>
+                <strong>${escapeContactHtml(email)}</strong>
+              </div>
+              <div>
+                <span>Phone</span>
+                <strong>${escapeContactHtml(phone)}</strong>
               </div>
               <div>
                 <span>Type</span>
-                <strong>${type}</strong>
+                <strong>${escapeContactHtml(type)}</strong>
               </div>
             </div>
 
             <div class="contact-detail-message">
-              <span>Details</span>
-              <p>${details}</p>
+              <span>Talent Details</span>
+              <p>${formatContactText(details)}</p>
             </div>
           `;
           contactDetailModalOverlay.classList.add("active");
