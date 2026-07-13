@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+{% block title %}Partnership Inquiry | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<section class="partnership-form-page">
+
+  <div class="partnership-form-hero">
+    <p class="partnership-kicker">Partner With JBL</p>
+    <h1>Let’s Build Something Together</h1>
+    <p>
+      Tell us about your business, organization, or brand and how you would
+      like to partner with The Jukebox Lounge NC.
+    </p>
+  </div>
+
+  <div class="partnership-form-wrap">
+    <div class="partnership-form-card">
+
+      <div class="partnership-form-heading">
+        <p class="partnership-kicker">Partnership Inquiry</p>
+        <h2>Tell Us About Your Vision</h2>
+        <p>
+          Complete the form below and our team will follow up to discuss
+          available opportunities and customized partnership options.
+        </p>
+      </div>
+
+      <form method="POST" action="/partnership-inquiry">
+
+        <div
+          style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;"
+          aria-hidden="true"
+        >
+          <label>Website</label>
+          <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <input
+          type="hidden"
+          name="form_started_at"
+          class="form-started-at"
+          value=""
+        >
+
+        <div class="partnership-form-grid">
+
+          <div class="partnership-field">
+            <label for="partner-name">Your Name</label>
+            <input
+              id="partner-name"
+              type="text"
+              name="name"
+              placeholder="Full name"
+              required
+            >
+          </div>
+
+          <div class="partnership-field">
+            <label for="partner-business">Business or Organization</label>
+            <input
+              id="partner-business"
+              type="text"
+              name="business"
+              placeholder="Business or organization name"
+              required
+            >
+          </div>
+
+          <div class="partnership-field">
+            <label for="partner-email">Email Address</label>
+            <input
+              id="partner-email"
+              type="email"
+              name="email"
+              placeholder="you@example.com"
+              required
+            >
+          </div>
+
+          <div class="partnership-field">
+            <label for="partner-phone">Phone Number</label>
+            <input
+              id="partner-phone"
+              type="tel"
+              name="phone"
+              placeholder="Your phone number"
+              required
+            >
+          </div>
+
+          <div class="partnership-field">
+            <label for="partner-type">Organization Type</label>
+            <select id="partner-type" name="organization_type" required>
+              <option value="" disabled selected>Select one</option>
+              <option value="Business">Business</option>
+              <option value="Community Organization">Community Organization</option>
+              <option value="Nonprofit">Nonprofit</option>
+              <option value="Vendor">Vendor</option>
+              <option value="Brand">Brand</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+
+          <div class="partnership-field">
+            <label for="partner-package">Partnership Interest</label>
+            <select id="partner-package" name="partnership_level" required>
+              <option value="" disabled selected>Select one</option>
+              <option value="Vibe Partner - $250">Vibe Partner — $250</option>
+              <option value="Gold Partner - $500">Gold Partner — $500</option>
+              <option value="Signature Partner - $1,000+">
+                Signature Partner — $1,000+
+              </option>
+              <option value="Custom Partnership">Custom Partnership</option>
+              <option value="Not Sure Yet">Not Sure Yet</option>
+            </select>
+          </div>
+
+          <div class="partnership-field partnership-field-full">
+            <label for="partner-links">Website or Social Media</label>
+            <input
+              id="partner-links"
+              type="text"
+              name="links"
+              placeholder="Website, Instagram, Facebook, or other link"
+            >
+          </div>
+
+          <div class="partnership-field partnership-field-full">
+            <label for="partner-goals">What Would You Like to Accomplish?</label>
+            <textarea
+              id="partner-goals"
+              name="goals"
+              placeholder="Tell us about your partnership goals, audience, promotion needs, or ideas."
+              required
+            ></textarea>
+          </div>
+
+          <div class="partnership-field partnership-field-full">
+            <label for="partner-comments">Additional Information</label>
+            <textarea
+              id="partner-comments"
+              name="comments"
+              placeholder="Share any additional details, questions, or special requests."
+            ></textarea>
+          </div>
+
+        </div>
+
+        <button type="submit" class="partnership-submit">
+          Submit Partnership Inquiry
+        </button>
+
+      </form>
+    </div>
+  </div>
+
+</section>
+
+<style>
+.partnership-form-page {
+  min-height: 100vh;
+  padding-bottom: 90px;
+  color: #fff8e7;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.14), transparent 36%),
+    linear-gradient(135deg, #080706 0%, #171208 55%, #080706 100%);
+}
+
+.partnership-form-hero {
+  padding: 105px 20px 72px;
+  text-align: center;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+}
+
+.partnership-kicker {
+  margin: 0 0 15px;
+  color: #f4d45f;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.partnership-form-hero h1 {
+  max-width: 950px;
+  margin: 0 auto;
+  color: #f7d978;
+  font-size: clamp(2.8rem, 6vw, 5.2rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.partnership-form-hero > p:last-child {
+  max-width: 760px;
+  margin: 24px auto 0;
+  color: rgba(255, 248, 231, 0.8);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.partnership-form-wrap {
+  width: min(950px, calc(100% - 36px));
+  margin: 70px auto 0;
+}
+
+.partnership-form-card {
+  padding: clamp(30px, 6vw, 65px);
+  border: 1px solid rgba(212, 175, 55, 0.38);
+  border-radius: 28px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(24, 20, 14, 0.98),
+      rgba(11, 13, 10, 0.98)
+    );
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.38);
+}
+
+.partnership-form-heading {
+  margin-bottom: 38px;
+  text-align: center;
+}
+
+.partnership-form-heading h2 {
+  margin: 0;
+  color: #f7d978;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.05;
+}
+
+.partnership-form-heading > p:last-child {
+  max-width: 680px;
+  margin: 18px auto 0;
+  color: rgba(255, 248, 231, 0.72);
+  line-height: 1.7;
+}
+
+.partnership-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 23px;
+}
+
+.partnership-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.partnership-field-full {
+  grid-column: 1 / -1;
+}
+
+.partnership-field label {
+  color: #f6dc86;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.partnership-field input,
+.partnership-field select,
+.partnership-field textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 13px;
+  padding: 15px 16px;
+  color: #fff8e7;
+  background: rgba(0, 0, 0, 0.34);
+  font: inherit;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.partnership-field input:focus,
+.partnership-field select:focus,
+.partnership-field textarea:focus {
+  border-color: #e1bd3c;
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: 0 0 0 3px rgba(225, 189, 60, 0.12);
+}
+
+.partnership-field select option {
+  color: #111;
+  background: #fff;
+}
+
+.partnership-field textarea {
+  min-height: 145px;
+  resize: vertical;
+  line-height: 1.55;
+}
+
+.partnership-field input::placeholder,
+.partnership-field textarea::placeholder {
+  color: rgba(255, 248, 231, 0.42);
+}
+
+.partnership-submit {
+  display: block;
+  width: 100%;
+  margin-top: 30px;
+  border: 0;
+  border-radius: 999px;
+  padding: 17px 24px;
+  color: #090806;
+  background: linear-gradient(135deg, #f5d657, #d9af28);
+  box-shadow: 0 12px 30px rgba(217, 175, 40, 0.2);
+  font-size: 0.95rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.partnership-submit:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 17px 36px rgba(217, 175, 40, 0.3);
+}
+
+@media (max-width: 700px) {
+  .partnership-form-hero {
+    padding-top: 80px;
+  }
+
+  .partnership-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .partnership-field-full {
+    grid-column: auto;
+  }
+
+  .partnership-form-card {
+    border-radius: 20px;
+  }
+}
+</style>
+{% endblock %}

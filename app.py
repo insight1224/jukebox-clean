@@ -4955,6 +4955,61 @@ def vendor_signup():
 
     return render_template("vendor_signup.html")
 
+@app.route("/partnership-inquiry", methods=["GET", "POST"])
+def partnership_inquiry():
+    if request.method == "POST":
+        if is_public_form_spam(
+            required_fields=["name", "business", "email", "phone", "partnership_level", "goals"]
+        ):
+            return blocked_form_redirect("/partnership-inquiry")
+
+        try:
+            name = (request.form.get("name") or "").strip()
+            business = (request.form.get("business") or "").strip()
+            email = (request.form.get("email") or "").strip()
+            phone = (request.form.get("phone") or "").strip()
+            organization_type = (request.form.get("organization_type") or "").strip()
+            partnership_level = (request.form.get("partnership_level") or "").strip()
+            links = (request.form.get("links") or "").strip()
+            goals = (request.form.get("goals") or "").strip()
+            comments = (request.form.get("comments") or "").strip()
+
+            details = f"""
+Partnership Inquiry
+
+Business / Organization: {business}
+Phone: {phone}
+Organization Type: {organization_type}
+Partnership Interest: {partnership_level}
+Website / Social Media: {links}
+
+Partnership Goals:
+{goals}
+
+Additional Information:
+{comments}
+"""
+
+            create_lead_record(
+                "Contact Message",
+                name,
+                email,
+                details,
+                "New",
+            )
+
+        except Exception as exc:
+            print("[partnership-inquiry] submit failed:", exc)
+            traceback.print_exc()
+
+        return render_thank_you_safe(
+            "PARTNERSHIP INQUIRY RECEIVED",
+            "Thank you for your interest in partnering with The Jukebox Lounge NC. Our team will review your information and follow up with you shortly.",
+        )
+
+    return render_template("partnership.html")
+
+
 @app.route("/vip", methods=["POST"])
 def vip_signup():
     name = request.form.get("name")
