@@ -16,6 +16,15 @@
     }
   </style>
 
+  <style>
+    .net-profit {
+      color: #62d68b !important;
+    }
+
+    .net-loss {
+      color: #ff7474 !important;
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard-shell">
@@ -36,6 +45,8 @@
         <a href="/dashboard/revenue" class="active">Revenue</a>
         <a href="/dashboard/messages">Messages</a>
         <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/email-campaigns">Email Campaigns</a>
+        <a href="/dashboard/gallery">Gallery Manager</a>
         <a href="/dashboard/contacts">Contact Log</a>
               <a href="/admin/unmapped-square">Unmapped Tickets</a>
       </nav>
@@ -110,6 +121,12 @@
           </div>
 
           <div class="revenue-card">
+            <p>Donations</p>
+            <h4>${{ "%.2f"|format(metrics.donation_revenue) }}</h4>
+            <span>Donations received</span>
+          </div>
+
+          <div class="revenue-card">
             <p>Tips / Other</p>
             <h4>${{ "%.2f"|format(metrics.tips_other_revenue) }}</h4>
             <span>Tips + other collected revenue</span>
@@ -118,7 +135,7 @@
           <div class="revenue-card total-revenue-highlight">
             <p>Total Collected</p>
             <h4>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</h4>
-            <span>Tickets + memberships + tips/other + cash</span>
+            <span>Tickets + memberships + donations + tips/other + cash</span>
           </div>
         </div>
 
@@ -138,8 +155,13 @@
             </div>
 
             <div class="breakdown-row">
-              <span>Net Profit</span>
-              <strong>${{ "%.2f"|format((event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0))) }}</strong>
+              {% set event_net = (event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0)) %}
+              <span class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                {{ "Net Loss" if event_net < 0 else "Net Profit" }}
+              </span>
+              <strong class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                ${{ "%.2f"|format(event_net) }}
+              </strong>
             </div>
           </button>
           {% endfor %}
@@ -175,7 +197,7 @@
           </div>
 
           <div class="revenue-card">
-            <p>Past Net Profit</p>
+            <p>{{ "Past Net Loss" if past_net_profit < 0 else "Past Net Profit" }}</p>
             <h4>${{ "%.2f"|format(past_net_profit) }}</h4>
             <span>Revenue after expenses</span>
           </div>
@@ -197,8 +219,13 @@
             </div>
 
             <div class="breakdown-row">
-              <span>Net Profit</span>
-              <strong>${{ "%.2f"|format((event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0))) }}</strong>
+              {% set event_net = (event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0)) %}
+              <span class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                {{ "Net Loss" if event_net < 0 else "Net Profit" }}
+              </span>
+              <strong class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                ${{ "%.2f"|format(event_net) }}
+              </strong>
             </div>
           </button>
           {% else %}
@@ -324,8 +351,15 @@
           </div>
 
           <div class="revenue-card">
-            <p>Net Profit</p>
-            <h4 id="netProfitTotal">${{ "%.2f"|format(metrics.net_profit) }}</h4>
+            <p class="{{ 'net-loss' if metrics.net_profit < 0 else 'net-profit' }}">
+              {{ "Net Loss" if metrics.net_profit < 0 else "Net Profit" }}
+            </p>
+            <h4
+              id="netProfitTotal"
+              class="{{ 'net-loss' if metrics.net_profit < 0 else 'net-profit' }}"
+            >
+              ${{ "%.2f"|format(metrics.net_profit) }}
+            </h4>
             <span>Gross revenue minus expenses</span>
           </div>
 
@@ -362,8 +396,13 @@
                 <span>Saved event expenses</span>
               </div>
               <div>
-                <p>Net Profit</p>
-                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue) - event.expense_total|default(0)) }}</strong>
+                {% set event_net = (event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0)) %}
+                <p class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                  {{ "Net Loss" if event_net < 0 else "Net Profit" }}
+                </p>
+                <strong class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                  ${{ "%.2f"|format(event_net) }}
+                </strong>
                 <span>Revenue after expenses</span>
               </div>
               <div>
@@ -487,8 +526,13 @@
                 <span>Saved event expenses</span>
               </div>
               <div>
-                <p>Net Profit</p>
-                <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue) - event.expense_total|default(0)) }}</strong>
+                {% set event_net = (event.total_revenue_with_cash|default(event.total_revenue)) - (event.expense_total|default(0)) %}
+                <p class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                  {{ "Net Loss" if event_net < 0 else "Net Profit" }}
+                </p>
+                <strong class="{{ 'net-loss' if event_net < 0 else 'net-profit' }}">
+                  ${{ "%.2f"|format(event_net) }}
+                </strong>
                 <span>Revenue after expenses</span>
               </div>
               <div>

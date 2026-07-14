@@ -84,7 +84,7 @@
       <p class="reader-label">The Jukebox Scrapbook</p>
       <div class="reader-controls">
         <button type="button" class="reader-btn" id="prevPageBtn">Previous</button>
-        <span class="page-indicator" id="pageIndicator">Page 1 of 5</span>
+        <span class="page-indicator" id="pageIndicator">Page 1</span>
         <button type="button" class="reader-btn" id="nextPageBtn">Next</button>
       </div>
     </div>
@@ -172,6 +172,21 @@
           </div>
         </div>
 
+        {% if scrapbook_uploads|default([]) %}
+        {% set first_upload = scrapbook_uploads[0] %}
+        <div class="paper-page right-page">
+          <p class="paper-tab">New Memory</p>
+          <div class="polaroid tilt-right">
+            <img
+              src="{{ first_upload.url }}"
+              alt="{{ first_upload.caption or 'Jukebox Lounge NC scrapbook memory' }}"
+              loading="lazy"
+            >
+            <span>{{ first_upload.caption or "saved memory" }}</span>
+          </div>
+        </div>
+
+        {% else %}
         <div class="paper-page right-page">
           <p class="paper-tab">End of Scrapbook</p>
           <div class="polaroid tilt-right">
@@ -179,7 +194,70 @@
             <span>The Jukebox Lounge NC</span>
           </div>
         </div>
+        {% endif %}
       </section>
+
+      {% if scrapbook_uploads|default([]) %}
+        {% for upload_pair in scrapbook_uploads[1:]|batch(2, none) %}
+        <section class="scrapbook-spread" data-page="uploaded-{{ loop.index }}">
+          {% for upload in upload_pair %}
+            {% if upload %}
+            <div class="paper-page {{ 'left-page' if loop.index == 1 else 'right-page' }}">
+              <p class="paper-tab">New Memory</p>
+
+              <div class="polaroid {{ 'tilt-left' if loop.index == 1 else 'tilt-right' }}">
+                <img
+                  src="{{ upload.url }}"
+                  alt="{{ upload.caption or 'Jukebox Lounge NC scrapbook memory' }}"
+                  loading="lazy"
+                >
+                <span>{{ upload.caption or "saved memory" }}</span>
+              </div>
+            </div>
+
+            {% else %}
+            <div class="paper-page right-page">
+              <p class="paper-tab">More Memories Ahead</p>
+
+              <div class="polaroid tilt-right">
+                <img
+                  src="{{ url_for('static', filename='images/logo-small-home.png') }}"
+                  alt="The Jukebox Lounge NC logo"
+                >
+                <span>The story continues</span>
+              </div>
+            </div>
+            {% endif %}
+          {% endfor %}
+        </section>
+        {% endfor %}
+
+        <section class="scrapbook-spread" data-page="final">
+          <div class="paper-page left-page">
+            <p class="paper-tab">Community Memories</p>
+
+            <div class="polaroid featured-polaroid tilt-left">
+              <img
+                src="{{ url_for('static', filename='images/logo-small-home.png') }}"
+                alt="The Jukebox Lounge NC logo"
+              >
+              <span>Thank you for being part of the story</span>
+            </div>
+          </div>
+
+          <div class="paper-page right-page">
+            <p class="paper-tab">End of Scrapbook</p>
+
+            <div class="polaroid tilt-right">
+              <img
+                src="{{ url_for('static', filename='images/logo-small-home.png') }}"
+                alt="The Jukebox Lounge NC logo"
+              >
+              <span>The Jukebox Lounge NC</span>
+            </div>
+          </div>
+        </section>
+      {% endif %}
 
     </div>
   </div>

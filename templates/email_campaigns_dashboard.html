@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jukebox Lounge NC | Email Campaigns</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+  <style>
+    .campaign-history-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .campaign-filter {
+      padding: 8px 12px;
+      color: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.03);
+      font-size: 0.72rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .campaign-filter.active {
+      color: #171109;
+      border-color: #d4af37;
+      background: #d4af37;
+    }
+
+    .campaign-history-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .campaign-history-card {
+      padding: 0;
+      overflow: hidden;
+      border: 1px solid rgba(212, 175, 55, 0.18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .campaign-history-summary {
+      width: 100%;
+      padding: 12px 16px;
+      color: inherit;
+      border: 0;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .campaign-history-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .campaign-history-summary-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .campaign-history-toggle {
+      color: #d4af37;
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+
+    .campaign-history-details {
+      margin: 0;
+      padding: 14px 16px 16px;
+      border-top: 1px solid rgba(212, 175, 55, 0.14);
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    .campaign-history-main h4 {
+      margin: 2px 0 3px;
+      color: #f5efe2;
+      font-size: 0.96rem;
+    }
+
+    .campaign-history-main .eyebrow {
+      margin: 0;
+      font-size: 0.66rem;
+    }
+
+    .campaign-history-subject {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.58);
+      font-size: 0.78rem;
+    }
+
+    .campaign-status-badge {
+      flex-shrink: 0;
+      padding: 7px 11px;
+      border-radius: 999px;
+      color: #f5efe2;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: 0.72rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .campaign-status-badge.sent {
+      color: #dff8e7;
+      background: rgba(69, 194, 110, 0.16);
+    }
+
+    .campaign-status-badge.partially-sent {
+      color: #ffe4a3;
+      background: rgba(212, 175, 55, 0.16);
+    }
+
+    .campaign-status-badge.failed {
+      color: #ffd7d7;
+      background: rgba(230, 82, 82, 0.16);
+    }
+
+    .campaign-status-badge.draft {
+      color: #d9d9d9;
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .campaign-history-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .campaign-history-stats div {
+      padding: 11px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .campaign-history-stats span {
+      display: block;
+      margin-bottom: 4px;
+      color: rgba(255, 255, 255, 0.48);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+    }
+
+    .campaign-history-stats strong {
+      color: #f2d06b;
+      font-size: 1rem;
+    }
+
+    .campaign-history-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 14px;
+      color: rgba(255, 255, 255, 0.42);
+      font-size: 0.76rem;
+    }
+
+    @media (max-width: 650px) {
+      .campaign-history-main {
+        flex-direction: column;
+      }
+
+      .campaign-history-stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+        </div>
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Admin Preview</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard/events">Events</a>
+        <a href="/dashboard/revenue">Revenue</a>
+        <a href="/dashboard/messages">Messages</a>
+        <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/email-campaigns" class="active">Email Campaigns</a>
+        <a href="/dashboard/contacts">Contact Log</a>
+        <a href="/admin/unmapped-square">Unmapped Tickets</a>
+      </nav>
+
+      <div class="sidebar-logout">
+        <a href="/" class="sidebar-website-link">Back to Website</a>
+        <a href="/dashboard/logout">Log Out</a>
+      </div>
+    </aside>
+
+    <main class="main-content" id="top">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Audience Outreach</p>
+          <h2>Email Campaigns</h2>
+          <p class="subtext">
+            Create, preview, test, and manage email campaigns for VIPs, members, talent, vendors, and other contacts.
+          </p>
+        </div>
+      </header>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Campaign Builder</p>
+            <h3>Create New Email</h3>
+            <p>Create, preview, test, and send email campaigns directly from the dashboard.</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <label>
+            Audience
+            <select id="campaignAudience">
+              <option value="vip">VIP Email List</option>
+              <option value="circle_originals">Jukebox Circle Originals</option>
+              <option value="circle_members">Jukebox Circle Members</option>
+              <option value="talent">DJs / Talent</option>
+              <option value="vendors">Vendors</option>
+              <option value="all">All Eligible Contacts</option>
+              <option value="individual">Individual Recipient</option>
+            </select>
+          </label>
+
+          <label id="individualRecipientWrap" style="display:none;">
+            Recipient Email
+            <input id="individualRecipientEmail" type="email" placeholder="name@example.com">
+          </label>
+
+          <label>
+            Campaign Name
+            <input id="campaignName" type="text" placeholder="Example: July Quiet Storm Announcement">
+          </label>
+
+          <label>
+            Subject Line
+            <input id="campaignSubject" type="text" placeholder="Example: Quiet Storm Returns This July">
+          </label>
+
+          <label>
+            Preview Text
+            <input id="campaignPreview" type="text" placeholder="Short text shown beside the subject line">
+          </label>
+
+          <label>
+            Email Heading
+            <input id="campaignHeading" type="text" placeholder="Example: Get Ready for Another Unforgettable Night">
+          </label>
+
+          <label>
+            Button Text
+            <input id="campaignButtonText" type="text" placeholder="Example: Get Tickets">
+          </label>
+
+          <label>
+            Button Link
+            <input id="campaignButtonUrl" type="url" placeholder="https://...">
+          </label>
+
+          <label>
+            Flyer or Image
+            <input id="campaignImage" type="file" accept="image/*">
+          </label>
+        </div>
+
+        <label class="full-width-field">
+          Message
+          <textarea id="campaignBody" rows="10" placeholder="Write the email message..."></textarea>
+        </label>
+
+        <div class="button-row">
+          <button class="btn ghost" type="button" id="saveCampaignDraft">Save Draft</button>
+          <button class="btn ghost" type="button" id="sendCampaignTest">Send Test</button>
+          <button class="btn primary" type="button" id="previewCampaign">Preview Email</button>
+          <button class="btn primary" type="button" id="sendCampaign">Send Campaign</button>
+        </div>
+
+        <p id="campaignActionStatus" class="note-preview" style="margin-top:14px;"></p>
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Campaign History</p>
+            <h3>Recent Campaigns</h3>
+            <p>Drafts and sent campaigns appear here.</p>
+          </div>
+        </div>
+
+        <div class="campaign-history-filters" aria-label="Campaign history filters">
+          <button class="campaign-filter active" type="button" data-status="all">
+            All
+          </button>
+          <button class="campaign-filter" type="button" data-status="sent">
+            Sent
+          </button>
+          <button class="campaign-filter" type="button" data-status="failed">
+            Failed
+          </button>
+          <button class="campaign-filter" type="button" data-status="draft">
+            Draft
+          </button>
+          <button class="campaign-filter" type="button" data-status="partially-sent">
+            Partially Sent
+          </button>
+        </div>
+
+        {% if campaigns %}
+        <div class="campaign-history-list">
+          {% for campaign in campaigns %}
+          <article
+            class="campaign-history-card"
+            data-status="{{ campaign.status|lower|replace(' ', '-') }}"
+          >
+            <button
+              class="campaign-history-summary"
+              type="button"
+              aria-expanded="false"
+            >
+              <div class="campaign-history-main">
+                <div>
+                  <p class="eyebrow">{{ campaign.audience_label }}</p>
+                  <h4>{{ campaign.campaign_name }}</h4>
+                  <p class="campaign-history-subject">
+                    {{ campaign.sent_count or 0 }} of
+                    {{ campaign.recipients_count or 0 }} delivered
+                  </p>
+                </div>
+
+                <div class="campaign-history-summary-right">
+                  <span class="campaign-status-badge {{ campaign.status|lower|replace(' ', '-') }}">
+                    {{ campaign.status }}
+                  </span>
+                  <span class="campaign-history-toggle">View Details</span>
+                </div>
+              </div>
+            </button>
+
+            <div class="campaign-history-details" hidden>
+              <p class="campaign-history-subject">
+                Subject: {{ campaign.subject }}
+              </p>
+
+              <div class="campaign-history-stats">
+                <div>
+                  <span>Recipients</span>
+                  <strong>{{ campaign.recipients_count or 0 }}</strong>
+                </div>
+
+                <div>
+                  <span>Sent</span>
+                  <strong>{{ campaign.sent_count or 0 }}</strong>
+                </div>
+
+                <div>
+                  <span>Failed</span>
+                  <strong>{{ campaign.failed_count or 0 }}</strong>
+                </div>
+              </div>
+
+              <div class="campaign-history-footer">
+                {% if campaign.individual_email %}
+                <span>{{ campaign.individual_email }}</span>
+                {% endif %}
+
+                <span>
+                  {{ campaign.sent_at or campaign.created_at or "" }}
+                </span>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+
+        {% else %}
+        <div class="empty-state">
+          <strong>No campaigns created yet.</strong>
+          <p>Your first saved or sent campaign will appear here.</p>
+        </div>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+  <div
+    id="campaignPreviewModal"
+    style="
+      display:none;
+      position:fixed;
+      inset:0;
+      z-index:3000;
+      background:rgba(0,0,0,.78);
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    "
+  >
+    <div
+      style="
+        width:min(760px,100%);
+        max-height:92vh;
+        overflow:auto;
+        background:#111;
+        border:1px solid rgba(212,175,55,.65);
+        border-radius:18px;
+        padding:20px;
+        box-shadow:0 24px 70px rgba(0,0,0,.6);
+      "
+    >
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;">
+        <div>
+          <p class="eyebrow" style="margin-bottom:4px;">Email Preview</p>
+          <h3 style="margin:0;">Recipient View</h3>
+        </div>
+
+        <button class="btn ghost" type="button" id="closeCampaignPreview">
+          Close
+        </button>
+      </div>
+
+      <div
+        id="campaignPreviewCard"
+        style="
+          max-width:640px;
+          margin:0 auto;
+          background:linear-gradient(160deg,#102217,#0d130f);
+          border:1px solid rgba(212,175,55,.55);
+          border-radius:16px;
+          overflow:hidden;
+        "
+      >
+        <div
+          style="
+            padding:18px;
+            text-align:center;
+            background:linear-gradient(120deg,#1f4d34,#123625 45%,#1b1b1b);
+            border-bottom:1px solid rgba(212,175,55,.35);
+          "
+        >
+          <strong style="color:#D4AF37;font-size:18px;">
+            The Jukebox Lounge NC
+          </strong>
+        </div>
+
+        <div style="padding:24px;color:#f4efe2;line-height:1.7;">
+          <p id="previewSubjectLine" style="margin:0 0 8px;color:#a9a9a9;font-size:13px;"></p>
+
+          <h2
+            id="previewEmailHeading"
+            style="margin:0 0 16px;color:#ffe7a8;font-size:26px;"
+          >
+            Jukebox Lounge Update
+          </h2>
+
+          <div
+            id="previewEmailBody"
+            style="white-space:pre-wrap;font-size:16px;"
+          ></div>
+
+          <img
+            id="previewCampaignImage"
+            alt="Campaign flyer preview"
+            style="
+              display:none;
+              width:100%;
+              height:auto;
+              margin-top:20px;
+              border-radius:12px;
+              border:1px solid rgba(212,175,55,.35);
+            "
+          >
+
+          <div id="previewButtonWrap" style="display:none;margin-top:22px;">
+            <a
+              id="previewCampaignButton"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+              style="
+                display:inline-block;
+                padding:12px 18px;
+                border-radius:8px;
+                background:#D4AF37;
+                color:#111;
+                text-decoration:none;
+                font-weight:700;
+              "
+            ></a>
+          </div>
+
+          <p style="margin-top:28px;color:#d9d9d9;">
+            See you soon,<br>
+            <strong style="color:#D4AF37;">The Jukebox Lounge NC</strong>
+          </p>
+        </div>
+
+        <div style="height:8px;background:linear-gradient(90deg,#D4AF37,#f2d06b,#D4AF37);"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const audienceSelect = document.getElementById("campaignAudience");
+      const individualWrap = document.getElementById("individualRecipientWrap");
+      const individualEmail = document.getElementById("individualRecipientEmail");
+
+      function syncIndividualRecipientField() {
+        const isIndividual = audienceSelect.value === "individual";
+        individualWrap.style.display = isIndividual ? "" : "none";
+        individualEmail.required = isIndividual;
+
+        if (!isIndividual) {
+          individualEmail.value = "";
+        }
+      }
+
+      audienceSelect.addEventListener("change", syncIndividualRecipientField);
+      syncIndividualRecipientField();
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const saveButton = document.getElementById("saveCampaignDraft");
+      const statusBox = document.getElementById("campaignActionStatus");
+
+      function setStatus(message, isError = false) {
+        statusBox.textContent = message;
+        statusBox.style.color = isError ? "#ff9d9d" : "#D4AF37";
+      }
+
+      saveButton.addEventListener("click", async function () {
+        const formData = new FormData();
+
+        formData.append(
+          "audience",
+          document.getElementById("campaignAudience").value
+        );
+        formData.append(
+          "individual_email",
+          document.getElementById("individualRecipientEmail")?.value.trim() || ""
+        );
+        formData.append(
+          "campaign_name",
+          document.getElementById("campaignName").value.trim()
+        );
+        formData.append(
+          "subject",
+          document.getElementById("campaignSubject").value.trim()
+        );
+        formData.append(
+          "preview_text",
+          document.getElementById("campaignPreview").value.trim()
+        );
+        formData.append(
+          "email_heading",
+          document.getElementById("campaignHeading").value.trim()
+        );
+        formData.append(
+          "button_text",
+          document.getElementById("campaignButtonText").value.trim()
+        );
+        formData.append(
+          "button_url",
+          document.getElementById("campaignButtonUrl").value.trim()
+        );
+        formData.append(
+          "body",
+          document.getElementById("campaignBody").value.trim()
+        );
+
+        const imageInput = document.getElementById("campaignImage");
+        if (imageInput.files.length) {
+          formData.append("campaign_image", imageInput.files[0]);
+        }
+
+        saveButton.disabled = true;
+        setStatus("Saving draft...");
+
+        try {
+          const response = await fetch("/api/email-campaigns/draft", {
+            method: "POST",
+            body: formData
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || !result.ok) {
+            throw new Error(result.error || "Unable to save draft.");
+          }
+
+          setStatus(`Draft saved successfully. Campaign ID: ${result.campaign_id}`);
+        } catch (error) {
+          setStatus(error.message || "Unable to save draft.", true);
+        } finally {
+          saveButton.disabled = false;
+        }
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const previewButton = document.getElementById("previewCampaign");
+      const previewModal = document.getElementById("campaignPreviewModal");
+      const closeButton = document.getElementById("closeCampaignPreview");
+
+      const subjectPreview = document.getElementById("previewSubjectLine");
+      const headingPreview = document.getElementById("previewEmailHeading");
+      const bodyPreview = document.getElementById("previewEmailBody");
+      const imagePreview = document.getElementById("previewCampaignImage");
+      const buttonWrap = document.getElementById("previewButtonWrap");
+      const campaignButton = document.getElementById("previewCampaignButton");
+
+      function closePreview() {
+        previewModal.style.display = "none";
+      }
+
+      previewButton.addEventListener("click", function () {
+        const subject = document.getElementById("campaignSubject").value.trim();
+        const heading = document.getElementById("campaignHeading").value.trim();
+        const body = document.getElementById("campaignBody").value.trim();
+        const buttonText = document.getElementById("campaignButtonText").value.trim();
+        const buttonUrl = document.getElementById("campaignButtonUrl").value.trim();
+        const imageInput = document.getElementById("campaignImage");
+
+        subjectPreview.textContent = subject
+          ? `Subject: ${subject}`
+          : "Subject: No subject entered";
+
+        headingPreview.textContent = heading || "Jukebox Lounge Update";
+        bodyPreview.textContent = body || "No message entered yet.";
+
+        if (buttonText && buttonUrl) {
+          campaignButton.textContent = buttonText;
+          campaignButton.href = buttonUrl;
+          buttonWrap.style.display = "";
+        } else {
+          campaignButton.textContent = "";
+          campaignButton.href = "#";
+          buttonWrap.style.display = "none";
+        }
+
+        if (imageInput.files && imageInput.files.length) {
+          const reader = new FileReader();
+
+          reader.onload = function (event) {
+            imagePreview.src = event.target.result;
+            imagePreview.style.display = "block";
+          };
+
+          reader.readAsDataURL(imageInput.files[0]);
+        } else {
+          imagePreview.removeAttribute("src");
+          imagePreview.style.display = "none";
+        }
+
+        previewModal.style.display = "flex";
+      });
+
+      closeButton.addEventListener("click", closePreview);
+
+      previewModal.addEventListener("click", function (event) {
+        if (event.target === previewModal) {
+          closePreview();
+        }
+      });
+
+      document.addEventListener("keydown", function (event) {
+        if (event.key === "Escape") {
+          closePreview();
+        }
+      });
+    })();
+  </script>
+
+  <script>
+    (function () {
+      const testButton = document.getElementById("sendCampaignTest");
+      const statusBox = document.getElementById("campaignActionStatus");
+
+      function setTestStatus(message, isError = false) {
+        statusBox.textContent = message;
+        statusBox.style.color = isError ? "#ff9d9d" : "#D4AF37";
+      }
+
+      testButton.addEventListener("click", async function () {
+        const testEmail = window.prompt(
+          "Enter the email address that should receive this test:"
+        );
+
+        if (testEmail === null) {
+          return;
+        }
+
+        const cleanEmail = testEmail.trim();
+
+        if (!cleanEmail) {
+          setTestStatus("A test email address is required.", true);
+          return;
+        }
+
+        const formData = new FormData();
+
+        formData.append("test_email", cleanEmail);
+        formData.append(
+          "subject",
+          document.getElementById("campaignSubject").value.trim()
+        );
+        formData.append(
+          "preview_text",
+          document.getElementById("campaignPreview").value.trim()
+        );
+        formData.append(
+          "email_heading",
+          document.getElementById("campaignHeading").value.trim()
+        );
+        formData.append(
+          "body",
+          document.getElementById("campaignBody").value.trim()
+        );
+        formData.append(
+          "button_text",
+          document.getElementById("campaignButtonText").value.trim()
+        );
+        formData.append(
+          "button_url",
+          document.getElementById("campaignButtonUrl").value.trim()
+        );
+
+        const imageInput = document.getElementById("campaignImage");
+
+        if (imageInput.files && imageInput.files.length) {
+          formData.append("campaign_image", imageInput.files[0]);
+        }
+
+        testButton.disabled = true;
+        setTestStatus(`Sending test email to ${cleanEmail}...`);
+
+        try {
+          const response = await fetch("/api/email-campaigns/send-test", {
+            method: "POST",
+            body: formData
+          });
+
+          const contentType = response.headers.get("content-type") || "";
+
+          if (!contentType.includes("application/json")) {
+            throw new Error(
+              `The server returned an unexpected response (${response.status}).`
+            );
+          }
+
+          const result = await response.json();
+
+          if (!response.ok || !result.ok) {
+            throw new Error(result.error || "Unable to send test email.");
+          }
+
+          setTestStatus(result.message || "Test email sent successfully.");
+        } catch (error) {
+          setTestStatus(
+            error.message || "Unable to send test email.",
+            true
+          );
+        } finally {
+          testButton.disabled = false;
+        }
+      });
+    })();
+  </script>
+
+  <script>
+    document.querySelectorAll(".campaign-filter").forEach((button) => {
+      button.addEventListener("click", () => {
+        const selectedStatus = button.getAttribute("data-status");
+
+        document.querySelectorAll(".campaign-filter").forEach((filterButton) => {
+          filterButton.classList.remove("active");
+        });
+
+        button.classList.add("active");
+
+        document.querySelectorAll(".campaign-history-card").forEach((card) => {
+          const cardStatus = card.getAttribute("data-status");
+          card.style.display =
+            selectedStatus === "all" || cardStatus === selectedStatus
+              ? ""
+              : "none";
+        });
+      });
+    });
+  </script>
+
+  <script>
+    document.querySelectorAll(".campaign-history-summary").forEach((button) => {
+      button.addEventListener("click", () => {
+        const card = button.closest(".campaign-history-card");
+        const details = card.querySelector(".campaign-history-details");
+        const toggle = card.querySelector(".campaign-history-toggle");
+        const isOpen = button.getAttribute("aria-expanded") === "true";
+
+        button.setAttribute("aria-expanded", String(!isOpen));
+        details.hidden = isOpen;
+        toggle.textContent = isOpen ? "View Details" : "Hide Details";
+      });
+    });
+  </script>
+
+  <script>
+    (function () {
+      const sendButton = document.getElementById("sendCampaign");
+      const statusBox = document.getElementById("campaignActionStatus");
+
+      const audienceLabels = {
+        vip: "VIP Email List",
+        circle_originals: "Jukebox Circle Originals",
+        circle_members: "Jukebox Circle Members",
+        talent: "DJs / Talent",
+        vendors: "Vendors",
+        all: "All Eligible Contacts",
+        individual: "Individual Recipient"
+      };
+
+      function setSendStatus(message, isError = false) {
+        statusBox.textContent = message;
+        statusBox.style.color = isError ? "#ff9d9d" : "#D4AF37";
+      }
+
+      function buildCampaignFormData() {
+        const formData = new FormData();
+
+        formData.append(
+          "audience",
+          document.getElementById("campaignAudience").value
+        );
+
+        formData.append(
+          "individual_email",
+          document.getElementById("individualRecipientEmail")?.value.trim() || ""
+        );
+
+        formData.append(
+          "campaign_name",
+          document.getElementById("campaignName").value.trim()
+        );
+
+        formData.append(
+          "subject",
+          document.getElementById("campaignSubject").value.trim()
+        );
+
+        formData.append(
+          "preview_text",
+          document.getElementById("campaignPreview").value.trim()
+        );
+
+        formData.append(
+          "email_heading",
+          document.getElementById("campaignHeading").value.trim()
+        );
+
+        formData.append(
+          "body",
+          document.getElementById("campaignBody").value.trim()
+        );
+
+        formData.append(
+          "button_text",
+          document.getElementById("campaignButtonText").value.trim()
+        );
+
+        formData.append(
+          "button_url",
+          document.getElementById("campaignButtonUrl").value.trim()
+        );
+
+        const imageInput = document.getElementById("campaignImage");
+
+        if (imageInput.files && imageInput.files.length) {
+          formData.append("campaign_image", imageInput.files[0]);
+        }
+
+        return formData;
+      }
+
+      sendButton.addEventListener("click", async function () {
+        const audience = document.getElementById("campaignAudience").value;
+        const individualEmail =
+          document.getElementById("individualRecipientEmail")?.value.trim() || "";
+        const campaignName =
+          document.getElementById("campaignName").value.trim();
+        const subject =
+          document.getElementById("campaignSubject").value.trim();
+        const body =
+          document.getElementById("campaignBody").value.trim();
+
+        if (!campaignName) {
+          setSendStatus("Campaign name is required.", true);
+          return;
+        }
+
+        if (!subject) {
+          setSendStatus("Subject line is required.", true);
+          return;
+        }
+
+        if (!body) {
+          setSendStatus("Message is required.", true);
+          return;
+        }
+
+        if (audience === "individual" && !individualEmail) {
+          setSendStatus("Recipient email is required.", true);
+          return;
+        }
+
+        sendButton.disabled = true;
+        sendButton.textContent = "Checking Audience...";
+        setSendStatus("Checking eligible recipients...");
+
+        try {
+          const countData = new FormData();
+          countData.append("audience", audience);
+          countData.append("individual_email", individualEmail);
+
+          const countResponse = await fetch(
+            "/api/email-campaigns/recipient-count",
+            {
+              method: "POST",
+              body: countData
+            }
+          );
+
+          const countResult = await countResponse.json();
+
+          if (!countResponse.ok || !countResult.ok) {
+            throw new Error(
+              countResult.error || "Unable to check the recipient list."
+            );
+          }
+
+          const recipientCount = Number(
+            countResult.recipient_count || 0
+          );
+
+          if (!recipientCount) {
+            throw new Error(
+              "No eligible recipients were found for this audience."
+            );
+          }
+
+          const audienceName =
+            audienceLabels[audience] || "selected audience";
+
+          const confirmed = window.confirm(
+            `Send "${campaignName}" to ${recipientCount} recipient(s) in ${audienceName}?\n\n` +
+            "This action will send the email immediately."
+          );
+
+          if (!confirmed) {
+            setSendStatus("Campaign send canceled.");
+            return;
+          }
+
+          sendButton.textContent = "Sending Campaign...";
+          setSendStatus(
+            `Sending campaign to ${recipientCount} recipient(s)...`
+          );
+
+          const sendResponse = await fetch(
+            "/api/email-campaigns/send",
+            {
+              method: "POST",
+              body: buildCampaignFormData()
+            }
+          );
+
+          const contentType =
+            sendResponse.headers.get("content-type") || "";
+
+          if (!contentType.includes("application/json")) {
+            throw new Error(
+              `The server returned an unexpected response (${sendResponse.status}).`
+            );
+          }
+
+          const sendResult = await sendResponse.json();
+
+          if (!sendResponse.ok || !sendResult.ok) {
+            throw new Error(
+              sendResult.error || "Unable to send the campaign."
+            );
+          }
+
+          const failedCount = Number(
+            sendResult.failed_count || 0
+          );
+
+          let message =
+            `Campaign sent successfully to ${sendResult.sent_count} recipient(s).`;
+
+          if (failedCount > 0) {
+            message += ` ${failedCount} delivery attempt(s) failed.`;
+          }
+
+          setSendStatus(message);
+
+        } catch (error) {
+          setSendStatus(
+            error.message || "Unable to send the campaign.",
+            true
+          );
+
+        } finally {
+          sendButton.disabled = false;
+          sendButton.textContent = "Send Campaign";
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>

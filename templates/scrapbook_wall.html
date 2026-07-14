@@ -54,6 +54,20 @@
       <img src="{{ url_for('static', filename='images/scrapbook/FF4BF12A-B2B2-46C7-B7AA-97EC94A7FB8A.PNG') }}" alt="Jukebox Lounge NC scrapbook memory">
     </article>
 
+    {% for upload in scrapbook_uploads|default([]) %}
+    <article class="wall-item wall-photo">
+      <img
+        src="{{ upload.url }}"
+        alt="{{ upload.caption or 'Jukebox Lounge NC scrapbook memory' }}"
+        loading="lazy"
+      >
+
+      {% if upload.caption %}
+      <p class="wall-photo-caption">{{ upload.caption }}</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+
   </div>
 </section>
 

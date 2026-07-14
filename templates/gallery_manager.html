@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Gallery Manager</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}?v=gallery-manager-1">
+
+  <style>
+    .gallery-manager-layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.5fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .gallery-manager-alert {
+      margin-bottom: 20px;
+      padding: 14px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+    }
+
+    .gallery-manager-alert.success {
+      color: #dff8e7;
+      border: 1px solid rgba(69, 194, 110, 0.38);
+      background: rgba(69, 194, 110, 0.12);
+    }
+
+    .gallery-manager-alert.error {
+      color: #ffd7d7;
+      border: 1px solid rgba(230, 82, 82, 0.4);
+      background: rgba(230, 82, 82, 0.12);
+    }
+
+    .gallery-upload-form {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .gallery-form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .gallery-form-field > span {
+      color: #f0d477;
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    .gallery-form-field input,
+    .gallery-form-field select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px 14px;
+      color: #f7f3e7;
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.28);
+      font: inherit;
+    }
+
+    .gallery-form-field select option {
+      color: #111;
+      background: #fff;
+    }
+
+    .gallery-form-field small {
+      color: rgba(255, 255, 255, 0.52);
+      line-height: 1.45;
+    }
+
+    .gallery-file-input::file-selector-button {
+      margin-right: 12px;
+      padding: 9px 13px;
+      color: #171109;
+      border: 0;
+      border-radius: 9px;
+      background: #dfbd48;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .gallery-upload-library {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .gallery-upload-card {
+      overflow: hidden;
+      border: 1px solid rgba(212, 175, 55, 0.16);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .gallery-upload-preview {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      background: #050505;
+    }
+
+    .gallery-upload-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .gallery-upload-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .gallery-upload-badge.cover {
+      color: #171109;
+      background: #e5c355;
+    }
+
+    .gallery-upload-badge.hidden {
+      color: #fff;
+      background: rgba(180, 48, 48, 0.9);
+    }
+
+    .gallery-upload-card-body {
+      padding: 15px;
+    }
+
+    .gallery-upload-event {
+      margin: 0 0 5px;
+      color: #d9b83e;
+      font-size: 0.7rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .gallery-upload-card h4 {
+      margin: 0 0 12px;
+      color: #f7f3e7;
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+
+    .gallery-upload-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-bottom: 9px;
+    }
+
+    .gallery-upload-meta span {
+      padding: 5px 8px;
+      color: rgba(255, 255, 255, 0.7);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      font-size: 0.7rem;
+    }
+
+    .gallery-upload-card small {
+      color: rgba(255, 255, 255, 0.42);
+    }
+
+    .gallery-card-edit-form {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 13px;
+    }
+
+    .gallery-card-edit-form label {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .gallery-card-edit-form label span {
+      color: rgba(255, 255, 255, 0.62);
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .gallery-card-edit-form input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 10px;
+      color: #f7f3e7;
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 9px;
+      background: rgba(0, 0, 0, 0.32);
+      font: inherit;
+      font-size: 0.78rem;
+    }
+
+    .gallery-card-actions {
+      display: grid;
+      gap: 7px;
+      margin: 12px 0;
+    }
+
+    .gallery-card-actions form {
+      margin: 0;
+    }
+
+    .gallery-card-button {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid rgba(212, 175, 55, 0.25);
+      border-radius: 9px;
+      font-size: 0.72rem;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .gallery-card-button.save {
+      color: #141008;
+      border: 0;
+      background: #dfbd48;
+    }
+
+    .gallery-card-button.visibility {
+      color: #f4d66f;
+      background: rgba(212, 175, 55, 0.08);
+    }
+
+    .gallery-card-button.cover {
+      color: #e7e3d8;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .gallery-card-button.delete {
+      color: #ffd7d7;
+      border-color: rgba(230, 82, 82, 0.35);
+      background: rgba(230, 82, 82, 0.1);
+    }
+
+    .gallery-empty-state {
+      padding: 50px 20px;
+      text-align: center;
+      border: 1px dashed rgba(212, 175, 55, 0.25);
+      border-radius: 16px;
+    }
+
+    .gallery-empty-state h4 {
+      margin: 0 0 8px;
+      color: #f1d16a;
+    }
+
+    .gallery-empty-state p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    @media (max-width: 1100px) {
+      .gallery-manager-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .gallery-upload-library {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 700px) {
+      .gallery-upload-library {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img
+            src="{{ url_for('static', filename='images/logo-home-new.png') }}"
+            alt="Jukebox Lounge logo"
+            class="brand-logo"
+          >
+        </div>
+
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Gallery Manager</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard/events">Events</a>
+        <a href="/dashboard/revenue">Revenue</a>
+        <a href="/dashboard/messages">Messages</a>
+        <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/email-campaigns">Email Campaigns</a>
+        <a href="/dashboard/gallery" class="active">Gallery Manager</a>
+        <a href="/dashboard/contacts">Contact Log</a>
+        <a href="/admin/unmapped-square">Unmapped Tickets</a>
+      </nav>
+
+      <div class="sidebar-logout">
+        <a href="/" class="sidebar-website-link">Back to Website</a>
+        <a href="/dashboard/logout">Log Out</a>
+      </div>
+    </aside>
+
+    <main class="main-content" id="top">
+      <div class="preview-banner">
+        <div>
+          <strong>Gallery Manager</strong>
+          <span>Upload photos directly to the public event galleries.</span>
+        </div>
+
+        <a href="/gallery" target="_blank">View Public Gallery</a>
+      </div>
+
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Website Content</p>
+          <h2>Gallery Manager</h2>
+          <p class="subtext">
+            Add event photos without editing code or contacting the website developer.
+          </p>
+        </div>
+      </header>
+
+      {% if message %}
+      <div class="gallery-manager-alert success">
+        {{ message }}
+      </div>
+      {% endif %}
+
+      {% if error %}
+      <div class="gallery-manager-alert error">
+        {{ error }}
+      </div>
+      {% endif %}
+
+      <div class="gallery-manager-layout">
+        <section class="section-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Add Content</p>
+              <h3>Upload Gallery Photos</h3>
+              <p>
+                Select an event and upload one or multiple photos.
+              </p>
+            </div>
+          </div>
+
+          <form
+            class="gallery-upload-form"
+            method="POST"
+            action="/dashboard/gallery"
+            enctype="multipart/form-data"
+          >
+            <label class="gallery-form-field">
+              <span>Event Gallery</span>
+
+              <select name="event_slug" required>
+                <option value="" disabled selected>Select an event</option>
+
+                {% for event_slug, event_name in event_options.items() %}
+                <option value="{{ event_slug }}">
+                  {{ event_name }}
+                </option>
+                {% endfor %}
+              </select>
+            </label>
+
+            <label class="gallery-form-field">
+              <span>Starting Display Order</span>
+
+              <input
+                type="number"
+                name="sort_order"
+                value="0"
+                min="0"
+                step="1"
+              >
+
+              <small>
+                Lower numbers appear first. Multiple photos are ordered automatically.
+              </small>
+            </label>
+
+            <label class="gallery-form-field">
+              <span>Caption</span>
+
+              <input
+                type="text"
+                name="caption"
+                maxlength="250"
+                placeholder="Optional caption for these photos"
+              >
+            </label>
+
+            <label class="gallery-form-field">
+              <span>Select Photos</span>
+
+              <input
+                class="gallery-file-input"
+                type="file"
+                name="gallery_images"
+                accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                multiple
+                required
+              >
+
+              <small>
+                JPG, JPEG, PNG, or WEBP. Each image must be smaller than 12 MB.
+              </small>
+            </label>
+
+            <button class="btn primary" type="submit">
+              Upload Photos
+            </button>
+          </form>
+        </section>
+
+        <section class="section-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Uploaded Content</p>
+              <h3>Gallery Library</h3>
+              <p>
+                Review photos uploaded through the dashboard.
+              </p>
+            </div>
+          </div>
+
+          {% if uploads %}
+          <div class="gallery-upload-library">
+            {% for upload in uploads %}
+            <article class="gallery-upload-card">
+              <div class="gallery-upload-preview">
+                <img
+                  src="{{ upload.url }}"
+                  alt="{{ upload.caption or upload.event_name }} gallery photo"
+                  loading="lazy"
+                >
+
+                {% if upload.is_cover %}
+                <span class="gallery-upload-badge cover">Cover</span>
+                {% elif not upload.is_visible %}
+                <span class="gallery-upload-badge hidden">Hidden</span>
+                {% endif %}
+              </div>
+
+              <div class="gallery-upload-card-body">
+                <p class="gallery-upload-event">
+                  {{ upload.event_name }}
+                </p>
+
+                <h4>
+                  {{ upload.caption or "Untitled Gallery Photo" }}
+                </h4>
+
+                <form
+                  class="gallery-card-edit-form"
+                  method="POST"
+                  action="/dashboard/gallery/{{ upload.id }}/update"
+                >
+                  <label>
+                    <span>Caption</span>
+                    <input
+                      type="text"
+                      name="caption"
+                      value="{{ upload.caption or '' }}"
+                      maxlength="250"
+                      placeholder="Photo caption"
+                    >
+                  </label>
+
+                  <label>
+                    <span>Display Order</span>
+                    <input
+                      type="number"
+                      name="sort_order"
+                      value="{{ upload.sort_order }}"
+                      min="0"
+                      step="1"
+                    >
+                  </label>
+
+                  <button class="gallery-card-button save" type="submit">
+                    Save Changes
+                  </button>
+                </form>
+
+                <div class="gallery-upload-meta">
+                  <span>Order: {{ upload.sort_order }}</span>
+                  <span>
+                    {{ "Visible" if upload.is_visible else "Hidden" }}
+                  </span>
+                </div>
+
+                <div class="gallery-card-actions">
+                  <form
+                    method="POST"
+                    action="/dashboard/gallery/{{ upload.id }}/visibility"
+                  >
+                    <button
+                      class="gallery-card-button visibility"
+                      type="submit"
+                    >
+                      {{ "Hide from Gallery" if upload.is_visible else "Show in Gallery" }}
+                    </button>
+                  </form>
+
+                  {% if not upload.is_cover %}
+                  <form
+                    method="POST"
+                    action="/dashboard/gallery/{{ upload.id }}/cover"
+                  >
+                    <button
+                      class="gallery-card-button cover"
+                      type="submit"
+                    >
+                      Set as Cover
+                    </button>
+                  </form>
+                  {% endif %}
+
+                  <form
+                    method="POST"
+                    action="/dashboard/gallery/{{ upload.id }}/delete"
+                    onsubmit="return confirm('Permanently delete this uploaded photo?');"
+                  >
+                    <button
+                      class="gallery-card-button delete"
+                      type="submit"
+                    >
+                      Delete Photo
+                    </button>
+                  </form>
+                </div>
+
+                <small>
+                  Uploaded {{ upload.created_at or "" }}
+                </small>
+              </div>
+            </article>
+            {% endfor %}
+          </div>
+
+          {% else %}
+          <div class="gallery-empty-state">
+            <h4>No dashboard uploads yet</h4>
+            <p>
+              Uploaded photos will appear here after the first submission.
+            </p>
+          </div>
+          {% endif %}
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

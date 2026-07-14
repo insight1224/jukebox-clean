@@ -44,15 +44,41 @@
       <div class="carousel-track">
         {% for image in images %}
         <div class="carousel-slide {% if loop.first %}active{% endif %}">
-          <img src="{{ url_for('static', filename=image) }}" alt="{{ title }} photo">
+          <img
+            src="{{ url_for('static', filename=image) }}"
+            alt="{{ title }} photo"
+          >
+        </div>
+        {% endfor %}
+
+        {% for upload in uploaded_images|default([]) %}
+        <div class="carousel-slide {% if not images and loop.first %}active{% endif %}">
+          <img
+            src="{{ upload.url }}"
+            alt="{{ upload.caption or title ~ ' photo' }}"
+            loading="lazy"
+          >
+
+          {% if upload.caption %}
+          <p class="gallery-photo-caption">{{ upload.caption }}</p>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
 
       <button class="carousel-arrow next" type="button" data-carousel="photoCarousel">›</button>
-      <p class="carousel-count"><span class="current">1</span> / <span class="total">{{ images|length }}</span></p>
 
-      {% if not images %}
+      {% set photo_total =
+          (images|length) +
+          (uploaded_images|default([])|length)
+      %}
+      <p class="carousel-count">
+        <span class="current">{{ 1 if photo_total else 0 }}</span>
+        /
+        <span class="total">{{ photo_total }}</span>
+      </p>
+
+      {% if not images and not uploaded_images|default([]) %}
       <p class="gallery-subtitle">Photos coming soon.</p>
       {% endif %}
     </div>

@@ -24,7 +24,17 @@ from functools import wraps
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
-from flask import Flask, Response, redirect, render_template, request, url_for, session
+from flask import (
+    Flask,
+    Response,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+    url_for,
+)
+from werkzeug.utils import secure_filename
 try:
     from google.oauth2.credentials import Credentials as GoogleCredentials
     from google.auth.transport.requests import Request as GoogleRequest
@@ -53,6 +63,25 @@ except Exception:
                     os.environ[key] = value
 
 DB_PATH = os.getenv("DATABASE_PATH", "database.db").strip() or "database.db"
+
+GALLERY_UPLOAD_DIR = (
+    os.getenv("GALLERY_UPLOAD_DIR", "").strip()
+    or os.path.join(
+        os.path.dirname(os.path.abspath(DB_PATH)),
+        "gallery_uploads",
+    )
+)
+
+GALLERY_ALLOWED_IMAGE_EXTENSIONS = {
+    "jpg",
+    "jpeg",
+    "png",
+    "webp",
+}
+
+GALLERY_MAX_FILE_SIZE = 12 * 1024 * 1024
+
+os.makedirs(GALLERY_UPLOAD_DIR, exist_ok=True)
 
 def parse_event_date_value(value):
     raw = (value or "").strip()
@@ -259,7 +288,9 @@ def requires_roles(*allowed_roles):
                     }, 401
 
                 next_url = request.full_path if request.query_string else request.path
-                return redirect(url_for("dashboard_login", next=next_url))
+                return redirect(
+                    url_for("dashboard_login", next=next_url)
+                )
 
             if allowed_roles and role not in allowed_roles:
                 return Response("Access denied", 403)
@@ -738,6 +769,62 @@ def init_db():
             sent_count INTEGER DEFAULT 0,
             failed_count INTEGER DEFAULT 0,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS email_campaigns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_name TEXT NOT NULL,
+            audience TEXT NOT NULL,
+            individual_email TEXT,
+            subject TEXT NOT NULL,
+            preview_text TEXT,
+            email_heading TEXT,
+            body TEXT NOT NULL,
+            button_text TEXT,
+            button_url TEXT,
+            image_filename TEXT,
+            image_data BLOB,
+            image_mimetype TEXT,
+            status TEXT DEFAULT 'Draft',
+            recipients_count INTEGER DEFAULT 0,
+            sent_count INTEGER DEFAULT 0,
+            failed_count INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            sent_at TEXT
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS gallery_uploads (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_slug TEXT NOT NULL,
+            original_filename TEXT,
+            stored_filename TEXT NOT NULL UNIQUE,
+            caption TEXT,
+            sort_order INTEGER DEFAULT 0,
+            is_visible INTEGER DEFAULT 1,
+            is_cover INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_gallery_uploads_event
+        ON gallery_uploads (
+            event_slug,
+            is_visible,
+            sort_order,
+            created_at
         )
         """
     )
@@ -2856,7 +2943,42 @@ def get_live_dashboard_data(include_past=False):
     cash_ticket_revenue = float(one("""
         SELECT COALESCE(SUM(amount_cents), 0) / 100.0
         FROM event_cash_revenue
+        WHERE
+            LOWER(COALESCE(category, '')) <> 'comp'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%donation%'
+            AND LOWER(COALESCE(notes, '')) NOT LIKE '%donation%'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%vendor%'
+            AND LOWER(COALESCE(notes, '')) NOT LIKE '%vendor%'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%sponsor%'
+            AND LOWER(COALESCE(notes, '')) NOT LIKE '%sponsor%'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%other%'
+            AND (
+                LOWER(COALESCE(category, '')) LIKE '%cash%'
+                OR LOWER(COALESCE(category, '')) LIKE '%door%'
+                OR LOWER(COALESCE(category, '')) LIKE '%ticket%'
+                OR LOWER(COALESCE(notes, '')) LIKE '%door%'
+                OR LOWER(COALESCE(notes, '')) LIKE '%ticket%'
+                OR COALESCE(quantity, 0) > 0
+            )
     """, default=0.0))
+
+    donation_revenue = float(one("""
+        SELECT COALESCE(SUM(amount_cents), 0) / 100.0
+        FROM event_cash_revenue
+        WHERE LOWER(COALESCE(category, '')) LIKE '%donation%'
+           OR LOWER(COALESCE(notes, '')) LIKE '%donation%'
+    """, default=0.0))
+
+    total_manual_revenue = float(one("""
+        SELECT COALESCE(SUM(amount_cents), 0) / 100.0
+        FROM event_cash_revenue
+        WHERE LOWER(COALESCE(category, '')) <> 'comp'
+    """, default=0.0))
+
+    other_manual_revenue = max(
+        total_manual_revenue - cash_ticket_revenue - donation_revenue,
+        0.0,
+    )
 
     ticket_revenue = online_ticket_revenue + cash_ticket_revenue
 
@@ -2874,10 +2996,14 @@ def get_live_dashboard_data(include_past=False):
     tips_other_revenue = float(one("""
         SELECT COALESCE(SUM(tip_cents), 0) / 100.0
         FROM square_payment_log
-    """, default=0.0))
+    """, default=0.0)) + other_manual_revenue
 
     total_revenue = ticket_revenue + membership_revenue
-    square_total_collected = total_revenue + tips_other_revenue
+    square_total_collected = (
+        total_revenue
+        + donation_revenue
+        + tips_other_revenue
+    )
 
     cur.execute("""
         WITH classified_tickets AS (
@@ -3058,6 +3184,7 @@ def get_live_dashboard_data(include_past=False):
         "active_memberships": active_memberships,
         "membership_signups": membership_signups,
         "membership_revenue": membership_revenue,
+        "donation_revenue": donation_revenue,
         "tips_other_revenue": tips_other_revenue,
         "total_revenue": total_revenue,
         "square_total_collected": square_total_collected,
@@ -3674,6 +3801,7 @@ def admin_unmapped_square():
         <a href="/dashboard/revenue">Revenue</a>
         <a href="/dashboard/messages">Messages</a>
         <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/email-campaigns">Email Campaigns</a>
         <a href="/dashboard/contacts">Contact Log</a>
         <a href="/admin/unmapped-square" class="active">Unmapped Tickets</a>
       </nav>
@@ -3730,11 +3858,22 @@ def admin_unmapped_square():
 
 @app.route("/scrapbook-wall")
 def scrapbook_wall():
-    return render_template("scrapbook_wall.html")
+    scrapbook_uploads = load_uploaded_gallery_images("scrapbook")
+
+    return render_template(
+        "scrapbook_wall.html",
+        scrapbook_uploads=scrapbook_uploads,
+    )
+
 
 @app.route("/scrapbook")
 def scrapbook():
-    return render_template("scrapbook.html")
+    scrapbook_uploads = load_uploaded_gallery_images("scrapbook")
+
+    return render_template(
+        "scrapbook.html",
+        scrapbook_uploads=scrapbook_uploads,
+    )
 
 @app.route("/")
 def home():
@@ -4556,6 +4695,439 @@ def about():
 # GALLERY PAGE
 # -------------------------
 
+GALLERY_EVENT_OPTIONS = {
+    "battle-of-the-djs": "Battle of the DJs",
+    "quiet-storm": "The Quiet Storm Live",
+    "juneteenth-celebration": "Juneteenth Celebration",
+    "scrapbook": "The Jukebox Scrapbook",
+}
+
+
+def gallery_image_extension_allowed(filename):
+    filename = (filename or "").strip()
+
+    if "." not in filename:
+        return False
+
+    extension = filename.rsplit(".", 1)[1].lower()
+    return extension in GALLERY_ALLOWED_IMAGE_EXTENSIONS
+
+
+def load_uploaded_gallery_images(event_slug, include_hidden=False):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    query = """
+        SELECT
+            id,
+            event_slug,
+            original_filename,
+            stored_filename,
+            caption,
+            sort_order,
+            is_visible,
+            is_cover,
+            created_at
+        FROM gallery_uploads
+        WHERE event_slug = ?
+    """
+
+    params = [event_slug]
+
+    if not include_hidden:
+        query += " AND is_visible = 1"
+
+    query += """
+        ORDER BY
+            is_cover DESC,
+            sort_order ASC,
+            created_at ASC,
+            id ASC
+    """
+
+    cursor.execute(query, params)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    for row in rows:
+        row["url"] = url_for(
+            "uploaded_gallery_file",
+            filename=row["stored_filename"],
+        )
+
+    return rows
+
+
+@app.route("/dashboard/gallery", methods=["GET", "POST"])
+@requires_auth
+def dashboard_gallery_manager():
+    message = (request.args.get("msg") or "").strip()
+    error = (request.args.get("error") or "").strip()
+
+    if request.method == "POST":
+        event_slug = (request.form.get("event_slug") or "").strip()
+        caption = (request.form.get("caption") or "").strip()
+        sort_order_raw = (request.form.get("sort_order") or "0").strip()
+        uploaded_files = request.files.getlist("gallery_images")
+
+        if event_slug not in GALLERY_EVENT_OPTIONS:
+            return redirect(
+                url_for(
+                    "dashboard_gallery_manager",
+                    error="Please select a valid event.",
+                )
+            )
+
+        try:
+            sort_order = int(sort_order_raw or 0)
+        except ValueError:
+            sort_order = 0
+
+        valid_files = [
+            item
+            for item in uploaded_files
+            if item and (item.filename or "").strip()
+        ]
+
+        if not valid_files:
+            return redirect(
+                url_for(
+                    "dashboard_gallery_manager",
+                    error="Please select at least one image.",
+                )
+            )
+
+        saved_count = 0
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        try:
+            for position, uploaded_file in enumerate(valid_files):
+                original_filename = secure_filename(
+                    uploaded_file.filename or ""
+                )
+
+                if not original_filename:
+                    continue
+
+                if not gallery_image_extension_allowed(original_filename):
+                    continue
+
+                image_data = uploaded_file.read()
+
+                if not image_data:
+                    continue
+
+                if len(image_data) > GALLERY_MAX_FILE_SIZE:
+                    continue
+
+                extension = original_filename.rsplit(".", 1)[1].lower()
+                stored_filename = (
+                    f"{event_slug}-"
+                    f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-"
+                    f"{secrets.token_hex(6)}."
+                    f"{extension}"
+                )
+
+                destination = os.path.join(
+                    GALLERY_UPLOAD_DIR,
+                    stored_filename,
+                )
+
+                with open(destination, "wb") as output_file:
+                    output_file.write(image_data)
+
+                cursor.execute(
+                    """
+                    INSERT INTO gallery_uploads (
+                        event_slug,
+                        original_filename,
+                        stored_filename,
+                        caption,
+                        sort_order,
+                        is_visible,
+                        is_cover,
+                        created_at,
+                        updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, 1, 0,
+                            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    """,
+                    (
+                        event_slug,
+                        original_filename,
+                        stored_filename,
+                        caption,
+                        sort_order + position,
+                    ),
+                )
+
+                saved_count += 1
+
+            conn.commit()
+
+        except Exception:
+            conn.rollback()
+            raise
+
+        finally:
+            conn.close()
+
+        if saved_count <= 0:
+            return redirect(
+                url_for(
+                    "dashboard_gallery_manager",
+                    error=(
+                        "No images were uploaded. Use JPG, JPEG, PNG, "
+                        "or WEBP files smaller than 12 MB."
+                    ),
+                )
+            )
+
+        return redirect(
+            url_for(
+                "dashboard_gallery_manager",
+                msg=f"{saved_count} image(s) uploaded successfully.",
+            )
+        )
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            event_slug,
+            original_filename,
+            stored_filename,
+            caption,
+            sort_order,
+            is_visible,
+            is_cover,
+            created_at
+        FROM gallery_uploads
+        ORDER BY
+            event_slug ASC,
+            is_cover DESC,
+            sort_order ASC,
+            created_at DESC,
+            id DESC
+        """
+    )
+
+    uploads = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    for upload in uploads:
+        upload["event_name"] = GALLERY_EVENT_OPTIONS.get(
+            upload["event_slug"],
+            upload["event_slug"],
+        )
+        upload["url"] = url_for(
+            "uploaded_gallery_file",
+            filename=upload["stored_filename"],
+        )
+
+    return render_template(
+        "gallery_manager.html",
+        event_options=GALLERY_EVENT_OPTIONS,
+        uploads=uploads,
+        message=message,
+        error=error,
+    )
+
+
+@app.route("/dashboard/gallery/<int:upload_id>/update", methods=["POST"])
+@requires_auth
+def dashboard_gallery_update(upload_id):
+    caption = (request.form.get("caption") or "").strip()
+    sort_order_raw = (request.form.get("sort_order") or "0").strip()
+
+    try:
+        sort_order = int(sort_order_raw or 0)
+    except ValueError:
+        sort_order = 0
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE gallery_uploads
+        SET caption = ?,
+            sort_order = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (caption, sort_order, upload_id),
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(
+        url_for(
+            "dashboard_gallery_manager",
+            msg="Gallery item updated.",
+        )
+    )
+
+
+@app.route("/dashboard/gallery/<int:upload_id>/visibility", methods=["POST"])
+@requires_auth
+def dashboard_gallery_visibility(upload_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        UPDATE gallery_uploads
+        SET is_visible = CASE
+                WHEN is_visible = 1 THEN 0
+                ELSE 1
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (upload_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(
+        url_for(
+            "dashboard_gallery_manager",
+            msg="Gallery visibility updated.",
+        )
+    )
+
+
+@app.route("/dashboard/gallery/<int:upload_id>/cover", methods=["POST"])
+@requires_auth
+def dashboard_gallery_cover(upload_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT event_slug
+        FROM gallery_uploads
+        WHERE id = ?
+        """,
+        (upload_id,),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return redirect(
+            url_for(
+                "dashboard_gallery_manager",
+                error="Gallery item not found.",
+            )
+        )
+
+    event_slug = row[0]
+
+    cursor.execute(
+        """
+        UPDATE gallery_uploads
+        SET is_cover = 0,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE event_slug = ?
+        """,
+        (event_slug,),
+    )
+
+    cursor.execute(
+        """
+        UPDATE gallery_uploads
+        SET is_cover = 1,
+            is_visible = 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (upload_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+    return redirect(
+        url_for(
+            "dashboard_gallery_manager",
+            msg="Cover photo updated.",
+        )
+    )
+
+
+@app.route("/dashboard/gallery/<int:upload_id>/delete", methods=["POST"])
+@requires_auth
+def dashboard_gallery_delete(upload_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT stored_filename
+        FROM gallery_uploads
+        WHERE id = ?
+        """,
+        (upload_id,),
+    )
+    row = cursor.fetchone()
+
+    if not row:
+        conn.close()
+        return redirect(
+            url_for(
+                "dashboard_gallery_manager",
+                error="Gallery item not found.",
+            )
+        )
+
+    stored_filename = row[0]
+
+    cursor.execute(
+        """
+        DELETE FROM gallery_uploads
+        WHERE id = ?
+        """,
+        (upload_id,),
+    )
+
+    conn.commit()
+    conn.close()
+
+    file_path = os.path.join(
+        GALLERY_UPLOAD_DIR,
+        stored_filename,
+    )
+
+    if os.path.isfile(file_path):
+        os.remove(file_path)
+
+    return redirect(
+        url_for(
+            "dashboard_gallery_manager",
+            msg="Gallery item deleted.",
+        )
+    )
+
+
+@app.route("/gallery-uploads/<path:filename>")
+def uploaded_gallery_file(filename):
+    return send_from_directory(
+        GALLERY_UPLOAD_DIR,
+        filename,
+        conditional=True,
+    )
+
+
 def load_event_gallery(folder_name, video_folder_name=None):
     gallery_dir = os.path.join(app.static_folder, "images", folder_name)
     images = []
@@ -4587,12 +5159,14 @@ def gallery_battle_of_the_djs():
         "battle-of-the-djs-gallery",
         "battle of the djs"
     )
+    uploaded_images = load_uploaded_gallery_images("battle-of-the-djs")
 
     return render_template(
         "gallery_event.html",
         title="Battle of the DJs",
         subtitle="Grand Opening Series — Part 1",
         images=images,
+        uploaded_images=uploaded_images,
         videos=videos,
         recap_paragraphs=[
             "Battle of the DJs launched the Grand Opening Series with four DJs, three rounds, and an unforgettable night of music, competition, and community.",
@@ -4611,12 +5185,14 @@ def gallery_battle_of_the_djs():
 @app.route("/gallery/quiet-storm")
 def gallery_quiet_storm():
     images, videos = load_event_gallery("quiet-storm-gallery")
+    uploaded_images = load_uploaded_gallery_images("quiet-storm")
 
     return render_template(
         "gallery_event.html",
         title="The Quiet Storm Live",
         subtitle="Grand Opening Series — Part 2",
         images=images,
+        uploaded_images=uploaded_images,
         videos=videos,
         recap_paragraphs=[
             "The Quiet Storm Live continued the Grand Opening Series with an intimate evening of live R&B, smooth vocals, and soulful energy.",
@@ -4635,12 +5211,14 @@ def gallery_quiet_storm():
 @app.route("/gallery/juneteenth-celebration")
 def gallery_juneteenth_celebration():
     images, videos = load_event_gallery("juneteenth-celebration-gallery")
+    uploaded_images = load_uploaded_gallery_images("juneteenth-celebration")
 
     return render_template(
         "gallery_event.html",
         title="Juneteenth Celebration",
         subtitle="Grand Opening Series — Finale",
         images=images,
+        uploaded_images=uploaded_images,
         videos=videos,
         recap_paragraphs=[
             "The Juneteenth Celebration completed the Grand Opening Series with a night honoring culture, confidence, community, and all shades of beautiful.",
@@ -8328,11 +8906,18 @@ def admin_dashboard_revenue():
     cash_by_event = {}
     total_expenses = 0.0
     total_cash_revenue = 0.0
+    donation_revenue = 0.0
 
     for cash in cash_rows:
         event_name = cash.get("event_name") or "Unknown"
         amount = int(cash.get("amount_cents") or 0) / 100.0
+        category = (cash.get("category") or "").strip().lower()
+        notes = (cash.get("notes") or "").strip().lower()
+
         total_cash_revenue += amount
+
+        if "donation" in category or "donation" in notes:
+            donation_revenue += amount
 
         cash_by_event.setdefault(event_name, [])
         cash_by_event[event_name].append({
@@ -8613,9 +9198,12 @@ def admin_dashboard_revenue():
     past_net_profit = past_revenue_total - past_expenses_total
 
     metrics["cash_revenue"] = total_cash_revenue
+    metrics["donation_revenue"] = donation_revenue
     metrics["business_expenses"] = business_expenses_total
     metrics["total_expenses"] = total_expenses + business_expenses_total
-    metrics["gross_revenue_with_cash"] = float(metrics.get("square_total_collected", 0) or 0)
+    metrics["gross_revenue_with_cash"] = float(
+        metrics.get("square_total_collected", 0) or 0
+    )
     metrics["net_profit"] = metrics["gross_revenue_with_cash"] - metrics["total_expenses"]
 
     originals_count = int(metrics.get("active_memberships", 0) or 0)
@@ -9855,6 +10443,634 @@ def vip_page():
     return render_template("vip.html")
 
 
+def get_email_campaign_recipients(audience, individual_email=""):
+    audience = (audience or "").strip()
+    individual_email = (individual_email or "").strip().lower()
+
+    if audience == "individual":
+        if individual_email and is_valid_email_address(individual_email):
+            return [individual_email]
+        return []
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    recipients = []
+
+    if audience in ("vip", "all"):
+        cursor.execute(
+            """
+            SELECT email
+            FROM leads
+            WHERE type = 'VIP Signup'
+              AND COALESCE(archived, 0) = 0
+              AND LOWER(COALESCE(status, '')) = 'active'
+              AND email IS NOT NULL
+              AND TRIM(email) <> ''
+            """
+        )
+        recipients.extend(
+            (row["email"] or "").strip().lower()
+            for row in cursor.fetchall()
+        )
+
+    if audience in ("circle_originals", "all"):
+        cursor.execute(
+            """
+            SELECT email
+            FROM memberships
+            WHERE LOWER(COALESCE(status, '')) = 'active'
+              AND COALESCE(amount, 0) > 0
+              AND LOWER(COALESCE(membership_group, '')) = 'original'
+              AND email IS NOT NULL
+              AND TRIM(email) <> ''
+            """
+        )
+        recipients.extend(
+            (row["email"] or "").strip().lower()
+            for row in cursor.fetchall()
+        )
+
+    if audience in ("circle_members", "all"):
+        cursor.execute(
+            """
+            SELECT email
+            FROM memberships
+            WHERE LOWER(COALESCE(status, '')) = 'active'
+              AND COALESCE(amount, 0) > 0
+              AND LOWER(COALESCE(membership_group, 'circle')) <> 'original'
+              AND email IS NOT NULL
+              AND TRIM(email) <> ''
+            """
+        )
+        recipients.extend(
+            (row["email"] or "").strip().lower()
+            for row in cursor.fetchall()
+        )
+
+    if audience in ("talent", "all"):
+        cursor.execute(
+            """
+            SELECT email
+            FROM contact_log
+            WHERE LOWER(COALESCE(category, '')) = 'talent'
+              AND email IS NOT NULL
+              AND TRIM(email) <> ''
+            """
+        )
+        recipients.extend(
+            (row["email"] or "").strip().lower()
+            for row in cursor.fetchall()
+        )
+
+    if audience in ("vendors", "all"):
+        cursor.execute(
+            """
+            SELECT email
+            FROM contact_log
+            WHERE LOWER(COALESCE(category, '')) = 'vendor'
+              AND email IS NOT NULL
+              AND TRIM(email) <> ''
+            """
+        )
+        recipients.extend(
+            (row["email"] or "").strip().lower()
+            for row in cursor.fetchall()
+        )
+
+    conn.close()
+
+    unique_recipients = sorted({
+        email
+        for email in recipients
+        if email and is_valid_email_address(email)
+    })
+
+    return unique_recipients
+
+
+@app.route("/dashboard/email-campaigns")
+@requires_auth
+def dashboard_email_campaigns():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            campaign_name,
+            audience,
+            individual_email,
+            subject,
+            status,
+            recipients_count,
+            sent_count,
+            failed_count,
+            created_at,
+            sent_at
+        FROM email_campaigns
+        ORDER BY
+            datetime(COALESCE(sent_at, created_at)) DESC,
+            id DESC
+        LIMIT 5
+        """
+    )
+
+    campaigns = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    audience_labels = {
+        "vip": "VIP Email List",
+        "circle_originals": "Jukebox Circle Originals",
+        "circle_members": "Jukebox Circle Members",
+        "talent": "DJs / Talent",
+        "vendors": "Vendors",
+        "all": "All Eligible Contacts",
+        "individual": "Individual Recipient",
+    }
+
+    for campaign in campaigns:
+        campaign["audience_label"] = audience_labels.get(
+            campaign.get("audience"),
+            campaign.get("audience") or "Unknown Audience",
+        )
+
+    return render_template(
+        "email_campaigns_dashboard.html",
+        campaigns=campaigns,
+    )
+
+
+@app.route("/api/email-campaigns/recipient-count", methods=["POST"])
+@requires_auth
+def email_campaign_recipient_count():
+    audience = (request.form.get("audience") or "").strip()
+    individual_email = (
+        request.form.get("individual_email") or ""
+    ).strip()
+
+    allowed_audiences = {
+        "vip",
+        "circle_originals",
+        "circle_members",
+        "talent",
+        "vendors",
+        "all",
+        "individual",
+    }
+
+    if audience not in allowed_audiences:
+        return {
+            "ok": False,
+            "error": "Please select a valid audience.",
+        }, 400
+
+    if audience == "individual":
+        if not individual_email or not is_valid_email_address(
+            individual_email
+        ):
+            return {
+                "ok": False,
+                "error": "Please enter a valid recipient email.",
+            }, 400
+
+    recipients = get_email_campaign_recipients(
+        audience,
+        individual_email,
+    )
+
+    return {
+        "ok": True,
+        "recipient_count": len(recipients),
+    }, 200
+
+
+@app.route("/api/email-campaigns/draft", methods=["POST"])
+@requires_auth
+def save_email_campaign_draft():
+    audience = (request.form.get("audience") or "").strip()
+    individual_email = (request.form.get("individual_email") or "").strip()
+    campaign_name = (request.form.get("campaign_name") or "").strip()
+    subject = (request.form.get("subject") or "").strip()
+    preview_text = (request.form.get("preview_text") or "").strip()
+    email_heading = (request.form.get("email_heading") or "").strip()
+    body = (request.form.get("body") or "").strip()
+    button_text = (request.form.get("button_text") or "").strip()
+    button_url = (request.form.get("button_url") or "").strip()
+
+    allowed_audiences = {
+        "vip",
+        "circle_originals",
+        "circle_members",
+        "talent",
+        "vendors",
+        "all",
+        "individual",
+    }
+
+    if audience not in allowed_audiences:
+        return {"ok": False, "error": "Please select a valid audience."}, 400
+
+    if audience == "individual":
+        if not individual_email or not is_valid_email_address(individual_email):
+            return {
+                "ok": False,
+                "error": "Please enter a valid individual recipient email.",
+            }, 400
+
+    if not campaign_name:
+        return {"ok": False, "error": "Campaign name is required."}, 400
+
+    if not subject:
+        return {"ok": False, "error": "Subject line is required."}, 400
+
+    if not body:
+        return {"ok": False, "error": "Message is required."}, 400
+
+    image_filename = None
+    image_data = None
+    image_mimetype = None
+
+    image_file = request.files.get("campaign_image")
+    if image_file and image_file.filename:
+        image_filename = os.path.basename(image_file.filename.strip())
+        image_data = image_file.read()
+        image_mimetype = (image_file.mimetype or "").strip()
+
+        if image_data and len(image_data) > 10 * 1024 * 1024:
+            return {
+                "ok": False,
+                "error": "Campaign image must be smaller than 10 MB.",
+            }, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO email_campaigns (
+            campaign_name,
+            audience,
+            individual_email,
+            subject,
+            preview_text,
+            email_heading,
+            body,
+            button_text,
+            button_url,
+            image_filename,
+            image_data,
+            image_mimetype,
+            status,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Draft',
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """,
+        (
+            campaign_name,
+            audience,
+            individual_email or None,
+            subject,
+            preview_text,
+            email_heading,
+            body,
+            button_text,
+            button_url,
+            image_filename,
+            image_data,
+            image_mimetype,
+        ),
+    )
+
+    campaign_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "campaign_id": campaign_id,
+        "status": "Draft",
+    }, 201
+
+
+@app.route("/api/email-campaigns/send", methods=["POST"])
+@requires_auth
+def send_email_campaign():
+    audience = (request.form.get("audience") or "").strip()
+    individual_email = (
+        request.form.get("individual_email") or ""
+    ).strip()
+    campaign_name = (
+        request.form.get("campaign_name") or ""
+    ).strip()
+    subject = (request.form.get("subject") or "").strip()
+    preview_text = (
+        request.form.get("preview_text") or ""
+    ).strip()
+    email_heading = (
+        request.form.get("email_heading") or ""
+    ).strip()
+    body = (request.form.get("body") or "").strip()
+    button_text = (
+        request.form.get("button_text") or ""
+    ).strip()
+    button_url = (
+        request.form.get("button_url") or ""
+    ).strip()
+
+    allowed_audiences = {
+        "vip",
+        "circle_originals",
+        "circle_members",
+        "talent",
+        "vendors",
+        "all",
+        "individual",
+    }
+
+    if audience not in allowed_audiences:
+        return {
+            "ok": False,
+            "error": "Please select a valid audience.",
+        }, 400
+
+    if audience == "individual":
+        if not individual_email or not is_valid_email_address(
+            individual_email
+        ):
+            return {
+                "ok": False,
+                "error": "Please enter a valid recipient email.",
+            }, 400
+
+    if not campaign_name:
+        return {
+            "ok": False,
+            "error": "Campaign name is required.",
+        }, 400
+
+    if not subject:
+        return {
+            "ok": False,
+            "error": "Subject line is required.",
+        }, 400
+
+    if not body:
+        return {
+            "ok": False,
+            "error": "Message is required.",
+        }, 400
+
+    recipients = get_email_campaign_recipients(
+        audience,
+        individual_email,
+    )
+
+    if not recipients:
+        return {
+            "ok": False,
+            "error": "No eligible recipients were found for this audience.",
+        }, 400
+
+    image_filename = None
+    image_data = None
+    image_mimetype = None
+    flyer_inline = None
+
+    image_file = request.files.get("campaign_image")
+
+    if image_file and image_file.filename:
+        image_filename = os.path.basename(
+            image_file.filename.strip()
+        )
+        image_data = image_file.read()
+        image_mimetype = (
+            image_file.mimetype or "image/jpeg"
+        ).strip()
+
+        if image_data and len(image_data) > 10 * 1024 * 1024:
+            return {
+                "ok": False,
+                "error": "Campaign image must be smaller than 10 MB.",
+            }, 400
+
+        if image_data:
+            flyer_inline = {
+                "filename": image_filename,
+                "content": image_data,
+                "mimetype": image_mimetype,
+            }
+
+    message_parts = []
+
+    if email_heading:
+        message_parts.append(email_heading)
+
+    if preview_text:
+        message_parts.append(preview_text)
+
+    message_parts.append(body)
+
+    formatted_body = "\n\n".join(
+        part for part in message_parts if part
+    )
+
+    sent_count = 0
+    failed_count = 0
+
+    for recipient in recipients:
+        try:
+            delivered = send_email_with_attachments(
+                subject=subject,
+                body=formatted_body,
+                to_email=recipient,
+                attachments=[],
+                flyer_inline=flyer_inline,
+                cta_text=button_text,
+                cta_url=button_url,
+            )
+
+            if delivered:
+                sent_count += 1
+            else:
+                failed_count += 1
+
+        except Exception as exc:
+            failed_count += 1
+            print(
+                f"[email-campaign] failed recipient={recipient}:",
+                exc,
+            )
+
+    campaign_status = (
+        "Sent"
+        if sent_count > 0 and failed_count == 0
+        else "Partially Sent"
+        if sent_count > 0
+        else "Failed"
+    )
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        INSERT INTO email_campaigns (
+            campaign_name,
+            audience,
+            individual_email,
+            subject,
+            preview_text,
+            email_heading,
+            body,
+            button_text,
+            button_url,
+            image_filename,
+            image_data,
+            image_mimetype,
+            status,
+            recipients_count,
+            sent_count,
+            failed_count,
+            created_at,
+            updated_at,
+            sent_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        """,
+        (
+            campaign_name,
+            audience,
+            individual_email or None,
+            subject,
+            preview_text,
+            email_heading,
+            body,
+            button_text,
+            button_url,
+            image_filename,
+            image_data,
+            image_mimetype,
+            campaign_status,
+            len(recipients),
+            sent_count,
+            failed_count,
+        ),
+    )
+
+    campaign_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+
+    if sent_count <= 0:
+        return {
+            "ok": False,
+            "campaign_id": campaign_id,
+            "recipient_count": len(recipients),
+            "sent_count": sent_count,
+            "failed_count": failed_count,
+            "error": (
+                "The campaign could not be delivered. "
+                "Check the email settings in the server terminal."
+            ),
+        }, 500
+
+    return {
+        "ok": True,
+        "campaign_id": campaign_id,
+        "status": campaign_status,
+        "recipient_count": len(recipients),
+        "sent_count": sent_count,
+        "failed_count": failed_count,
+        "message": (
+            f"Campaign sent to {sent_count} recipient(s)."
+        ),
+    }, 200
+
+
+@app.route("/api/email-campaigns/send-test", methods=["POST"])
+@requires_auth
+def send_email_campaign_test():
+    test_email = (request.form.get("test_email") or "").strip()
+    subject = (request.form.get("subject") or "").strip()
+    preview_text = (request.form.get("preview_text") or "").strip()
+    email_heading = (request.form.get("email_heading") or "").strip()
+    body = (request.form.get("body") or "").strip()
+    button_text = (request.form.get("button_text") or "").strip()
+    button_url = (request.form.get("button_url") or "").strip()
+
+    if not test_email or not is_valid_email_address(test_email):
+        return {
+            "ok": False,
+            "error": "Please enter a valid test email address.",
+        }, 400
+
+    if not subject:
+        return {"ok": False, "error": "Subject line is required."}, 400
+
+    if not body:
+        return {"ok": False, "error": "Message is required."}, 400
+
+    flyer_inline = None
+    image_file = request.files.get("campaign_image")
+
+    if image_file and image_file.filename:
+        image_filename = os.path.basename(image_file.filename.strip())
+        image_data = image_file.read()
+        image_mimetype = (image_file.mimetype or "image/jpeg").strip()
+
+        if image_data and len(image_data) > 10 * 1024 * 1024:
+            return {
+                "ok": False,
+                "error": "Campaign image must be smaller than 10 MB.",
+            }, 400
+
+        if image_data:
+            flyer_inline = {
+                "filename": image_filename,
+                "content": image_data,
+                "mimetype": image_mimetype,
+            }
+
+    message_parts = []
+
+    if email_heading:
+        message_parts.append(email_heading)
+
+    if preview_text:
+        message_parts.append(preview_text)
+
+    message_parts.append(body)
+    formatted_body = "\n\n".join(part for part in message_parts if part)
+
+    delivered = send_email_with_attachments(
+        subject=f"[TEST] {subject}",
+        body=formatted_body,
+        to_email=test_email,
+        attachments=[],
+        flyer_inline=flyer_inline,
+        cta_text=button_text,
+        cta_url=button_url,
+    )
+
+    if not delivered:
+        return {
+            "ok": False,
+            "error": "The test email could not be sent. Check the email settings in the server terminal.",
+        }, 500
+
+    return {
+        "ok": True,
+        "message": f"Test email sent to {test_email}.",
+    }, 200
+
+
 @app.route("/dashboard/login", methods=["GET", "POST"])
 def dashboard_login():
     if request.method == "POST":
@@ -9901,6 +11117,7 @@ def dashboard_logout():
     response.headers["Pragma"] = "no-cache"
     return response
 
+
 if __name__ == "__main__":
     app.run(debug=True, port=5050, use_reloader=False)
 
@@ -9911,5 +11128,4 @@ if __name__ == "__main__":
 # -------------------------
 # RUN
 # -------------------------
-
 

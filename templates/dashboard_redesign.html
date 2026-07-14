@@ -25,6 +25,8 @@
         <a href="/dashboard/revenue">Revenue</a>
         <a href="/dashboard/messages">Messages</a>
         <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/email-campaigns">Email Campaigns</a>
+        <a href="/dashboard/gallery">Gallery Manager</a>
         <a href="/dashboard/contacts">Contact Log</a>
               <a href="/admin/unmapped-square">Unmapped Tickets</a>
       </nav>
@@ -112,6 +114,12 @@
         </div>
 
         <div class="stat-card">
+          <p>Donations</p>
+          <h3>${{ "%.2f"|format(metrics.donation_revenue) }}</h3>
+          <span>Donations received</span>
+        </div>
+
+        <div class="stat-card">
           <p>Tips / Other</p>
           <h3>${{ "%.2f"|format(metrics.tips_other_revenue) }}</h3>
           <span>Tips + test/other Square payments</span>
@@ -120,7 +128,7 @@
         <div class="stat-card total-revenue-highlight">
           <p>Total Collected</p>
           <h3>${{ "%.2f"|format(metrics.square_total_collected) }}</h3>
-          <span>Square + Eventbrite tickets, memberships, tips/other</span>
+          <span>Tickets, memberships, donations, tips/other</span>
         </div>
       </section>
 <section class="dashboard-grid">
