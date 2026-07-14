@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<section class="form-thank-you-page">
+  <div class="form-thank-you-card">
+
+    <p class="form-thank-you-kicker">{{ kicker }}</p>
+
+    <h1>{{ heading }}</h1>
+
+    <p class="form-thank-you-message">
+      {{ message }}
+    </p>
+
+    <div class="form-thank-you-feature">
+      <h2>{{ feature_heading }}</h2>
+      <p>{{ feature_message }}</p>
+    </div>
+
+    <div class="form-thank-you-actions">
+      <a href="{{ primary_url }}" class="form-thank-you-primary">
+        {{ primary_text }}
+      </a>
+
+      <a href="{{ secondary_url }}" class="form-thank-you-secondary">
+        {{ secondary_text }}
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<style>
+.form-thank-you-page {
+  min-height: calc(100vh - 80px);
+  display: grid;
+  place-items: center;
+  padding: 80px 20px;
+  color: #fff8e7;
+  background:
+    radial-gradient(circle at top, rgba(212, 175, 55, 0.16), transparent 38%),
+    linear-gradient(135deg, #080706 0%, #171208 55%, #080706 100%);
+}
+
+.form-thank-you-card {
+  width: min(850px, 100%);
+  padding: clamp(38px, 7vw, 76px);
+  text-align: center;
+  border: 1px solid rgba(212, 175, 55, 0.42);
+  border-radius: 28px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(25, 20, 12, 0.98),
+      rgba(10, 12, 9, 0.98)
+    );
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.form-thank-you-kicker {
+  display: inline-block;
+  margin: 0 0 24px;
+  padding: 9px 18px;
+  color: #f4d45f;
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.form-thank-you-card h1 {
+  margin: 0;
+  color: #f7d978;
+  font-size: clamp(2.8rem, 7vw, 5rem);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+
+.form-thank-you-message {
+  max-width: 700px;
+  margin: 25px auto 0;
+  color: rgba(255, 248, 231, 0.82);
+  font-size: 1.08rem;
+  line-height: 1.75;
+}
+
+.form-thank-you-feature {
+  margin-top: 40px;
+  padding: 28px;
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 20px;
+  background: rgba(212, 175, 55, 0.07);
+}
+
+.form-thank-you-feature h2 {
+  margin: 0 0 12px;
+  color: #f7d978;
+  font-size: clamp(1.6rem, 4vw, 2.25rem);
+}
+
+.form-thank-you-feature p {
+  max-width: 650px;
+  margin: 0 auto;
+  color: rgba(255, 248, 231, 0.72);
+  line-height: 1.7;
+}
+
+.form-thank-you-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.form-thank-you-primary,
+.form-thank-you-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 210px;
+  padding: 15px 24px;
+  border-radius: 999px;
+  font-weight: 900;
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.form-thank-you-primary {
+  color: #090806;
+  background: linear-gradient(135deg, #f5d657, #d9af28);
+  box-shadow: 0 12px 30px rgba(217, 175, 40, 0.22);
+}
+
+.form-thank-you-secondary {
+  color: #f7d978;
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  background: transparent;
+}
+
+.form-thank-you-primary:hover,
+.form-thank-you-secondary:hover {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 600px) {
+  .form-thank-you-page {
+    padding: 45px 16px;
+  }
+
+  .form-thank-you-card {
+    border-radius: 20px;
+  }
+
+  .form-thank-you-primary,
+  .form-thank-you-secondary {
+    width: 100%;
+  }
+}
+</style>
+{% endblock %}

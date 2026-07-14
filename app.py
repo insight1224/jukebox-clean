@@ -1560,9 +1560,19 @@ def notify_admin_new_lead(lead_type, name, email, status, details=""):
             or os.getenv("ADMIN_EMAIL", "").strip()
             or "thejukeboxloungenc@gmail.com"
         )
-        subject = f"New {lead_category(lead_type)} Received"
+        is_partnership = (
+            lead_type == "Contact Message"
+            and (details or "").strip().startswith("Partnership Inquiry")
+        )
+
+        subject = (
+            "New Partnership Inquiry Received"
+            if is_partnership
+            else "New Contact Message Received"
+        )
+
         body = (
-            f"Lead Type: {lead_type}\n"
+            f"Message Type: {'Partnership Inquiry' if is_partnership else 'General Contact Message'}\n"
             f"Name: {name}\n"
             f"Email: {email}\n"
             f"Status: {status}\n"
@@ -1622,11 +1632,21 @@ def create_lead_record(lead_type, name, email, details, status=None):
         traceback.print_exc()
         return False
 
-    # Notification is best-effort and must never break submit flow.
-    try:
-        notify_admin_new_lead(lead_type, clean_name, clean_email, status_value, clean_details)
-    except Exception as exc:
-        print("[lead-notify] non-fatal error:", exc)
+    # Only general messages and partnership inquiries should trigger admin email notifications.
+    should_notify = lead_type == "Contact Message"
+
+    if should_notify:
+        try:
+            notify_admin_new_lead(
+                lead_type,
+                clean_name,
+                clean_email,
+                status_value,
+                clean_details,
+            )
+        except Exception as exc:
+            print("[lead-notify] non-fatal error:", exc)
+
     return True
 
 
@@ -3950,9 +3970,24 @@ def contact():
         except Exception as exc:
             print("[contact] submit failed:", exc)
             traceback.print_exc()
-        return render_thank_you_safe(
-            "MESSAGE RECEIVED",
-            "Your message has been sent. Our team will get back to you shortly.",
+        return render_template(
+            "form_thank_you.html",
+            page_title="Message Received",
+            kicker="Message Received",
+            heading="Thank You for Reaching Out",
+            message=(
+                "Your message has been sent successfully. "
+                "The Jukebox Lounge NC team will review it and follow up with you shortly."
+            ),
+            feature_heading="We’ll Be in Touch",
+            feature_message=(
+                "We appreciate you taking the time to connect with us. "
+                "Our team will respond as soon as possible."
+            ),
+            primary_url="/contact",
+            primary_text="Back to Contact",
+            secondary_url="/",
+            secondary_text="Return Home",
         )
 
     return render_template("contact.html")
@@ -4909,9 +4944,24 @@ def dj_signup():
             print("[dj-signup] submit failed:", exc)
             traceback.print_exc()
 
-        return render_thank_you_safe(
-            "APPLICATION RECEIVED",
-            "Your application has been submitted successfully. Our team will review your sound and reach out if you're a fit for an upcoming Jukebox experience.",
+        return render_template(
+            "form_thank_you.html",
+            page_title="DJ Application Received",
+            kicker="Application Received",
+            heading="Your Sound Is in the Mix",
+            message=(
+                "Your DJ or band application has been submitted successfully. "
+                "Our team will review your information, links, and performance details."
+            ),
+            feature_heading="What Happens Next",
+            feature_message=(
+                "If your sound is a good fit for an upcoming Jukebox Lounge NC event, "
+                "our team will reach out using the contact information you provided."
+            ),
+            primary_url="/dj-signup",
+            primary_text="Back to DJ Application",
+            secondary_url="/events",
+            secondary_text="Explore Events",
         )
 
     return render_template("dj_signup.html")
@@ -4948,9 +4998,24 @@ def vendor_signup():
             print("[vendor-signup] submit failed:", exc)
             traceback.print_exc()
 
-        return render_thank_you_safe(
-            "APPLICATION RECEIVED",
-            "Thank you for submitting your vendor application. Our team will review your information and reach out if your services are a good fit for an upcoming Jukebox Lounge event.",
+        return render_template(
+            "form_thank_you.html",
+            page_title="Vendor Application Received",
+            kicker="Application Received",
+            heading="Your Brand Is on Our Radar",
+            message=(
+                "Your vendor application has been submitted successfully. "
+                "Our team will review your business, products, services, and setup needs."
+            ),
+            feature_heading="What Happens Next",
+            feature_message=(
+                "If your business is a good fit for an upcoming Jukebox Lounge NC event, "
+                "our team will contact you using the information you provided."
+            ),
+            primary_url="/vendor-signup",
+            primary_text="Back to Vendor Application",
+            secondary_url="/events",
+            secondary_text="Explore Events",
         )
 
     return render_template("vendor_signup.html")
@@ -5002,10 +5067,7 @@ Additional Information:
             print("[partnership-inquiry] submit failed:", exc)
             traceback.print_exc()
 
-        return render_thank_you_safe(
-            "PARTNERSHIP INQUIRY RECEIVED",
-            "Thank you for your interest in partnering with The Jukebox Lounge NC. Our team will review your information and follow up with you shortly.",
-        )
+        return render_template("partnership_thank_you.html")
 
     return render_template("partnership.html")
 
@@ -5082,9 +5144,24 @@ def vip_signup():
             traceback.print_exc()
     print(f"[vip-welcome] recipient={recipient or '(missing)'} sent={send_ok}")
 
-    return render_thank_you_safe(
-        "WELCOME TO THE VIP EMAIL LIST",
-        "You're officially on the VIP Email list. Get ready for exclusive drops, early access, and curated experiences.",
+    return render_template(
+        "form_thank_you.html",
+        page_title="VIP List Confirmation",
+        kicker="You’re on the List",
+        heading="Welcome to the VIP Email List",
+        message=(
+            "Your VIP signup is complete. You’ll now be among the first to hear "
+            "about ticket drops, special offers, lounge news, and exclusive experiences."
+        ),
+        feature_heading="Watch Your Inbox",
+        feature_message=(
+            "We’ll send updates to the email address you provided whenever there’s "
+            "something worth knowing."
+        ),
+        primary_url="/events",
+        primary_text="Explore Upcoming Events",
+        secondary_url="/",
+        secondary_text="Return Home",
     )
 
 @app.route("/event-interest", methods=["POST"])
