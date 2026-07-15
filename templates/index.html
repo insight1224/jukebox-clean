@@ -397,19 +397,16 @@ function playSong(index, selectedAlbum) {
     }
   }, 250);
 
-  setTimeout(() => {
-    player.classList.remove("home-player-hidden");
-    player.innerHTML = `
-      <iframe
-        allow="autoplay *; encrypted-media *;"
-        frameborder="0"
-        height="300"
-        loading="lazy"
-        title="${jukeboxSongs[index]} music player"
-        src="${jukeboxLinks[index]}">
-      </iframe>
-    `;
-  }, 450);
+  player.classList.remove("home-player-hidden");
+  player.innerHTML = `
+    <iframe
+      allow="autoplay *; encrypted-media *;"
+      frameborder="0"
+      height="300"
+      title="${jukeboxSongs[index]} music player"
+      src="${jukeboxLinks[index]}">
+    </iframe>
+  `;
 }
 
 document.addEventListener("DOMContentLoaded", function () {
