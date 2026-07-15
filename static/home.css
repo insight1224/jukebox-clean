@@ -3976,3 +3976,25 @@ body.flash {
   }
 }
 
+
+/* SoundCloud visual player inside homepage jukebox */
+.home-music-player:not(.home-player-hidden) {
+  width: min(100%, 470px);
+  max-width: 470px;
+  padding: 9px;
+  background:
+    linear-gradient(145deg, rgba(20, 18, 10, 0.98), rgba(1, 1, 1, 0.98));
+}
+
+.home-music-player:not(.home-player-hidden) iframe {
+  width: 100%;
+  max-width: 450px;
+  height: 300px !important;
+  border-radius: 10px;
+}
+
+@media (max-width: 760px) {
+  .home-music-player:not(.home-player-hidden) iframe {
+    height: 260px !important;
+  }
+}

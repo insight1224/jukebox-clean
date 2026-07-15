@@ -24,6 +24,58 @@
     />
   </head>
   <body>
+    {% if request.path == "/" %}
+    <div
+      class="lounge-entry-screen"
+      id="loungeEntryScreen"
+      aria-labelledby="loungeEntryTitle"
+    >
+      <div class="lounge-entry-card">
+        <p class="lounge-entry-kicker">Welcome To</p>
+        <h1 id="loungeEntryTitle">The Jukebox Lounge NC</h1>
+        <p>
+          Step inside for old-school R&amp;B, premium energy,
+          and the official lounge experience.
+        </p>
+
+        <button id="enterLoungeButton" type="button">
+          <i class="fa-solid fa-record-vinyl" aria-hidden="true"></i>
+          Enter the Lounge
+        </button>
+
+        <button id="enterWithoutMusicButton" type="button">
+          Enter Without Music
+        </button>
+      </div>
+    </div>
+
+    <div class="lounge-soundcloud-player" aria-hidden="true">
+      <iframe
+        id="loungeSoundCloudPlayer"
+        width="1"
+        height="1"
+        scrolling="no"
+        frameborder="no"
+        allow="autoplay; encrypted-media"
+        title="Juke Joint Love by DJ-A.N.T."
+        src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A2109807027&color=%23d4af37&auto_play=false&hide_related=true&show_comments=false&show_user=false&show_reposts=false&show_teaser=false&visual=false"
+      ></iframe>
+    </div>
+
+    <button
+      class="lounge-music-control"
+      id="loungeMusicControl"
+      type="button"
+      aria-label="Pause lounge music"
+      title="Pause lounge music"
+      hidden
+    >
+      <i class="fa-solid fa-pause" aria-hidden="true"></i>
+      <span>Music On</span>
+    </button>
+
+    {% endif %}
+
     <nav class="navbar">
       <a
   class="logo"
@@ -84,6 +136,9 @@
       </div>
     </footer>
 
+    {% if request.path == "/" %}
+    <script src="https://w.soundcloud.com/player/api.js"></script>
+    {% endif %}
     <script src="{{ url_for('static', filename='base.js') }}"></script>
   
 <script>

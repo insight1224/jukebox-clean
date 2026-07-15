@@ -80,16 +80,33 @@
         </button>
 
         <div class="home-record-shelf" id="jukeboxScroll">
-          {% for i in range(1,16) %}
+          {% set jukebox_records = [
+            ("album2.jpg", "Sweet Love by Anita Baker"),
+            ("album3.jpg", "Outstanding by The Gap Band"),
+            ("album6.jpg", "Can We Talk by Tevin Campbell"),
+            ("album7.jpg", "I Like by Guy"),
+            ("album9.jpg", "Mo Money Mo Problems by The Notorious B.I.G."),
+            ("album11.jpg", "Dilemma by Nelly featuring Kelly Rowland"),
+            ("album12.jpg", "Rock The Boat by Aaliyah"),
+            ("album13.jpg", "It Takes Two by Rob Base"),
+            ("album14.jpg", "This Is How We Do It by Montell Jordan"),
+            ("album15.jpg", "Return of the Mack by Mark Morrison"),
+            ("album1.jpg", "Boots on the Ground by 803Fresh"),
+            ("album4.jpg", "Where the Party At by Jagged Edge"),
+            ("album5.jpg", "Work It by Missy Elliott"),
+            ("album8.jpg", "Spend My Life With You by Eric Benét featuring Tamia")
+          ] %}
+
+          {% for image, title in jukebox_records %}
           <button
             class="home-album"
             type="button"
-            onclick="playSong({{ i-1 }}, this)"
-            aria-label="Play record {{ i }}"
+            onclick="playSong({{ loop.index0 }}, this)"
+            aria-label="Play {{ title }}"
           >
             <img
-              src="{{ url_for('static', filename='images/album' ~ i ~ '.jpg') }}"
-              alt="Record selection {{ i }}"
+              src="{{ url_for('static', filename='images/' ~ image) }}"
+              alt="{{ title }}"
             >
             <span class="home-album-play">▶</span>
           </button>
@@ -286,39 +303,37 @@
 <!-- NEW HOMEPAGE JUKEBOX SCRIPT -->
 <script>
 const jukeboxSongs = [
-  "Rock With You",
   "Sweet Love",
   "Outstanding",
-  "Before I Let You Go",
-  "Never Too Much",
   "Can We Talk",
   "I Like",
-  "Weak",
   "Mo Money Mo Problems",
-  "Real Love",
   "Dilemma",
-  "You Don't Have To Call",
-  "Blame It",
-  "So Fresh, So Clean",
-  "Crazy In Love"
+  "Rock The Boat",
+  "It Takes Two",
+  "This Is How We Do It",
+  "Return of the Mack",
+  "Boots on the Ground",
+  "Where the Party At",
+  "Work It",
+  "Spend My Life With You"
 ];
 
 const jukeboxLinks = [
-  "https://embed.music.apple.com/us/album/rock-with-you/186166282?i=186166358",
-  "https://embed.music.apple.com/us/album/sweet-love/317229859?i=317230043",
-  "https://embed.music.apple.com/us/album/outstanding/1424520684?i=1424520692",
-  "https://embed.music.apple.com/us/album/before-i-let-go/724904374?i=724905057",
-  "https://embed.music.apple.com/us/album/never-too-much/190652453?i=190652482",
-  "https://embed.music.apple.com/us/album/can-we-talk/301001045?i=301001052",
-  "https://embed.music.apple.com/us/album/i-like/1452813546?i=1452813664",
-  "https://embed.music.apple.com/us/album/weak/266799911?i=266800009",
-  "https://embed.music.apple.com/us/album/mo-money-mo-problems-feat-ma%24e-puff-daddy/906888433?i=906888513",
-  "https://embed.music.apple.com/us/album/real-love/1440817005?i=1440817021",
-  "https://embed.music.apple.com/us/album/dilemma-feat-kelly-rowland/1440769782?i=1440770466",
-  "https://embed.music.apple.com/us/album/u-dont-have-to-call/268532446?i=268532614",
-  "https://embed.music.apple.com/us/album/blame-it-feat-t-pain/298451478?i=298451835",
-  "https://embed.music.apple.com/us/album/so-fresh-so-clean/255836651?i=255836736",
-  "https://embed.music.apple.com/us/album/crazy-in-love-feat-ja%C3%BF-z/201274359?i=201274644"
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A231712350&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A287255592&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A232292832&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A1632354978&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A257078657&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A255960748&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A1920328247&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A73115665&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A253185882&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A256126172&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A2083090941&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A73200720&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A255814590&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true",
+  "https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/soundcloud%253Atracks%253A219074848&color=%23d4af37&auto_play=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false&visual=true"
 ];
 
 function scrollRecordsLeft() {
@@ -336,6 +351,10 @@ function scrollRecordsRight() {
 }
 
 function playSong(index, selectedAlbum) {
+  if (typeof window.pauseLoungeBackgroundMusic === "function") {
+    window.pauseLoungeBackgroundMusic();
+  }
+
   const click = document.getElementById("clickSound");
   const vinyl = document.getElementById("vinylSound");
   const player = document.getElementById("musicPlayer");
@@ -384,9 +403,9 @@ function playSong(index, selectedAlbum) {
       <iframe
         allow="autoplay *; encrypted-media *;"
         frameborder="0"
-        height="150"
+        height="300"
         loading="lazy"
-        title="${jukeboxSongs[index]} Apple Music player"
+        title="${jukeboxSongs[index]} music player"
         src="${jukeboxLinks[index]}">
       </iframe>
     `;

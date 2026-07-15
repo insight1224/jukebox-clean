@@ -5523,3 +5523,150 @@ section {
     width: 70px;
   }
 }
+
+
+/* LOUNGE ENTRY AND BACKGROUND MUSIC */
+.lounge-entry-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at center, rgba(38, 94, 65, 0.22), transparent 45%),
+    rgba(2, 5, 3, 0.97);
+  backdrop-filter: blur(12px);
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+.lounge-entry-screen.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.lounge-entry-card {
+  width: min(540px, 100%);
+  padding: 44px 34px;
+  border: 1px solid rgba(212, 175, 55, 0.44);
+  border-radius: 24px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(20, 31, 24, 0.98),
+      rgba(5, 10, 7, 0.98)
+    );
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.62),
+    inset 0 0 38px rgba(212, 175, 55, 0.05);
+  text-align: center;
+}
+
+.lounge-entry-kicker {
+  margin: 0 0 8px;
+  color: #d4af37;
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.lounge-entry-card h1 {
+  margin: 0 0 14px;
+  color: #f7f0df;
+  font-size: clamp(2rem, 6vw, 3.7rem);
+  line-height: 1;
+}
+
+.lounge-entry-card > p:not(.lounge-entry-kicker) {
+  max-width: 430px;
+  margin: 0 auto 26px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.7;
+}
+
+#enterLoungeButton,
+#enterWithoutMusicButton {
+  width: 100%;
+  border-radius: 999px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+#enterLoungeButton {
+  padding: 15px 22px;
+  border: 1px solid #d4af37;
+  color: #171108;
+  background: linear-gradient(135deg, #ecd06b, #c99d24);
+  box-shadow: 0 12px 30px rgba(212, 175, 55, 0.2);
+}
+
+#enterLoungeButton i {
+  margin-right: 8px;
+}
+
+#enterWithoutMusicButton {
+  margin-top: 10px;
+  padding: 11px 20px;
+  border: 0;
+  color: rgba(255, 255, 255, 0.55);
+  background: transparent;
+}
+
+.lounge-music-control {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 900;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 15px;
+  border: 1px solid rgba(212, 175, 55, 0.46);
+  border-radius: 999px;
+  color: #d4af37;
+  background: rgba(3, 8, 5, 0.9);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  font-size: 0.76rem;
+  font-weight: 900;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.lounge-music-control.is-paused {
+  color: rgba(255, 255, 255, 0.65);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.lounge-music-control[hidden] {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .lounge-entry-card {
+    padding: 36px 22px;
+  }
+
+  .lounge-music-control {
+    left: 12px;
+    bottom: 12px;
+    padding: 9px 12px;
+  }
+
+  .lounge-music-control span {
+    display: none;
+  }
+}
+
+
+.lounge-soundcloud-player {
+  position: fixed;
+  left: -9999px;
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
