@@ -41,7 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const getStoredValue = (key) => {
     try {
-      return localStorage.getItem(key);
+      return sessionStorage.getItem(key);
     } catch (error) {
       return null;
     }
@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const setStoredValue = (key, value) => {
     try {
-      localStorage.setItem(key, value);
+      sessionStorage.setItem(key, value);
     } catch (error) {
       // Local storage may be unavailable.
     }
