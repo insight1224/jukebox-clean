@@ -3526,6 +3526,69 @@ def square_retrieve_payment(payment_id):
     return {}
 
 
+def square_list_payment_refunds(payment_id):
+    payment_id = str(payment_id or "").strip()
+
+    if not SQUARE_ACCESS_TOKEN or not payment_id:
+        return []
+
+    endpoint = f"{square_base_url()}/v2/refunds"
+    refunds = []
+    cursor = None
+
+    for _ in range(10):
+        params = {
+            "payment_id": payment_id,
+            "limit": 100,
+        }
+
+        if cursor:
+            params["cursor"] = cursor
+
+        try:
+            response = requests.get(
+                endpoint,
+                headers={
+                    "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+                    "Square-Version": "2026-05-20",
+                    "Content-Type": "application/json",
+                },
+                params=params,
+                timeout=25,
+            )
+        except requests.RequestException as exc:
+            print("[square-refund-sync] connection error:", exc)
+            return []
+
+        try:
+            response_data = response.json()
+        except ValueError:
+            response_data = {}
+
+        if not response.ok:
+            print(
+                "[square-refund-sync] API error:",
+                response.status_code,
+                response_data,
+            )
+            return []
+
+        page_refunds = response_data.get("refunds") or []
+
+        refunds.extend(
+            refund
+            for refund in page_refunds
+            if str(refund.get("payment_id") or "").strip() == payment_id
+        )
+
+        cursor = str(response_data.get("cursor") or "").strip()
+
+        if not cursor:
+            break
+
+    return refunds
+
+
 def square_refund_payment(
     payment_id,
     amount_cents,
@@ -12841,6 +12904,275 @@ def admin_dashboard_events():
     )
 
 
+
+
+@app.route("/api/ticket-refunds/sync", methods=["POST"])
+@requires_auth
+def api_sync_ticket_refund():
+    data = request.get_json(silent=True) or {}
+    raw_ticket_ids = data.get("ticket_ids") or []
+
+    if not isinstance(raw_ticket_ids, list) or not raw_ticket_ids:
+        return {
+            "ok": False,
+            "error": "Please select a Square purchase to sync.",
+        }, 400
+
+    ticket_ids = []
+
+    for value in raw_ticket_ids:
+        try:
+            ticket_id = int(value)
+        except (TypeError, ValueError):
+            continue
+
+        if ticket_id > 0 and ticket_id not in ticket_ids:
+            ticket_ids.append(ticket_id)
+
+    if not ticket_ids:
+        return {
+            "ok": False,
+            "error": "No valid tickets were selected.",
+        }, 400
+
+    placeholders = ",".join(["?"] * len(ticket_ids))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        f"""
+        SELECT
+            id,
+            name,
+            email,
+            ticket_type,
+            ticket_id,
+            payment_id,
+            event_name,
+            amount_cents,
+            COALESCE(refund_status, 'Not Refunded') AS refund_status
+        FROM event_tickets
+        WHERE id IN ({placeholders})
+        ORDER BY id
+        """,
+        ticket_ids,
+    )
+
+    tickets = [dict(row) for row in cursor.fetchall()]
+
+    if len(tickets) != len(ticket_ids):
+        conn.close()
+        return {
+            "ok": False,
+            "error": "One or more selected tickets could not be found.",
+        }, 404
+
+    payment_ids = {
+        str(ticket.get("payment_id") or "").split(":", 1)[0].strip()
+        for ticket in tickets
+        if str(ticket.get("payment_id") or "").strip()
+    }
+
+    if len(payment_ids) != 1:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "The selected tickets must belong to one Square payment."
+            ),
+        }, 400
+
+    square_payment_id = next(iter(payment_ids))
+
+    if (
+        not square_payment_id
+        or square_payment_id.startswith("COMP_")
+        or square_payment_id.lower().startswith("eventbrite:")
+    ):
+        conn.close()
+        return {
+            "ok": False,
+            "error": "This purchase was not paid through Square.",
+        }, 400
+
+    square_payment = square_retrieve_payment(square_payment_id)
+
+    if not square_payment:
+        conn.close()
+        return {
+            "ok": False,
+            "error": "Square could not verify this payment.",
+        }, 502
+
+    payment_total_cents = int(
+        ((square_payment.get("amount_money") or {}).get("amount")) or 0
+    )
+
+    refunded_cents = int(
+        ((square_payment.get("refunded_money") or {}).get("amount")) or 0
+    )
+
+    if refunded_cents <= 0:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "Square does not show a refund for this payment yet."
+            ),
+        }, 400
+
+    refunds = square_list_payment_refunds(square_payment_id)
+
+    completed_refunds = [
+        refund
+        for refund in refunds
+        if str(refund.get("status") or "").strip().upper() == "COMPLETED"
+    ]
+
+    completed_refund_total = sum(
+        int(((refund.get("amount_money") or {}).get("amount")) or 0)
+        for refund in completed_refunds
+    )
+
+    confirmed_refunded_cents = max(
+        refunded_cents,
+        completed_refund_total,
+    )
+
+    selected_amount_cents = sum(
+        max(0, int(ticket.get("amount_cents") or 0))
+        for ticket in tickets
+    )
+
+    full_payment_refunded = (
+        payment_total_cents > 0
+        and confirmed_refunded_cents >= payment_total_cents
+    )
+
+    if not full_payment_refunded:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "Square shows only a partial refund for this payment. "
+                "This sync control currently requires a full refund."
+            ),
+        }, 400
+
+    latest_refund = (
+        sorted(
+            completed_refunds,
+            key=lambda refund: str(
+                refund.get("updated_at")
+                or refund.get("created_at")
+                or ""
+            ),
+            reverse=True,
+        )[0]
+        if completed_refunds
+        else {}
+    )
+
+    square_refund_id = str(
+        latest_refund.get("id") or ""
+    ).strip()
+
+    selected_database_ids = [ticket["id"] for ticket in tickets]
+    selected_public_ids = [
+        str(ticket.get("ticket_id") or "").strip()
+        for ticket in tickets
+    ]
+
+    update_placeholders = ",".join(
+        ["?"] * len(selected_database_ids)
+    )
+
+    cursor.execute(
+        f"""
+        UPDATE event_tickets
+        SET
+            refund_status = 'Refunded',
+            refunded_amount_cents = amount_cents,
+            refund_reason = 'Refunded manually in Square',
+            square_refund_id = ?,
+            refund_requested_at = COALESCE(
+                refund_requested_at,
+                CURRENT_TIMESTAMP
+            ),
+            refunded_at = CURRENT_TIMESTAMP
+        WHERE id IN ({update_placeholders})
+        """,
+        (
+            square_refund_id or None,
+            *selected_database_ids,
+        ),
+    )
+
+    sync_key = (
+        f"square-refund-sync-"
+        f"{square_payment_id[:16]}-"
+        f"{secrets.token_hex(8)}"
+    )
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO ticket_refunds (
+                square_refund_id,
+                idempotency_key,
+                square_payment_id,
+                event_name,
+                customer_name,
+                customer_email,
+                amount_cents,
+                reason,
+                status,
+                ticket_ids_json,
+                requested_by,
+                created_at,
+                updated_at,
+                completed_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'COMPLETED', ?, ?,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP)
+            """,
+            (
+                square_refund_id or None,
+                sync_key,
+                square_payment_id,
+                str(tickets[0].get("event_name") or "").strip(),
+                str(tickets[0].get("name") or "").strip(),
+                str(tickets[0].get("email") or "").strip().lower(),
+                selected_amount_cents,
+                "Refunded manually in Square",
+                json.dumps(selected_public_ids),
+                (
+                    session.get("auth_username")
+                    or session.get("auth_role")
+                    or "Dashboard User"
+                ),
+            ),
+        )
+    except sqlite3.IntegrityError:
+        pass
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "status": "COMPLETED",
+        "refund_id": square_refund_id,
+        "amount_cents": confirmed_refunded_cents,
+        "ticket_count": len(tickets),
+        "message": (
+            "The existing Square refund was synced successfully. "
+            "No new refund was submitted."
+        ),
+    }, 200
 
 
 @app.route("/api/ticket-refunds/create", methods=["POST"])

@@ -458,6 +458,14 @@
                     >
                     <span>Select</span>
                   </label>
+
+                  <button
+                    type="button"
+                    class="guest-action-button edit js-sync-square-refund"
+                    aria-label="Sync an existing Square refund for {{ guest.name|e }}"
+                  >
+                    Sync Square Refund
+                  </button>
                   {% elif guest.refund_status and guest.refund_status != "Not Refunded" %}
                   <span class="guest-action-locked">{{ guest.refund_status }}</span>
                   {% else %}
@@ -904,6 +912,105 @@
           }
 
           updateGuestRefundPanel(content);
+        });
+
+        content.addEventListener("click", async (event) => {
+          const syncButton = event.target.closest(
+            ".js-sync-square-refund"
+          );
+
+          if (!syncButton) {
+            return;
+          }
+
+          const row = syncButton.closest(".guest-list-row");
+
+          if (!row) {
+            return;
+          }
+
+          const ticketIds = parseRefundTicketRowIds(row);
+          const messageElement = content.querySelector(
+            ".js-refund-message"
+          );
+          const guestName = (
+            row.getAttribute("data-guest-name") || "this customer"
+          ).trim();
+
+          if (!ticketIds.length) {
+            if (messageElement) {
+              messageElement.textContent =
+                "The tickets for this purchase could not be identified.";
+            }
+            return;
+          }
+
+          const confirmed = window.confirm(
+            `Sync the existing Square refund for ${guestName}?\n\n` +
+            "This will only verify the refund in Square and update " +
+            "the dashboard. It will not submit another refund."
+          );
+
+          if (!confirmed) {
+            return;
+          }
+
+          syncButton.disabled = true;
+          syncButton.textContent = "Checking Square...";
+
+          if (messageElement) {
+            messageElement.textContent = "";
+          }
+
+          try {
+            const response = await fetch(
+              "/api/ticket-refunds/sync",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  ticket_ids: ticketIds,
+                }),
+              }
+            );
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok || !result.ok) {
+              throw new Error(
+                result.error ||
+                "The existing Square refund could not be synced."
+              );
+            }
+
+            const actionsCell = row.querySelector(
+              ".guest-actions-cell"
+            );
+
+            if (actionsCell) {
+              actionsCell.innerHTML =
+                '<span class="guest-action-locked">Refunded</span>';
+            }
+
+            if (messageElement) {
+              messageElement.textContent =
+                result.message ||
+                "The existing Square refund was synced successfully.";
+            }
+
+            updateGuestRefundPanel(content);
+          } catch (error) {
+            if (messageElement) {
+              messageElement.textContent =
+                error.message ||
+                "The existing Square refund could not be synced.";
+            }
+
+            syncButton.disabled = false;
+            syncButton.textContent = "Sync Square Refund";
+          }
         });
 
         const refundButton = content.querySelector(
