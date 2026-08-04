@@ -693,6 +693,47 @@ def init_db():
     """)
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ticket_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_number TEXT NOT NULL UNIQUE,
+        event_name TEXT NOT NULL,
+        customer_name TEXT NOT NULL,
+        customer_email TEXT NOT NULL,
+        customer_phone TEXT,
+        tickets_json TEXT NOT NULL,
+        subtotal_cents INTEGER NOT NULL DEFAULT 0,
+        tax_cents INTEGER NOT NULL DEFAULT 0,
+        total_cents INTEGER NOT NULL DEFAULT 0,
+        total_ticket_quantity INTEGER NOT NULL DEFAULT 0,
+        square_order_id TEXT,
+        square_payment_link_id TEXT,
+        square_payment_url TEXT,
+        square_payment_id TEXT,
+        payment_status TEXT NOT NULL DEFAULT 'Pending',
+        order_status TEXT NOT NULL DEFAULT 'New',
+        confirmation_email_sent_at TEXT,
+        tickets_created_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        paid_at TEXT
+    )
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_ticket_orders_event
+    ON ticket_orders(event_name)
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_ticket_orders_email
+    ON ticket_orders(customer_email)
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_ticket_orders_payment_status
+    ON ticket_orders(payment_status)
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS event_expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         event_name TEXT NOT NULL,
@@ -3071,6 +3112,125 @@ def log_square_payment(cursor, payment_id, category, amount_cents, tip_cents=0):
         """,
         (payment_id, category, amount_cents, tip_cents),
     )
+
+
+def create_tickets_from_ticket_order(cursor, ticket_order, payment):
+    """
+    Convert one paid website ticket order into individual event_tickets rows.
+
+    This function is idempotent: reopening the confirmation page will not
+    duplicate tickets that were already created for the Square payment.
+    """
+    if not ticket_order or not payment:
+        return []
+
+    payment_id = str(payment.get("id") or "").strip()
+    event_name = str(ticket_order.get("event_name") or "").strip()
+    customer_name = str(
+        ticket_order.get("customer_name") or "Guest"
+    ).strip()
+    customer_email = str(
+        ticket_order.get("customer_email") or ""
+    ).strip().lower()
+
+    if not payment_id or not event_name or not customer_email:
+        return []
+
+    try:
+        selected_tickets = json.loads(
+            ticket_order.get("tickets_json") or "[]"
+        )
+    except (TypeError, ValueError):
+        selected_tickets = []
+
+    if not isinstance(selected_tickets, list) or not selected_tickets:
+        return []
+
+    created_ticket_ids = []
+    ticket_index = 0
+
+    for selected in selected_tickets:
+        if not isinstance(selected, dict):
+            continue
+
+        ticket_type = str(selected.get("name") or "").strip()
+
+        try:
+            quantity = int(selected.get("quantity") or 0)
+        except (TypeError, ValueError):
+            quantity = 0
+
+        try:
+            unit_price_cents = int(
+                selected.get("unit_price_cents") or 0
+            )
+        except (TypeError, ValueError):
+            unit_price_cents = 0
+
+        if not ticket_type or quantity < 1:
+            continue
+
+        for _ in range(quantity):
+            ticket_id = generate_ticket(payment_id, ticket_index)
+            payment_reference = f"{payment_id}:{ticket_index}"
+            ticket_index += 1
+
+            cursor.execute(
+                """
+                SELECT ticket_id
+                FROM event_tickets
+                WHERE ticket_id = ?
+                   OR payment_id = ?
+                LIMIT 1
+                """,
+                (ticket_id, payment_reference),
+            )
+
+            existing = cursor.fetchone()
+
+            if existing:
+                continue
+
+            checkin_url = f"{BASE_URL}/checkin/{ticket_id}"
+            qr_url = f"{BASE_URL}/qr/{ticket_id}"
+
+            cursor.execute(
+                """
+                INSERT INTO event_tickets (
+                    name,
+                    email,
+                    ticket_type,
+                    amount_cents,
+                    ticket_id,
+                    status,
+                    payment_id,
+                    checkin_url,
+                    qr_url,
+                    event_name,
+                    checked_in,
+                    checked_in_count
+                )
+                VALUES (
+                    ?, ?, ?, ?, ?, 'not_checked_in',
+                    ?, ?, ?, ?, 0, 0
+                )
+                """,
+                (
+                    customer_name,
+                    customer_email,
+                    ticket_type,
+                    unit_price_cents,
+                    ticket_id,
+                    payment_reference,
+                    checkin_url,
+                    qr_url,
+                    event_name,
+                ),
+            )
+
+            created_ticket_ids.append(ticket_id)
+
+    return created_ticket_ids
 
 
 def apply_ticket_sale_from_square(cursor, payment):
@@ -7602,6 +7762,725 @@ def buy_ticket():
 
 from urllib.parse import unquote
 
+def build_event_ticket_catalog(event):
+    """
+    Build the server-authoritative ticket catalog for an event.
+
+    Prices and capacity come from the existing event configuration, while
+    current sold totals prefer ticket_types and fall back to event_tickets.
+    """
+    if not event:
+        return []
+
+    canonical_tickets = [
+        {
+            "key": "early",
+            "name": "Early Bird",
+            "display_name": "Early Bird",
+            "description": (
+                "Early-access admission to the event while this ticket level "
+                "remains available."
+            ),
+        },
+        {
+            "key": "ga",
+            "name": "General Admission",
+            "display_name": "General Admission",
+            "description": (
+                "General admission access to the full event experience."
+            ),
+        },
+        {
+            "key": "vip",
+            "name": "VIP Section",
+            "display_name": "VIP Section",
+            "description": (
+                "Reserved VIP section for up to six guests."
+            ),
+        },
+        {
+            "key": "booth",
+            "name": "DJ VIP Section",
+            "display_name": "DJ VIP Section",
+            "description": (
+                "Reserved section behind the DJ for up to six guests."
+            ),
+        },
+    ]
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    catalog = []
+
+    try:
+        for ticket in canonical_tickets:
+            config = (
+                (event.get("tickets") or {}).get(ticket["key"], {})
+                or {}
+            )
+
+            price_cents = int(
+                round(float(config.get("price", 0) or 0) * 100)
+            )
+            capacity = int(config.get("size", 0) or 0)
+            sold = 0
+
+            cursor.execute(
+                """
+                SELECT
+                    COALESCE(max_quantity, 0),
+                    COALESCE(price, 0)
+                FROM ticket_types
+                WHERE event_name = ?
+                  AND ticket_name = ?
+                LIMIT 1
+                """,
+                (event["name"], ticket["name"]),
+            )
+            inventory_row = cursor.fetchone()
+
+            if inventory_row:
+                capacity = int(inventory_row[0] or capacity or 0)
+
+                database_price = float(inventory_row[1] or 0)
+                if database_price > 0:
+                    price_cents = int(round(database_price * 100))
+
+            cursor.execute(
+                """
+                SELECT COUNT(*)
+                FROM event_tickets
+                WHERE ticket_type = ?
+                  AND COALESCE(event_name, '') = ?
+                  AND UPPER(COALESCE(payment_id, ''))
+                      NOT LIKE 'FREE_TEST_%'
+                  AND UPPER(COALESCE(payment_id, ''))
+                      NOT LIKE 'TEST_%'
+                """,
+                (ticket["name"], event["name"]),
+            )
+            sold = int(cursor.fetchone()[0] or 0)
+
+            remaining = max(0, capacity - sold)
+
+            catalog.append({
+                **ticket,
+                "price_cents": price_cents,
+                "price": round(price_cents / 100, 2),
+                "capacity": capacity,
+                "sold": sold,
+                "remaining": remaining,
+                "sold_out": capacity > 0 and remaining <= 0,
+                "almost_gone": 0 < remaining <= 5,
+                "max_per_order": min(10, remaining) if remaining else 0,
+            })
+    finally:
+        conn.close()
+
+    return catalog
+
+
+@app.route("/tickets/order-complete")
+def ticket_order_complete():
+    order_number = str(
+        request.args.get("order_number") or ""
+    ).strip()
+
+    ticket_order = None
+    selected_tickets = []
+    created_tickets = []
+    payment_confirmed = False
+
+    if order_number:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM ticket_orders
+            WHERE order_number = ?
+            LIMIT 1
+            """,
+            (order_number,),
+        )
+
+        row = cursor.fetchone()
+
+        if row:
+            ticket_order = dict(row)
+
+            try:
+                selected_tickets = json.loads(
+                    ticket_order.get("tickets_json") or "[]"
+                )
+            except (TypeError, ValueError):
+                selected_tickets = []
+
+            square_order_id = str(
+                ticket_order.get("square_order_id") or ""
+            ).strip()
+
+            if square_order_id:
+                square_order = square_retrieve_order(
+                    square_order_id
+                ) or {}
+
+                tenders = square_order.get("tenders") or []
+                payment_id = ""
+
+                for tender in tenders:
+                    candidate = str(
+                        tender.get("payment_id") or ""
+                    ).strip()
+
+                    if candidate:
+                        payment_id = candidate
+                        break
+
+                if payment_id:
+                    payment = square_retrieve_payment(payment_id) or {}
+                    square_payment_status = str(
+                        payment.get("status") or ""
+                    ).upper()
+
+                    if square_payment_status == "COMPLETED":
+                        payment_confirmed = True
+
+                        cursor.execute(
+                            """
+                            UPDATE ticket_orders
+                            SET
+                                square_payment_id = ?,
+                                payment_status = 'Paid',
+                                order_status = 'Confirmed',
+                                paid_at = COALESCE(
+                                    paid_at,
+                                    CURRENT_TIMESTAMP
+                                )
+                            WHERE order_number = ?
+                            """,
+                            (payment_id, order_number),
+                        )
+
+                        ticket_order["square_payment_id"] = payment_id
+                        ticket_order["payment_status"] = "Paid"
+                        ticket_order["order_status"] = "Confirmed"
+
+                        created_ticket_ids = (
+                            create_tickets_from_ticket_order(
+                                cursor,
+                                ticket_order,
+                                payment,
+                            )
+                        )
+
+                        cursor.execute(
+                            """
+                            SELECT
+                                ticket_id,
+                                ticket_type,
+                                qr_url,
+                                checkin_url
+                            FROM event_tickets
+                            WHERE payment_id = ?
+                               OR payment_id LIKE ?
+                            ORDER BY id
+                            """,
+                            (payment_id, f"{payment_id}:%"),
+                        )
+
+                        created_tickets = [
+                            {
+                                "ticket_id": ticket_row[0],
+                                "ticket_type": ticket_row[1],
+                                "qr_url": ticket_row[2],
+                                "checkin_url": ticket_row[3],
+                            }
+                            for ticket_row in cursor.fetchall()
+                        ]
+
+                        if created_tickets:
+                            cursor.execute(
+                                """
+                                UPDATE ticket_orders
+                                SET tickets_created_at = COALESCE(
+                                    tickets_created_at,
+                                    CURRENT_TIMESTAMP
+                                )
+                                WHERE order_number = ?
+                                """,
+                                (order_number,),
+                            )
+
+                        conn.commit()
+
+                        if not ticket_order.get(
+                            "confirmation_email_sent_at"
+                        ):
+                            email_sent = send_tickets_email_bundle(
+                                cursor,
+                                payment_id,
+                                ticket_order.get("customer_email"),
+                                ticket_order.get("event_name")
+                                or "The Jukebox Lounge NC",
+                            )
+
+                            if email_sent:
+                                cursor.execute(
+                                    """
+                                    UPDATE ticket_orders
+                                    SET confirmation_email_sent_at =
+                                        CURRENT_TIMESTAMP
+                                    WHERE order_number = ?
+                                      AND confirmation_email_sent_at IS NULL
+                                    """,
+                                    (order_number,),
+                                )
+                                conn.commit()
+
+                                ticket_order[
+                                    "confirmation_email_sent_at"
+                                ] = datetime.now().isoformat()
+
+                        if created_ticket_ids:
+                            print(
+                                "[ticket-order-complete] created tickets:",
+                                created_ticket_ids,
+                            )
+
+        conn.close()
+
+    return render_template(
+        "ticket_order_complete.html",
+        order=ticket_order,
+        selected_tickets=selected_tickets,
+        created_tickets=created_tickets,
+        payment_confirmed=payment_confirmed,
+    )
+
+
+@app.route("/tickets/checkout/<path:event_name>", methods=["POST"])
+def ticket_checkout_create(event_name):
+    payload = request.get_json(silent=True) or {}
+
+    decoded_event_name = urllib.parse.unquote(event_name).strip().lower()
+
+    event = next(
+        (
+            item
+            for item in events_data
+            if item["name"].strip().lower() == decoded_event_name
+        ),
+        None,
+    )
+
+    if not event:
+        return {
+            "success": False,
+            "error": "This event could not be found.",
+        }, 404
+
+    if str(event.get("status") or "").lower() != "upcoming":
+        return {
+            "success": False,
+            "error": "Online ticket sales are not available for this event.",
+        }, 400
+
+    if event.get("tickets_coming_soon"):
+        return {
+            "success": False,
+            "error": "Tickets for this event are not available yet.",
+        }, 400
+
+    customer_name = str(payload.get("customer_name") or "").strip()
+    customer_email = str(
+        payload.get("customer_email") or ""
+    ).strip().lower()
+    customer_phone = str(payload.get("customer_phone") or "").strip()
+    requested_tickets = payload.get("tickets") or []
+
+    if not customer_name or not customer_email or not customer_phone:
+        return {
+            "success": False,
+            "error": "Please complete your name, email, and phone number.",
+        }, 400
+
+    phone_digits = re.sub(r"\D", "", customer_phone)
+
+    if len(phone_digits) == 10:
+        square_customer_phone = f"+1{phone_digits}"
+    elif len(phone_digits) == 11 and phone_digits.startswith("1"):
+        square_customer_phone = f"+{phone_digits}"
+    elif customer_phone.startswith("+") and 10 <= len(phone_digits) <= 15:
+        square_customer_phone = f"+{phone_digits}"
+    else:
+        return {
+            "success": False,
+            "error": "Please enter a valid 10-digit phone number.",
+        }, 400
+
+    if not isinstance(requested_tickets, list):
+        return {
+            "success": False,
+            "error": "The selected tickets are invalid.",
+        }, 400
+
+    server_catalog = build_event_ticket_catalog(event)
+    catalog_by_key = {
+        ticket["key"]: ticket
+        for ticket in server_catalog
+    }
+
+    validated_tickets = []
+    subtotal_cents = 0
+    total_ticket_quantity = 0
+
+    for requested in requested_tickets:
+        if not isinstance(requested, dict):
+            continue
+
+        ticket_key = str(requested.get("key") or "").strip()
+
+        try:
+            quantity = int(requested.get("quantity") or 0)
+        except (TypeError, ValueError):
+            quantity = 0
+
+        if quantity <= 0:
+            continue
+
+        ticket = catalog_by_key.get(ticket_key)
+
+        if not ticket:
+            return {
+                "success": False,
+                "error": "One of the selected ticket types is unavailable.",
+            }, 400
+
+        if ticket["sold_out"] or ticket["remaining"] < quantity:
+            return {
+                "success": False,
+                "error": (
+                    f'Only {ticket["remaining"]} '
+                    f'{ticket["display_name"]} ticket(s) remain.'
+                ),
+            }, 409
+
+        if quantity > ticket["max_per_order"]:
+            return {
+                "success": False,
+                "error": (
+                    f'You may select up to {ticket["max_per_order"]} '
+                    f'{ticket["display_name"]} ticket(s) in one order.'
+                ),
+            }, 400
+
+        line_total_cents = ticket["price_cents"] * quantity
+        subtotal_cents += line_total_cents
+        total_ticket_quantity += quantity
+
+        validated_tickets.append({
+            "key": ticket["key"],
+            "name": ticket["name"],
+            "display_name": ticket["display_name"],
+            "quantity": quantity,
+            "unit_price_cents": ticket["price_cents"],
+            "line_total_cents": line_total_cents,
+        })
+
+    if not validated_tickets or total_ticket_quantity < 1:
+        return {
+            "success": False,
+            "error": "Please select at least one ticket.",
+        }, 400
+
+    if total_ticket_quantity > 10:
+        return {
+            "success": False,
+            "error": "A maximum of 10 tickets may be purchased per order.",
+        }, 400
+
+    if not SQUARE_ACCESS_TOKEN or not SQUARE_LOCATION_ID:
+        return {
+            "success": False,
+            "error": "Square checkout is not configured.",
+        }, 503
+
+    order_number = (
+        f"JBL-TICKET-{datetime.now().strftime('%Y%m%d')}-"
+        f"{secrets.token_hex(3).upper()}"
+    )
+
+    tickets_json = json.dumps(
+        validated_tickets,
+        separators=(",", ":"),
+    )
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute(
+            """
+            INSERT INTO ticket_orders (
+                order_number,
+                event_name,
+                customer_name,
+                customer_email,
+                customer_phone,
+                tickets_json,
+                subtotal_cents,
+                tax_cents,
+                total_cents,
+                total_ticket_quantity,
+                payment_status,
+                order_status
+            )
+            VALUES (
+                ?, ?, ?, ?, ?, ?, ?, 0, ?, ?,
+                'Pending', 'New'
+            )
+            """,
+            (
+                order_number,
+                event["name"],
+                customer_name,
+                customer_email,
+                customer_phone,
+                tickets_json,
+                subtotal_cents,
+                subtotal_cents,
+                total_ticket_quantity,
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        conn.close()
+        traceback.print_exc()
+
+        return {
+            "success": False,
+            "error": "We could not save your ticket order. Please try again.",
+        }, 500
+
+    square_line_items = []
+
+    for ticket in validated_tickets:
+        square_line_items.append({
+            "name": (
+                f'{event["name"]} — '
+                f'{ticket["display_name"]}'
+            ),
+            "variation_name": ticket["display_name"],
+            "quantity": str(ticket["quantity"]),
+            "base_price_money": {
+                "amount": ticket["unit_price_cents"],
+                "currency": "USD",
+            },
+            "note": (
+                f'Event: {event["name"]}; '
+                f'Ticket: {ticket["name"]}; '
+                f'Order: {order_number}'
+            ),
+        })
+
+    square_payload = {
+        "idempotency_key": secrets.token_hex(16),
+        "description": (
+            f'Jukebox Lounge ticket order {order_number}'
+        ),
+        "order": {
+            "location_id": SQUARE_LOCATION_ID,
+            "reference_id": order_number,
+            "line_items": square_line_items,
+        },
+        "checkout_options": {
+            "allow_tipping": False,
+            "redirect_url": (
+                (
+                    request.url_root.rstrip("/")
+                    if SQUARE_ENV == "sandbox"
+                    else BASE_URL
+                )
+                + "/tickets/order-complete"
+                + f"?order_number={urllib.parse.quote(order_number)}"
+            ),
+        },
+        "pre_populated_data": {
+            "buyer_email": customer_email,
+            "buyer_phone_number": square_customer_phone,
+        },
+        "payment_note": (
+            f'Ticket Order {order_number}; '
+            f'Event: {event["name"]}'
+        ),
+    }
+
+    endpoint = (
+        f"{square_base_url()}/v2/online-checkout/payment-links"
+    )
+
+    try:
+        square_response = requests.post(
+            endpoint,
+            headers={
+                "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+                "Square-Version": "2026-07-15",
+                "Content-Type": "application/json",
+            },
+            json=square_payload,
+            timeout=25,
+        )
+    except requests.RequestException:
+        cursor.execute(
+            """
+            UPDATE ticket_orders
+            SET payment_status = 'Checkout Error'
+            WHERE order_number = ?
+            """,
+            (order_number,),
+        )
+        conn.commit()
+        conn.close()
+        traceback.print_exc()
+
+        return {
+            "success": False,
+            "error": "Square could not be reached. Please try again.",
+        }, 502
+
+    try:
+        square_data = square_response.json()
+    except ValueError:
+        square_data = {}
+
+    if not square_response.ok:
+        cursor.execute(
+            """
+            UPDATE ticket_orders
+            SET payment_status = 'Checkout Error'
+            WHERE order_number = ?
+            """,
+            (order_number,),
+        )
+        conn.commit()
+        conn.close()
+
+        print(
+            "[ticket-square-error]",
+            square_response.status_code,
+            square_data,
+        )
+
+        errors = square_data.get("errors") or []
+        error_message = (
+            errors[0].get("detail")
+            if errors and isinstance(errors[0], dict)
+            else "Square could not create the ticket payment page."
+        )
+
+        return {
+            "success": False,
+            "error": error_message,
+        }, 502
+
+    payment_link = square_data.get("payment_link") or {}
+
+    checkout_url = (
+        payment_link.get("long_url")
+        or payment_link.get("url")
+        or ""
+    )
+
+    square_order_id = str(payment_link.get("order_id") or "")
+    square_payment_link_id = str(payment_link.get("id") or "")
+
+    related_orders = (
+        (square_data.get("related_resources") or {}).get("orders")
+        or []
+    )
+    square_order = related_orders[0] if related_orders else {}
+
+    tax_cents = int(
+        ((square_order.get("total_tax_money") or {}).get("amount"))
+        or 0
+    )
+
+    total_cents = int(
+        ((square_order.get("total_money") or {}).get("amount"))
+        or subtotal_cents + tax_cents
+    )
+
+    cursor.execute(
+        """
+        UPDATE ticket_orders
+        SET
+            square_order_id = ?,
+            square_payment_link_id = ?,
+            square_payment_url = ?,
+            tax_cents = ?,
+            total_cents = ?,
+            payment_status = 'Awaiting Payment'
+        WHERE order_number = ?
+        """,
+        (
+            square_order_id,
+            square_payment_link_id,
+            checkout_url,
+            tax_cents,
+            total_cents,
+            order_number,
+        ),
+    )
+    conn.commit()
+    conn.close()
+
+    if not checkout_url:
+        return {
+            "success": False,
+            "error": "Square did not return a checkout URL.",
+        }, 502
+
+    return {
+        "success": True,
+        "checkout_url": checkout_url,
+        "order_number": order_number,
+    }
+
+
+@app.route("/tickets/checkout/<path:event_name>", methods=["GET"])
+def ticket_checkout_page(event_name):
+    decoded_event_name = urllib.parse.unquote(event_name).strip().lower()
+
+    event = next(
+        (
+            item
+            for item in events_data
+            if item["name"].strip().lower() == decoded_event_name
+        ),
+        None,
+    )
+
+    if not event:
+        return redirect("/events")
+
+    if str(event.get("status") or "").lower() != "upcoming":
+        return redirect(
+            url_for("event_detail", event_name=event["name"])
+        )
+
+    ticket_catalog = build_event_ticket_catalog(event)
+
+    return render_template(
+        "tickets_checkout.html",
+        event=event,
+        ticket_catalog=ticket_catalog,
+    )
+
+
 @app.route("/event/<path:event_name>")
 def event_detail(event_name):
     from urllib.parse import unquote
@@ -7642,10 +8521,9 @@ def event_detail(event_name):
         quantity = int(cfg.get("size", 0) or 0)
         sold = 0
 
-        # Prefer canonical inventory counters from ticket_types.
         cursor.execute(
             """
-            SELECT COALESCE(sold, 0), COALESCE(max_quantity, 0)
+            SELECT COALESCE(max_quantity, 0)
             FROM ticket_types
             WHERE event_name = ? AND ticket_name = ?
             LIMIT 1
@@ -7653,25 +8531,24 @@ def event_detail(event_name):
             (event["name"], ticket_name),
         )
         inventory_row = cursor.fetchone()
+
         if inventory_row:
-            sold = int(inventory_row[0] or 0)
-            quantity = int(inventory_row[1] or quantity or 0)
-        else:
-            # Fallback for legacy rows if inventory table is missing a match.
-            cursor.execute(
-                """
-                SELECT COUNT(*)
-                FROM event_tickets
-                WHERE ticket_type = ?
-                  AND COALESCE(event_name, 'Battle of the DJs') = ?
-                  AND (payment_id IS NULL OR (
-                        UPPER(payment_id) NOT LIKE 'FREE_TEST_%'
-                    AND UPPER(payment_id) NOT LIKE 'TEST_%'
-                  ))
-                """,
-                (ticket_name, event["name"]),
-            )
-            sold = int(cursor.fetchone()[0] or 0)
+            quantity = int(inventory_row[0] or quantity or 0)
+
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM event_tickets
+            WHERE ticket_type = ?
+              AND COALESCE(event_name, '') = ?
+              AND UPPER(COALESCE(payment_id, ''))
+                  NOT LIKE 'FREE_TEST_%'
+              AND UPPER(COALESCE(payment_id, ''))
+                  NOT LIKE 'TEST_%'
+            """,
+            (ticket_name, event["name"]),
+        )
+        sold = int(cursor.fetchone()[0] or 0)
 
         remaining = max(0, quantity - sold)
         if event["name"] == "Battle of the DJs" and ticket_name == "Early Bird":

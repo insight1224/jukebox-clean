@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+
+{% block title %}Ticket Confirmation | The Jukebox Lounge NC{% endblock %}
+
+{% block content %}
+<style>
+  .ticket-complete-page {
+    min-height: 100vh;
+    padding: 120px 24px 80px;
+    background:
+      radial-gradient(circle at top, rgba(217, 182, 87, 0.14), transparent 42%),
+      #080808;
+  }
+
+  .ticket-complete-shell {
+    width: min(960px, 100%);
+    margin: 0 auto;
+  }
+
+  .ticket-complete-card {
+    padding: clamp(26px, 5vw, 48px);
+    border: 1px solid rgba(217, 182, 87, 0.3);
+    border-radius: 26px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .ticket-complete-eyebrow {
+    margin: 0 0 10px;
+    color: #d9b657;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .ticket-complete-card h1 {
+    margin: 0 0 15px;
+    font-size: clamp(2.2rem, 6vw, 4.2rem);
+    line-height: 1;
+  }
+
+  .ticket-complete-intro {
+    max-width: 720px;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.7;
+  }
+
+  .ticket-order-details {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+    margin-top: 30px;
+  }
+
+  .ticket-order-detail {
+    padding: 17px;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+  }
+
+  .ticket-order-detail span {
+    display: block;
+    margin-bottom: 5px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .ticket-order-detail strong {
+    color: #fff;
+  }
+
+  .ticket-confirmed-list {
+    display: grid;
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .ticket-confirmed-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 18px;
+    align-items: center;
+    padding: 20px;
+    border: 1px solid rgba(217, 182, 87, 0.22);
+    border-radius: 16px;
+    background: rgba(217, 182, 87, 0.06);
+  }
+
+  .ticket-confirmed-item h3 {
+    margin: 0 0 6px;
+  }
+
+  .ticket-confirmed-item p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  .ticket-confirmed-quantity {
+    color: #f0d98f;
+    font-size: 1.1rem;
+    font-weight: 900;
+  }
+
+  .ticket-complete-note {
+    margin-top: 28px;
+    padding: 19px;
+    border-left: 3px solid #d9b657;
+    background: rgba(217, 182, 87, 0.07);
+    color: rgba(255, 255, 255, 0.76);
+    line-height: 1.65;
+  }
+
+  .ticket-complete-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  .ticket-complete-actions a {
+    display: inline-flex;
+    min-height: 48px;
+    padding: 0 20px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 900;
+  }
+
+  .ticket-complete-actions .primary {
+    background: linear-gradient(135deg, #f0d98f, #c79c35);
+    color: #090909;
+  }
+
+  .ticket-complete-actions .secondary {
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+  }
+
+  @media (max-width: 620px) {
+    .ticket-complete-page {
+      padding: 95px 16px 60px;
+    }
+
+    .ticket-order-details {
+      grid-template-columns: 1fr;
+    }
+
+    .ticket-confirmed-item {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<section class="ticket-complete-page">
+  <div class="ticket-complete-shell">
+    <div class="ticket-complete-card">
+      {% if order and payment_confirmed %}
+        <p class="ticket-complete-eyebrow">Payment Confirmed</p>
+        <h1>Your Tickets Are Ready</h1>
+
+        <p class="ticket-complete-intro">
+          Thank you, {{ order.customer_name }}. Your payment was confirmed
+          and your individual QR tickets have been emailed to
+          <strong>{{ order.customer_email }}</strong>.
+        </p>
+
+        <div class="ticket-order-details">
+          <div class="ticket-order-detail">
+            <span>Order Number</span>
+            <strong>{{ order.order_number }}</strong>
+          </div>
+
+          <div class="ticket-order-detail">
+            <span>Event</span>
+            <strong>{{ order.event_name }}</strong>
+          </div>
+
+          <div class="ticket-order-detail">
+            <span>Tickets</span>
+            <strong>{{ order.total_ticket_quantity }}</strong>
+          </div>
+
+          <div class="ticket-order-detail">
+            <span>Total Paid</span>
+            <strong>
+              ${{ "%.2f"|format((order.total_cents or 0) / 100) }}
+            </strong>
+          </div>
+        </div>
+
+        <div class="ticket-confirmed-list">
+          {% for ticket in selected_tickets %}
+          <article class="ticket-confirmed-item">
+            <div>
+              <h3>{{ ticket.display_name or ticket.name }}</h3>
+              <p>
+                ${{ "%.2f"|format((ticket.unit_price_cents or 0) / 100) }}
+                per ticket
+              </p>
+            </div>
+
+            <div class="ticket-confirmed-quantity">
+              Qty {{ ticket.quantity }}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+
+        <div class="ticket-complete-note">
+          Keep the QR-ticket email available on your phone for entry.
+          Each QR code is unique and can only be checked in according to
+          its ticket allowance.
+        </div>
+
+        <div class="ticket-complete-actions">
+          <a class="primary" href="/events">View Events</a>
+          <a class="secondary" href="/">Return Home</a>
+        </div>
+      {% elif order %}
+        <p class="ticket-complete-eyebrow">Payment Processing</p>
+        <h1>We’re Confirming Your Payment</h1>
+
+        <p class="ticket-complete-intro">
+          Your order was found, but Square has not reported the payment as
+          completed yet. Please wait a moment and refresh this page.
+        </p>
+
+        <div class="ticket-complete-actions">
+          <a class="primary" href="">
+            Check Payment Again
+          </a>
+          <a class="secondary" href="/events">View Events</a>
+        </div>
+      {% else %}
+        <p class="ticket-complete-eyebrow">Order Not Found</p>
+        <h1>We Couldn’t Locate That Order</h1>
+
+        <p class="ticket-complete-intro">
+          Please check the confirmation link or contact The Jukebox Lounge NC
+          for assistance.
+        </p>
+
+        <div class="ticket-complete-actions">
+          <a class="primary" href="/events">Return to Events</a>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if order and payment_confirmed %}
+<script>
+  sessionStorage.removeItem("jukeboxPendingTicketOrder");
+</script>
+{% endif %}
+{% endblock %}

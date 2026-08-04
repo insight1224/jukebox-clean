@@ -1,38 +1,565 @@
 {% extends "base.html" %}
+
 {% block title %}Ticket Checkout | The Jukebox Lounge NC{% endblock %}
 
 {% block content %}
-<section class="section">
-  <div class="container">
-    <h1 class="section-title">Ticket Checkout</h1>
-    <article class="card" style="max-width:720px;">
-      <h3>Choose Ticket Type</h3>
-      <p>Secure checkout is hosted by Square.</p>
-      <select id="ticketCheckoutSelect">
-        <option value="">Choose your ticket</option>
-        {% for key, item in payment_links.items() %}
-        <option value="{{ item.url }}">{{ item.label }} — ${{ "%.2f"|format(item.amount_cents / 100) }}</option>
-        {% endfor %}
-      </select>
-      <p class="secure-note">Checkout opens automatically when you select a ticket.</p>
-    </article>
+<style>
+  .ticket-checkout-page {
+    min-height: 100vh;
+    padding: 155px 24px 80px;
+    background:
+      radial-gradient(circle at top, rgba(217, 182, 87, 0.13), transparent 42%),
+      #080808;
+  }
+
+  .ticket-checkout-shell {
+    width: min(1160px, 100%);
+    margin: 0 auto;
+  }
+
+  .ticket-checkout-heading {
+    margin-bottom: 34px;
+  }
+
+  .ticket-checkout-heading .eyebrow {
+    margin: 0 0 10px;
+    color: #d9b657;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .ticket-checkout-heading h1 {
+    margin: 0 0 12px;
+    font-size: clamp(2.2rem, 5vw, 3.8rem);
+    line-height: 1;
+  }
+
+  .ticket-checkout-heading p {
+    max-width: 760px;
+    margin: 0;
+    color: rgba(255, 255, 255, 0.68);
+    line-height: 1.65;
+  }
+
+  .ticket-checkout-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 0.72fr);
+    gap: 30px;
+    align-items: start;
+  }
+
+  .ticket-checkout-card {
+    padding: clamp(22px, 4vw, 34px);
+    border: 1px solid rgba(217, 182, 87, 0.25);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.045);
+  }
+
+  .ticket-checkout-card h2 {
+    margin: 0 0 22px;
+    font-size: 1.45rem;
+  }
+
+  .ticket-event-summary {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 22px;
+    margin-bottom: 28px;
+    padding-bottom: 26px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.11);
+  }
+
+  .ticket-event-summary img {
+    width: 190px;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+    border-radius: 16px;
+  }
+
+  .ticket-event-summary h2 {
+    margin-bottom: 12px;
+  }
+
+  .ticket-event-meta {
+    display: grid;
+    gap: 7px;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.45;
+  }
+
+  .ticket-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .ticket-form-field {
+    display: grid;
+    gap: 8px;
+  }
+
+  .ticket-form-field.full {
+    grid-column: 1 / -1;
+  }
+
+  .ticket-form-field label {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.88rem;
+    font-weight: 800;
+  }
+
+  .ticket-form-field input {
+    width: 100%;
+    min-height: 50px;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.045);
+    color: #fff;
+    font: inherit;
+  }
+
+  .ticket-form-field input:focus {
+    outline: 2px solid rgba(217, 182, 87, 0.35);
+    border-color: #d9b657;
+  }
+
+  .ticket-order-summary {
+    position: sticky;
+    top: 105px;
+  }
+
+  .ticket-summary-list {
+    display: grid;
+    gap: 14px;
+  }
+
+  .ticket-summary-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 82px;
+    gap: 16px;
+    align-items: center;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .ticket-summary-row h3 {
+    margin: 0 0 5px;
+    font-size: 0.98rem;
+  }
+
+  .ticket-summary-row p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.82rem;
+  }
+
+  .ticket-quantity-control {
+    display: grid;
+    grid-template-columns: 38px 46px 38px;
+    align-items: center;
+    justify-content: end;
+    gap: 6px;
+  }
+
+  .ticket-quantity-control button,
+  .ticket-quantity-control input {
+    min-height: 42px;
+    box-sizing: border-box;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #fff;
+    font: inherit;
+  }
+
+  .ticket-quantity-control button {
+    cursor: pointer;
+    font-size: 1.15rem;
+    font-weight: 900;
+  }
+
+  .ticket-quantity-control button:hover {
+    border-color: #d9b657;
+    background: rgba(217, 182, 87, 0.12);
+  }
+
+  .ticket-quantity-control input {
+    width: 46px;
+    padding: 8px 4px;
+    text-align: center;
+    appearance: textfield;
+  }
+
+  .ticket-quantity-control input::-webkit-inner-spin-button,
+  .ticket-quantity-control input::-webkit-outer-spin-button {
+    appearance: none;
+    margin: 0;
+  }
+
+  .ticket-sold-out {
+    color: #d9b657;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .ticket-summary-total {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.13);
+    font-size: 1.16rem;
+    font-weight: 900;
+  }
+
+  .ticket-payment-button {
+    width: 100%;
+    min-height: 55px;
+    margin-top: 24px;
+    border: 0;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #f0d98f, #c79c35);
+    color: #090909;
+    font: inherit;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .ticket-payment-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .ticket-checkout-note {
+    margin: 13px 0 0;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    font-size: 0.78rem;
+    line-height: 1.5;
+  }
+
+  @media (max-width: 850px) {
+    .ticket-checkout-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .ticket-order-summary {
+      position: static;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .ticket-checkout-page {
+      padding: 120px 16px 60px;
+    }
+
+    .ticket-form-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .ticket-event-summary {
+      grid-template-columns: 100px minmax(0, 1fr);
+    }
+
+    .ticket-event-summary img {
+      width: 100px;
+    }
+  }
+</style>
+
+<section class="ticket-checkout-page">
+  <div class="ticket-checkout-shell">
+    <header class="ticket-checkout-heading">
+      <p class="eyebrow">Secure Ticket Checkout</p>
+      <h1>{{ event.name }}</h1>
+      <p>
+        Select your tickets, enter your contact information, and continue
+        to Square to complete secure payment.
+      </p>
+    </header>
+
+    <div class="ticket-checkout-layout">
+      <form class="ticket-checkout-card" id="ticketCheckoutForm">
+        <div class="ticket-event-summary">
+          <img src="{{ event.flyer }}" alt="{{ event.name }} event flyer">
+
+          <div>
+            <h2>Event Details</h2>
+
+            <div class="ticket-event-meta">
+              <span><strong>Date:</strong> {{ event.event_datetime }}</span>
+              <span><strong>Time:</strong> {{ event.time }}</span>
+              <span><strong>Doors:</strong> {{ event.doors }}</span>
+              <span><strong>Location:</strong> {{ event.location }}</span>
+            </div>
+          </div>
+        </div>
+
+        <h2>Customer Information</h2>
+
+        <div class="ticket-form-grid">
+          <div class="ticket-form-field full">
+            <label for="ticketCustomerName">Full name</label>
+            <input
+              id="ticketCustomerName"
+              name="customer_name"
+              type="text"
+              required
+            >
+          </div>
+
+          <div class="ticket-form-field">
+            <label for="ticketCustomerEmail">Email address</label>
+            <input
+              id="ticketCustomerEmail"
+              name="customer_email"
+              type="email"
+              required
+            >
+          </div>
+
+          <div class="ticket-form-field">
+            <label for="ticketCustomerPhone">Phone number</label>
+            <input
+              id="ticketCustomerPhone"
+              name="customer_phone"
+              type="tel"
+              required
+            >
+          </div>
+        </div>
+      </form>
+
+      <aside class="ticket-checkout-card ticket-order-summary">
+        <h2>Select Tickets</h2>
+
+        <div class="ticket-summary-list">
+          {% for ticket in ticket_catalog %}
+          <article class="ticket-summary-row">
+            <div>
+              <h3>{{ ticket.display_name }}</h3>
+              <p>${{ "%.2f"|format(ticket.price) }}</p>
+
+              {% if ticket.almost_gone %}
+              <p class="ticket-sold-out">
+                Only {{ ticket.remaining }} remaining
+              </p>
+              {% endif %}
+            </div>
+
+            {% if ticket.sold_out or ticket.max_per_order < 1 %}
+            <span class="ticket-sold-out">Sold Out</span>
+            {% else %}
+            <div class="ticket-quantity-control">
+              <button
+                type="button"
+                class="ticket-quantity-minus"
+                aria-label="Remove one {{ ticket.display_name }}"
+              >
+                −
+              </button>
+
+              <input
+                class="ticket-quantity"
+                type="number"
+                min="0"
+                max="{{ ticket.max_per_order }}"
+                value="0"
+                data-ticket-key="{{ ticket.key }}"
+                data-ticket-name="{{ ticket.name }}"
+                data-ticket-price-cents="{{ ticket.price_cents }}"
+                aria-label="{{ ticket.display_name }} quantity"
+              >
+
+              <button
+                type="button"
+                class="ticket-quantity-plus"
+                aria-label="Add one {{ ticket.display_name }}"
+              >
+                +
+              </button>
+            </div>
+            {% endif %}
+          </article>
+          {% endfor %}
+        </div>
+
+        <div class="ticket-summary-total">
+          <span>Current total</span>
+          <span id="ticketCheckoutTotal">$0.00</span>
+        </div>
+
+        <button
+          class="ticket-payment-button"
+          id="ticketPaymentButton"
+          type="submit"
+          form="ticketCheckoutForm"
+          disabled
+        >
+          Continue to Secure Payment
+        </button>
+
+        <p class="ticket-checkout-note">
+          All ticket sales are final. Your QR tickets will be emailed after
+          payment is confirmed.
+        </p>
+      </aside>
+    </div>
   </div>
 </section>
+
 <script>
-  (function () {
-    const select = document.getElementById("ticketCheckoutSelect");
-    if (!select) return;
-    const params = new URLSearchParams(window.location.search);
-    const initial = params.get("ticket_type");
-    if (initial) {
-      const option = Array.from(select.options).find((opt) => opt.value && opt.textContent.toLowerCase().includes(initial.replaceAll("_", " ")));
-      if (option) {
-        select.value = option.value;
-      }
+  (() => {
+    const quantityInputs = Array.from(
+      document.querySelectorAll(".ticket-quantity")
+    );
+
+    const totalElement = document.getElementById("ticketCheckoutTotal");
+    const paymentButton = document.getElementById("ticketPaymentButton");
+
+    function moneyFromCents(cents) {
+      return `$${(Number(cents) / 100).toFixed(2)}`;
     }
-    select.addEventListener("change", function () {
-      if (this.value) window.location.href = this.value;
+
+    function updateTicketTotal() {
+      const totalCents = quantityInputs.reduce((sum, input) => {
+        const quantity = Math.max(0, Number(input.value) || 0);
+        const priceCents = Number(input.dataset.ticketPriceCents) || 0;
+
+        return sum + quantity * priceCents;
+      }, 0);
+
+      totalElement.textContent = moneyFromCents(totalCents);
+      paymentButton.disabled = totalCents <= 0;
+    }
+
+    quantityInputs.forEach((input) => {
+      const control = input.closest(".ticket-quantity-control");
+      const minusButton = control.querySelector(".ticket-quantity-minus");
+      const plusButton = control.querySelector(".ticket-quantity-plus");
+
+      function clampQuantity(value) {
+        const min = Number(input.min) || 0;
+        const max = Number(input.max) || 10;
+
+        return Math.min(max, Math.max(min, Number(value) || 0));
+      }
+
+      minusButton.addEventListener("click", () => {
+        input.value = clampQuantity(Number(input.value) - 1);
+        updateTicketTotal();
+      });
+
+      plusButton.addEventListener("click", () => {
+        input.value = clampQuantity(Number(input.value) + 1);
+        updateTicketTotal();
+      });
+
+      input.addEventListener("input", () => {
+        input.value = clampQuantity(input.value);
+        updateTicketTotal();
+      });
+
+      input.addEventListener("change", () => {
+        input.value = clampQuantity(input.value);
+        updateTicketTotal();
+      });
     });
+
+    const form = document.getElementById("ticketCheckoutForm");
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!form.reportValidity()) {
+        return;
+      }
+
+      const tickets = quantityInputs
+        .map((input) => ({
+          key: input.dataset.ticketKey,
+          quantity: Math.max(0, Number(input.value) || 0)
+        }))
+        .filter((ticket) => ticket.quantity > 0);
+
+      if (!tickets.length) {
+        alert("Please select at least one ticket.");
+        return;
+      }
+
+      const totalQuantity = tickets.reduce(
+        (sum, ticket) => sum + ticket.quantity,
+        0
+      );
+
+      if (totalQuantity > 10) {
+        alert("A maximum of 10 tickets may be purchased per order.");
+        return;
+      }
+
+      const formData = new FormData(form);
+      const originalButtonText = paymentButton.textContent;
+
+      paymentButton.disabled = true;
+      paymentButton.textContent = "Creating Secure Checkout...";
+
+      const payload = {
+        customer_name: formData.get("customer_name"),
+        customer_email: formData.get("customer_email"),
+        customer_phone: formData.get("customer_phone"),
+        tickets: tickets
+      };
+
+      try {
+        const response = await fetch(
+          {{ url_for(
+            "ticket_checkout_create",
+            event_name=event.name
+          ) | tojson }},
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+          }
+        );
+
+        let result = {};
+
+        try {
+          result = await response.json();
+        } catch (error) {
+          result = {};
+        }
+
+        if (!response.ok || !result.success || !result.checkout_url) {
+          throw new Error(
+            result.error ||
+            "We could not create the payment page. Please try again."
+          );
+        }
+
+        sessionStorage.setItem(
+          "jukeboxPendingTicketOrder",
+          result.order_number || ""
+        );
+
+        window.location.href = result.checkout_url;
+      } catch (error) {
+        alert(error.message);
+        paymentButton.disabled = false;
+        paymentButton.textContent = originalButtonText;
+        updateTicketTotal();
+      }
+    });
+
+    updateTicketTotal();
   })();
 </script>
 {% endblock %}

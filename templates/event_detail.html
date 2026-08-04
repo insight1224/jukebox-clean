@@ -132,17 +132,27 @@
             {% elif t.sold_out %}
             <span class="btn disabled">Sold Out</span>
             {% else %}
-                {% if t.name == "Early Bird" %}
-                <a class="btn" href="{{ event.early_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
-                {% elif t.name == "General Admission" %}
-                <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
-                {% elif t.name == "VIP Section" %}
-                <a class="btn vip-btn" href="{{ event.vip_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
+                <a
+                    class="btn
+                        {% if t.name == 'VIP Section' %}vip-btn{% endif %}
+                        {% if t.name == 'DJ VIP Section' %}ultra-btn{% endif %}
+                    "
+                    href="{{ url_for(
+                        'ticket_checkout_page',
+                        event_name=event.name
+                    ) }}"
+                >
+                    Select Tickets
+                </a>
+
                 {% if t.remaining == 1 %}
-                <p class="vip-left-note">Only 1 VIP ticket left.</p>
-                {% endif %}
-                {% elif t.name == "DJ VIP Section" %}
-                <a class="btn ultra-btn" href="{{ event.booth_link }}" target="_blank" rel="noopener noreferrer">Buy Ticket</a>
+                <p class="vip-left-note">
+                    Only 1 {{ display_name_map.get(t.name, t.name) }} left.
+                </p>
+                {% elif t.almost_gone %}
+                <p class="vip-left-note">
+                    Only {{ t.remaining }} remaining.
+                </p>
                 {% endif %}
             {% endif %}
         </div>
