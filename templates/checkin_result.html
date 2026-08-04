@@ -32,6 +32,14 @@
 {% elif status == "already_checked_in" %}
   <div class="box orange">⚠️ Already Checked In</div>
 
+{% elif status == "refunded" %}
+  <div class="box red">
+    ❌ Ticket Refunded<br>
+    <span style="display:block;font-size:16px;margin-top:10px;">
+      Entry Not Allowed
+    </span>
+  </div>
+
 {% else %}
   <div class="box red">❌ Invalid Ticket</div>
 {% endif %}

@@ -801,6 +801,14 @@ def init_db():
     ensure_column("event_tickets", "checked_in", "INTEGER DEFAULT 0")
     ensure_column("event_tickets", "checked_in_count", "INTEGER DEFAULT 0")
 
+    # Refund tracking
+    ensure_column("event_tickets", "refund_status", "TEXT DEFAULT 'Not Refunded'")
+    ensure_column("event_tickets", "refunded_amount_cents", "INTEGER DEFAULT 0")
+    ensure_column("event_tickets", "refund_reason", "TEXT")
+    ensure_column("event_tickets", "square_refund_id", "TEXT")
+    ensure_column("event_tickets", "refund_requested_at", "TEXT")
+    ensure_column("event_tickets", "refunded_at", "TEXT")
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -855,6 +863,25 @@ def init_db():
         notes TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS message_replies (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lead_id INTEGER NOT NULL,
+        recipient_email TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        reply_body TEXT NOT NULL,
+        sent_by TEXT,
+        delivery_status TEXT DEFAULT 'Sent',
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (lead_id) REFERENCES leads(id)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_message_replies_lead
+    ON message_replies (lead_id, created_at)
     """)
 
     cursor.execute("""
@@ -4098,6 +4125,35 @@ def get_live_dashboard_data(include_past=False):
         WHERE COALESCE(amount_cents, 0) > 0
     """, default=0.0))
 
+    merch_revenue = float(one("""
+        SELECT COALESCE(SUM(total_cents), 0) / 100.0
+        FROM merch_orders
+        WHERE LOWER(TRIM(COALESCE(payment_status, ''))) = 'paid'
+    """, default=0.0))
+
+    cur.execute("""
+        SELECT cart_json
+        FROM merch_orders
+        WHERE LOWER(TRIM(COALESCE(payment_status, ''))) = 'paid'
+    """)
+
+    merch_shirts_sold = 0
+
+    for merch_row in cur.fetchall():
+        try:
+            merch_items = json.loads(merch_row["cart_json"] or "[]")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            merch_items = []
+
+        for merch_item in merch_items:
+            try:
+                merch_shirts_sold += max(
+                    int(merch_item.get("quantity") or 0),
+                    0,
+                )
+            except (TypeError, ValueError, AttributeError):
+                continue
+
     square_logged_revenue = float(one("""
         SELECT SUM(COALESCE(amount_cents, 0)) / 100.0
         FROM square_payment_log
@@ -4108,7 +4164,12 @@ def get_live_dashboard_data(include_past=False):
         FROM square_payment_log
     """, default=0.0)) + other_manual_revenue
 
-    total_revenue = ticket_revenue + membership_revenue
+    total_revenue = (
+        ticket_revenue
+        + membership_revenue
+        + merch_revenue
+    )
+
     square_total_collected = (
         total_revenue
         + donation_revenue
@@ -4294,6 +4355,8 @@ def get_live_dashboard_data(include_past=False):
         "active_memberships": active_memberships,
         "membership_signups": membership_signups,
         "membership_revenue": membership_revenue,
+        "merch_revenue": merch_revenue,
+        "merch_shirts_sold": merch_shirts_sold,
         "donation_revenue": donation_revenue,
         "tips_other_revenue": tips_other_revenue,
         "total_revenue": total_revenue,
@@ -6401,6 +6464,10 @@ def get_merch_catalog():
                 {"name": "Large", "value": "L", "price": 35.00},
                 {"name": "XL", "value": "XL", "price": 35.00},
                 {"name": "2XL", "value": "2XL", "price": 40.00},
+
+                {"name": "3XL", "value": "3XL", "price": 45.00},
+
+                {"name": "4XL", "value": "4XL", "price": 45.00},
             ],
             "starting_price": 30.00,
             "production_time": "7–14 business days",
@@ -6443,6 +6510,10 @@ def get_merch_catalog():
                 {"name": "Large", "value": "L", "price": 35.00},
                 {"name": "XL", "value": "XL", "price": 35.00},
                 {"name": "2XL", "value": "2XL", "price": 40.00},
+
+                {"name": "3XL", "value": "3XL", "price": 45.00},
+
+                {"name": "4XL", "value": "4XL", "price": 45.00},
             ],
             "starting_price": 30.00,
             "production_time": "7–14 business days",
@@ -6485,6 +6556,10 @@ def get_merch_catalog():
                 {"name": "Large", "value": "L", "price": 35.00},
                 {"name": "XL", "value": "XL", "price": 35.00},
                 {"name": "2XL", "value": "2XL", "price": 40.00},
+
+                {"name": "3XL", "value": "3XL", "price": 45.00},
+
+                {"name": "4XL", "value": "4XL", "price": 45.00},
             ],
             "starting_price": 30.00,
             "production_time": "7–14 business days",
@@ -6527,6 +6602,10 @@ def get_merch_catalog():
                 {"name": "Large", "value": "L", "price": 35.00},
                 {"name": "XL", "value": "XL", "price": 35.00},
                 {"name": "2XL", "value": "2XL", "price": 40.00},
+
+                {"name": "3XL", "value": "3XL", "price": 45.00},
+
+                {"name": "4XL", "value": "4XL", "price": 45.00},
             ],
             "starting_price": 30.00,
             "production_time": "7–14 business days",
@@ -6568,6 +6647,10 @@ def get_merch_catalog():
                 {"name": "Large", "value": "L", "price": 35.00},
                 {"name": "XL", "value": "XL", "price": 35.00},
                 {"name": "2XL", "value": "2XL", "price": 40.00},
+
+                {"name": "3XL", "value": "3XL", "price": 45.00},
+
+                {"name": "4XL", "value": "4XL", "price": 45.00},
             ],
             "starting_price": 30.00,
             "production_time": "7–14 business days",
@@ -6609,6 +6692,10 @@ def get_merch_catalog():
                 {"name": "Large", "value": "L", "price": 40.00},
                 {"name": "XL", "value": "XL", "price": 40.00},
                 {"name": "2XL", "value": "2XL", "price": 45.00},
+
+                {"name": "3XL", "value": "3XL", "price": 45.00},
+
+                {"name": "4XL", "value": "4XL", "price": 45.00},
             ],
             "starting_price": 35.00,
             "production_time": "7–14 business days",
@@ -6855,6 +6942,10 @@ def merch_checkout():
                 "L": 3500,
                 "XL": 3500,
                 "2XL": 4000,
+
+                "3XL": 4500,
+
+                "4XL": 4500,
             },
         },
         "good-vibes-lounge": {
@@ -6870,6 +6961,10 @@ def merch_checkout():
                 "L": 3500,
                 "XL": 3500,
                 "2XL": 4000,
+
+                "3XL": 4500,
+
+                "4XL": 4500,
             },
         },
         "bull-city-legacy": {
@@ -6885,6 +6980,10 @@ def merch_checkout():
                 "L": 3500,
                 "XL": 3500,
                 "2XL": 4000,
+
+                "3XL": 4500,
+
+                "4XL": 4500,
             },
         },
 
@@ -6901,6 +7000,10 @@ def merch_checkout():
                 "L": 3500,
                 "XL": 3500,
                 "2XL": 4000,
+
+                "3XL": 4500,
+
+                "4XL": 4500,
             },
         },
 
@@ -6917,6 +7020,10 @@ def merch_checkout():
                 "L": 3500,
                 "XL": 3500,
                 "2XL": 4000,
+
+                "3XL": 4500,
+
+                "4XL": 4500,
             },
         },
 
@@ -6933,6 +7040,10 @@ def merch_checkout():
                 "L": 4000,
                 "XL": 4000,
                 "2XL": 4500,
+
+                "3XL": 4500,
+
+                "4XL": 4500,
             },
         },
 
@@ -8809,6 +8920,141 @@ def api_update_message_status(lead_id):
     }, 200
 
 
+@app.route("/api/messages/<int:lead_id>/reply", methods=["POST"])
+@requires_auth
+def api_reply_to_message(lead_id):
+    data = request.get_json(silent=True) or {}
+
+    subject = (data.get("subject") or "").strip()
+    reply_body = (data.get("reply_body") or "").strip()
+
+    if not reply_body:
+        return {
+            "ok": False,
+            "error": "Please enter a reply message.",
+        }, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT id, type, name, email, details, status
+        FROM leads
+        WHERE id = ?
+        """,
+        (lead_id,),
+    )
+
+    lead = cursor.fetchone()
+
+    if not lead:
+        conn.close()
+        return {
+            "ok": False,
+            "error": "Message not found.",
+        }, 404
+
+    recipient_email = (lead["email"] or "").strip().lower()
+
+    if not recipient_email or not is_valid_email_address(recipient_email):
+        conn.close()
+        return {
+            "ok": False,
+            "error": "This message does not have a valid reply email address.",
+        }, 400
+
+    customer_name = (lead["name"] or "there").strip()
+    lead_type = lead_category(lead["type"] or "Contact Message")
+
+    if not subject:
+        subject = "Re: Your message to The Jukebox Lounge NC"
+
+    email_body = (
+        f"Hi {customer_name},\n\n"
+        f"{reply_body}\n\n"
+        "Best,\n"
+        "The Jukebox Lounge NC"
+    )
+
+    delivered = send_email(
+        subject,
+        email_body,
+        recipient_email,
+    )
+
+    if not delivered:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "The reply could not be sent. "
+                "Please check the email settings and try again."
+            ),
+        }, 500
+
+    sent_by = (
+        session.get("auth_username")
+        or session.get("auth_role")
+        or "Dashboard User"
+    )
+
+    cursor.execute(
+        """
+        INSERT INTO message_replies (
+            lead_id,
+            recipient_email,
+            subject,
+            reply_body,
+            sent_by,
+            delivery_status,
+            created_at
+        )
+        VALUES (?, ?, ?, ?, ?, 'Sent', CURRENT_TIMESTAMP)
+        """,
+        (
+            lead_id,
+            recipient_email,
+            subject,
+            reply_body,
+            sent_by,
+        ),
+    )
+
+    if lead_type in ("Contact Message", "Event Suggestion"):
+        new_status = "Replied"
+    elif lead_type in ("DJ Application", "Vendor Application"):
+        new_status = "Contacted"
+    else:
+        new_status = lead["status"] or "Active"
+
+    cursor.execute(
+        """
+        UPDATE leads
+        SET status = ?
+        WHERE id = ?
+        """,
+        (new_status, lead_id),
+    )
+
+    reply_id = cursor.lastrowid
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "reply_id": reply_id,
+        "recipient_email": recipient_email,
+        "subject": subject,
+        "reply_body": reply_body,
+        "sent_by": sent_by,
+        "status": new_status,
+        "message": "Reply sent successfully.",
+    }, 200
+
+
 @app.route("/api/messages/<int:lead_id>/delete", methods=["POST", "DELETE"])
 @requires_auth
 def api_delete_message(lead_id):
@@ -9393,7 +9639,18 @@ def checkin(ticket_id):
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT id, ticket_id, status, checked_in, payment_id, created_at FROM event_tickets WHERE ticket_id = ?",
+        """
+        SELECT
+            id,
+            ticket_id,
+            status,
+            checked_in,
+            payment_id,
+            created_at,
+            COALESCE(refund_status, 'Not Refunded')
+        FROM event_tickets
+        WHERE ticket_id = ?
+        """,
         (normalized_ticket_id,),
     )
     row = cursor.fetchone()
@@ -9405,6 +9662,19 @@ def checkin(ticket_id):
 
     current_status = (row[2] or "").lower()
     checked_in_flag = int(row[3] or 0)
+    refund_status = (row[6] or "Not Refunded").strip().lower()
+
+    if refund_status in {
+        "refund pending",
+        "pending",
+        "refunded",
+        "partially refunded",
+    }:
+        conn.close()
+        return render_template(
+            "checkin_result.html",
+            status="refunded",
+        )
 
     if current_status == "checked_in" or checked_in_flag == 1:
         conn.close()
@@ -12323,6 +12593,130 @@ def admin_dashboard_events():
 
 
 
+@app.route("/dashboard/ticket-orders")
+@requires_auth
+def dashboard_ticket_orders():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT *
+        FROM ticket_orders
+        ORDER BY
+            datetime(COALESCE(created_at, '1900-01-01')) DESC,
+            id DESC
+        """
+    )
+
+    orders = []
+
+    for row in cursor.fetchall():
+        order = dict(row)
+
+        try:
+            order["ticket_items"] = json.loads(
+                order.get("tickets_json") or "[]"
+            )
+        except (TypeError, ValueError):
+            order["ticket_items"] = []
+
+        payment_id = str(
+            order.get("square_payment_id") or ""
+        ).strip()
+
+        if payment_id:
+            cursor.execute(
+                """
+                SELECT
+                    ticket_id,
+                    ticket_type,
+                    checked_in,
+                    checked_in_count,
+                    status,
+                    ticket_email_sent_at
+                FROM event_tickets
+                WHERE payment_id = ?
+                   OR payment_id LIKE ?
+                ORDER BY id
+                """,
+                (payment_id, f"{payment_id}:%"),
+            )
+
+            order["created_tickets"] = [
+                dict(ticket_row)
+                for ticket_row in cursor.fetchall()
+            ]
+        else:
+            order["created_tickets"] = []
+
+        order["qr_ticket_count"] = len(
+            order["created_tickets"]
+        )
+
+        order["checked_in_count"] = sum(
+            1
+            for ticket in order["created_tickets"]
+            if (
+                int(ticket.get("checked_in") or 0) == 1
+                or str(ticket.get("status") or "").strip().lower()
+                in {"checked_in", "checked in", "used"}
+            )
+        )
+
+        orders.append(order)
+
+    paid_orders = [
+        order
+        for order in orders
+        if str(
+            order.get("payment_status") or ""
+        ).strip().lower() == "paid"
+    ]
+
+    stats = {
+        "total_orders": len(orders),
+        "paid_orders": len(paid_orders),
+        "pending_orders": sum(
+            1
+            for order in orders
+            if str(
+                order.get("payment_status") or ""
+            ).strip().lower()
+            in {"pending", "awaiting payment"}
+        ),
+        "total_tickets": sum(
+            int(order.get("total_ticket_quantity") or 0)
+            for order in orders
+        ),
+        "paid_tickets": sum(
+            int(order.get("total_ticket_quantity") or 0)
+            for order in paid_orders
+        ),
+        "qr_tickets_created": sum(
+            int(order.get("qr_ticket_count") or 0)
+            for order in orders
+        ),
+        "checked_in_tickets": sum(
+            int(order.get("checked_in_count") or 0)
+            for order in orders
+        ),
+        "revenue_cents": sum(
+            int(order.get("total_cents") or 0)
+            for order in paid_orders
+        ),
+    }
+
+    conn.close()
+
+    return render_template(
+        "ticket_orders_dashboard.html",
+        orders=orders,
+        stats=stats,
+    )
+
+
 @app.route("/dashboard/merch-orders")
 @requires_auth
 def dashboard_merch_orders():
@@ -13734,6 +14128,48 @@ def get_email_campaign_recipients(audience, individual_email=""):
             for row in cursor.fetchall()
         )
 
+    if audience == "battle_part_two_ticket_holders":
+        event_name = "Battle of the DJs Part Two"
+
+        # Older/direct Square-link purchases that were synced into tickets.
+        cursor.execute(
+            """
+            SELECT email
+            FROM event_tickets
+            WHERE LOWER(TRIM(COALESCE(event_name, ''))) = LOWER(?)
+              AND email IS NOT NULL
+              AND TRIM(email) <> ''
+              AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+              AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+            """,
+            (event_name,),
+        )
+        recipients.extend(
+            (row["email"] or "").strip().lower()
+            for row in cursor.fetchall()
+        )
+
+        # New website-checkout purchases.
+        cursor.execute(
+            """
+            SELECT customer_email AS email
+            FROM ticket_orders
+            WHERE LOWER(TRIM(COALESCE(event_name, ''))) = LOWER(?)
+              AND LOWER(TRIM(COALESCE(payment_status, ''))) IN (
+                  'paid',
+                  'payment received',
+                  'completed'
+              )
+              AND customer_email IS NOT NULL
+              AND TRIM(customer_email) <> ''
+            """,
+            (event_name,),
+        )
+        recipients.extend(
+            (row["email"] or "").strip().lower()
+            for row in cursor.fetchall()
+        )
+
     conn.close()
 
     unique_recipients = sorted({
@@ -13783,6 +14219,7 @@ def dashboard_email_campaigns():
         "circle_members": "Jukebox Circle Members",
         "talent": "DJs / Talent",
         "vendors": "Vendors",
+        "battle_part_two_ticket_holders": "Battle of the DJs Part Two — Paid Ticket Holders",
         "all": "All Eligible Contacts",
         "individual": "Individual Recipient",
     }
@@ -13813,6 +14250,7 @@ def email_campaign_recipient_count():
         "circle_members",
         "talent",
         "vendors",
+        "battle_part_two_ticket_holders",
         "all",
         "individual",
     }
@@ -13862,6 +14300,7 @@ def save_email_campaign_draft():
         "circle_members",
         "talent",
         "vendors",
+        "battle_part_two_ticket_holders",
         "all",
         "individual",
     }
@@ -13984,6 +14423,7 @@ def send_email_campaign():
         "circle_members",
         "talent",
         "vendors",
+        "battle_part_two_ticket_holders",
         "all",
         "individual",
     }

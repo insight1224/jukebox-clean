@@ -25,6 +25,7 @@
         <a href="/dashboard/revenue">Revenue</a>
         <a href="/dashboard/messages">Messages</a>
         <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/ticket-orders">Ticket Orders</a>
         <a href="/dashboard/merch-orders">Merch Orders</a>
         <a href="/dashboard/email-campaigns">Email Campaigns</a>
         <a href="/dashboard/gallery">Gallery Manager</a>
@@ -115,6 +116,12 @@
         </div>
 
         <div class="stat-card">
+          <p>T-Shirt Sales</p>
+          <h3>${{ "%.2f"|format(metrics.merch_revenue) }}</h3>
+          <span>{{ metrics.merch_shirts_sold }} paid shirts sold</span>
+        </div>
+
+        <div class="stat-card">
           <p>Donations</p>
           <h3>${{ "%.2f"|format(metrics.donation_revenue) }}</h3>
           <span>Donations received</span>
@@ -129,7 +136,7 @@
         <div class="stat-card total-revenue-highlight">
           <p>Total Collected</p>
           <h3>${{ "%.2f"|format(metrics.square_total_collected) }}</h3>
-          <span>Tickets, memberships, donations, tips/other</span>
+          <span>Tickets, memberships, T-shirts, donations, tips/other</span>
         </div>
       </section>
 <section class="dashboard-grid">

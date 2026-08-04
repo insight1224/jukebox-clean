@@ -5,6 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Jukebox Lounge NC | Messages Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}?v=messages-clean-1">
+  <style>
+    .message-reply-form {
+      margin-top: 22px;
+      padding: 20px;
+      border: 1px solid rgba(214, 178, 94, 0.24);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .message-reply-heading {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .message-reply-heading h4 {
+      margin: 4px 0 0;
+    }
+
+    #messageReplyRecipient {
+      color: var(--gold);
+      font-size: 0.85rem;
+      text-align: right;
+      overflow-wrap: anywhere;
+    }
+
+    .message-reply-form label {
+      display: block;
+      margin-top: 14px;
+      color: var(--cream);
+      font-weight: 700;
+    }
+
+    .message-reply-form input,
+    .message-reply-form textarea {
+      width: 100%;
+      box-sizing: border-box;
+      margin-top: 7px;
+      padding: 12px 14px;
+      border: 1px solid rgba(214, 178, 94, 0.3);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.055);
+      color: var(--cream);
+      font: inherit;
+    }
+
+    .message-reply-form textarea {
+      resize: vertical;
+      min-height: 150px;
+    }
+
+    .message-reply-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    #messageReplyStatus {
+      color: var(--gold);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 700px) {
+      .message-reply-heading,
+      .message-reply-actions {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      #messageReplyRecipient {
+        text-align: left;
+      }
+    }
+  </style>
 </head>
 <body>
   <div class="dashboard-shell">
@@ -25,6 +102,7 @@
         <a href="/dashboard/revenue">Revenue</a>
         <a href="/dashboard/messages" class="active">Messages</a>
         <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/ticket-orders">Ticket Orders</a>
         <a href="/dashboard/merch-orders">Merch Orders</a>
         <a href="/dashboard/email-campaigns">Email Campaigns</a>
         <a href="/dashboard/gallery">Gallery Manager</a>
@@ -265,6 +343,45 @@
           <div class="note-preview" id="messageDetailBody">
             Select a message to view details.
           </div>
+
+          <form id="messageReplyForm" class="message-reply-form">
+            <div class="message-reply-heading">
+              <div>
+                <p class="eyebrow">Reply by Email</p>
+                <h4>Send a response</h4>
+              </div>
+              <span id="messageReplyRecipient"></span>
+            </div>
+
+            <label>
+              Subject
+              <input
+                type="text"
+                id="messageReplySubject"
+                name="subject"
+                value="Re: Your message to The Jukebox Lounge NC"
+                required
+              >
+            </label>
+
+            <label>
+              Message
+              <textarea
+                id="messageReplyBody"
+                name="reply_body"
+                rows="7"
+                placeholder="Type your reply here..."
+                required
+              ></textarea>
+            </label>
+
+            <div class="message-reply-actions">
+              <button type="submit" class="btn primary" id="messageReplySubmit">
+                Send Reply
+              </button>
+              <span id="messageReplyStatus" role="status"></span>
+            </div>
+          </form>
         </div>
       </div>
     </main>
@@ -285,6 +402,15 @@
     const messageDetailTitle = document.getElementById("messageDetailTitle");
     const messageDetailSubtitle = document.getElementById("messageDetailSubtitle");
     const messageDetailBody = document.getElementById("messageDetailBody");
+
+    const messageReplyForm = document.getElementById("messageReplyForm");
+    const messageReplyRecipient = document.getElementById("messageReplyRecipient");
+    const messageReplySubject = document.getElementById("messageReplySubject");
+    const messageReplyBody = document.getElementById("messageReplyBody");
+    const messageReplySubmit = document.getElementById("messageReplySubmit");
+    const messageReplyStatus = document.getElementById("messageReplyStatus");
+
+    let selectedMessageRow = null;
 
     function updateArchivedCount() {
       const rows = archivedMessagesList.querySelectorAll(".message-row");
@@ -355,9 +481,23 @@
         detailRows.push(buildDetailRow("Details", "No message details provided."));
       }
 
+      selectedMessageRow = row;
+
       messageDetailTitle.textContent = name;
       messageDetailSubtitle.textContent = type + " • " + status + " • " + date;
       messageDetailBody.innerHTML = `<div class="message-detail-grid">${detailRows.join("")}</div>`;
+
+      messageReplyRecipient.textContent = email
+        ? `Replying to ${email}`
+        : "No reply email available";
+
+      messageReplySubject.value = "Re: Your message to The Jukebox Lounge NC";
+      messageReplyBody.value = "";
+      messageReplyStatus.textContent = "";
+      messageReplySubmit.disabled = !email;
+      messageReplyBody.disabled = !email;
+      messageReplySubject.disabled = !email;
+
       messageDetailModalOverlay.classList.add("active");
     }
 
@@ -607,8 +747,73 @@
     }
 
 
+    messageReplyForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!selectedMessageRow) {
+        messageReplyStatus.textContent = "Please select a message first.";
+        return;
+      }
+
+      const messageId = selectedMessageRow.getAttribute("data-message-id");
+      const subject = messageReplySubject.value.trim();
+      const replyBody = messageReplyBody.value.trim();
+
+      if (!replyBody) {
+        messageReplyStatus.textContent = "Please enter a reply.";
+        return;
+      }
+
+      messageReplySubmit.disabled = true;
+      messageReplyStatus.textContent = "Sending...";
+
+      try {
+        const response = await fetch(`/api/messages/${messageId}/reply`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            subject,
+            reply_body: replyBody
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "Unable to send reply.");
+        }
+
+        selectedMessageRow.setAttribute(
+          "data-message-status",
+          result.status || "Replied"
+        );
+
+        updateMessageBadge(
+          selectedMessageRow,
+          result.status || "Replied"
+        );
+
+        messageDetailSubtitle.textContent =
+          (selectedMessageRow.getAttribute("data-message-type") || "Message")
+          + " • "
+          + (result.status || "Replied");
+
+        messageReplyBody.value = "";
+        messageReplyStatus.textContent = "Reply sent successfully.";
+      } catch (error) {
+        messageReplyStatus.textContent =
+          error.message || "Unable to send reply.";
+      } finally {
+        messageReplySubmit.disabled = false;
+      }
+    });
+
     messageDetailClose.addEventListener("click", () => {
       messageDetailModalOverlay.classList.remove("active");
+      selectedMessageRow = null;
+      messageReplyStatus.textContent = "";
     });
   </script>
 </body>

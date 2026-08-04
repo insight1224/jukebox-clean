@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+  <title>Jukebox Lounge NC | Ticket Orders</title>
+
+  <link
+    rel="stylesheet"
+    href="{{ url_for(
+      'static',
+      filename='dashboard-redesign.css'
+    ) }}?v=ticket-orders-1"
+  >
+
+  <style>
+    .ticket-orders-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .ticket-orders-stat {
+      padding: 20px;
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      border-radius: 14px;
+      background: rgba(17, 17, 17, 0.96);
+    }
+
+    .ticket-orders-stat span {
+      display: block;
+      margin-bottom: 8px;
+      color: #999999;
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .ticket-orders-stat strong {
+      color: #d4af37;
+      font-size: 1.55rem;
+    }
+
+    .ticket-orders-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .ticket-orders-toolbar input,
+    .ticket-orders-toolbar select {
+      min-height: 44px;
+      padding: 10px 12px;
+      color: #ffffff;
+      background: #111111;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+      border-radius: 9px;
+    }
+
+    .ticket-orders-toolbar input {
+      flex: 1 1 280px;
+    }
+
+    .ticket-orders-list {
+      display: grid;
+      gap: 18px;
+      max-height: 740px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .ticket-order-card {
+      border: 1px solid rgba(212, 175, 55, 0.22);
+      border-radius: 16px;
+      background: rgba(17, 17, 17, 0.96);
+      overflow: hidden;
+    }
+
+    .ticket-order-summary {
+      display: grid;
+      grid-template-columns:
+        1.2fr 1fr 1fr 0.7fr 0.7fr 0.8fr;
+      gap: 14px;
+      align-items: center;
+      padding: 18px;
+    }
+
+    .ticket-order-summary small,
+    .ticket-detail-label {
+      display: block;
+      margin-bottom: 5px;
+      color: #999999;
+      font-size: 0.74rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .ticket-order-number,
+    .ticket-order-total {
+      color: #d4af37;
+      font-weight: 800;
+    }
+
+    .ticket-order-summary strong,
+    .ticket-detail-value {
+      color: #ffffff;
+    }
+
+    .ticket-payment-status {
+      display: inline-flex;
+      padding: 6px 9px;
+      border-radius: 999px;
+      color: #111111;
+      background: #d4af37;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    .ticket-payment-status.pending {
+      color: #ffffff;
+      background: #765f20;
+    }
+
+    .ticket-details {
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .ticket-details summary {
+      padding: 14px 18px;
+      color: #d4af37;
+      cursor: pointer;
+      font-weight: 800;
+      list-style: none;
+    }
+
+    .ticket-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .ticket-details-content {
+      padding: 4px 18px 22px;
+    }
+
+    .ticket-detail-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .ticket-detail-box {
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.035);
+      line-height: 1.55;
+    }
+
+    .ticket-items-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .ticket-items-table th,
+    .ticket-items-table td {
+      padding: 12px 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .ticket-items-table th {
+      color: #d4af37;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .ticket-items-table td {
+      color: #dddddd;
+    }
+
+    .ticket-items-table td:last-child,
+    .ticket-items-table th:last-child {
+      text-align: right;
+    }
+
+    .ticket-qr-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .ticket-qr-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 12px;
+      padding: 11px 12px;
+      border-radius: 9px;
+      background: rgba(255, 255, 255, 0.035);
+      color: #dddddd;
+    }
+
+    .ticket-empty-state {
+      padding: 42px 20px;
+      border: 1px solid rgba(212, 175, 55, 0.2);
+      border-radius: 16px;
+      color: #aaaaaa;
+      background: rgba(17, 17, 17, 0.96);
+      text-align: center;
+    }
+
+    @media (max-width: 1100px) {
+      .ticket-orders-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .ticket-order-summary {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .ticket-orders-stats,
+      .ticket-detail-grid,
+      .ticket-order-summary {
+        grid-template-columns: 1fr;
+      }
+
+      .ticket-qr-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-logo-wrap">
+          <img
+            src="{{ url_for(
+              'static',
+              filename='images/logo-home-new.png'
+            ) }}"
+            alt="Jukebox Lounge logo"
+            class="brand-logo"
+          >
+        </div>
+
+        <div>
+          <h1>Jukebox Lounge</h1>
+          <p>Admin Preview</p>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="/dashboard">Dashboard</a>
+        <a href="/dashboard/events">Events</a>
+        <a href="/dashboard/revenue">Revenue</a>
+        <a href="/dashboard/messages">Messages</a>
+        <a href="/dashboard/members">Members</a>
+        <a
+          href="/dashboard/ticket-orders"
+          class="active"
+        >
+          Ticket Orders
+        </a>
+        <a href="/dashboard/merch-orders">Merch Orders</a>
+        <a href="/dashboard/email-campaigns">
+          Email Campaigns
+        </a>
+        <a href="/dashboard/gallery">Gallery Manager</a>
+        <a href="/dashboard/contacts">Contact Log</a>
+        <a href="/admin/unmapped-square">
+          Unmapped Tickets
+        </a>
+      </nav>
+
+      <div class="sidebar-logout">
+        <a href="/" class="sidebar-website-link">
+          Back to Website
+        </a>
+        <a href="/dashboard/logout">Log Out</a>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Ticket Management</p>
+          <h2>Ticket Orders</h2>
+          <p class="subtext">
+            Review website ticket purchases, payment status,
+            QR-ticket creation, and check-ins.
+          </p>
+        </div>
+      </header>
+
+      <section class="ticket-orders-stats">
+        <article class="ticket-orders-stat">
+          <span>Total Orders</span>
+          <strong>{{ stats.total_orders }}</strong>
+        </article>
+
+        <article class="ticket-orders-stat">
+          <span>Paid Tickets</span>
+          <strong>{{ stats.paid_tickets }}</strong>
+        </article>
+
+        <article class="ticket-orders-stat">
+          <span>Ticket Revenue</span>
+          <strong>
+            ${{ "%.2f"|format(stats.revenue_cents / 100) }}
+          </strong>
+        </article>
+
+        <article class="ticket-orders-stat">
+          <span>Checked In</span>
+          <strong>{{ stats.checked_in_tickets }}</strong>
+        </article>
+      </section>
+
+      <section class="dashboard-panel">
+        <div class="ticket-orders-toolbar">
+          <input
+            id="ticketOrderSearch"
+            type="search"
+            placeholder="Search order, customer, event, email, or ticket type"
+          >
+
+          <select id="ticketOrderStatusFilter">
+            <option value="">All Payment Statuses</option>
+            <option value="paid">Paid</option>
+            <option value="awaiting payment">
+              Awaiting Payment
+            </option>
+            <option value="pending">Pending</option>
+            <option value="checkout error">
+              Checkout Error
+            </option>
+          </select>
+        </div>
+
+        {% if orders %}
+        <div class="ticket-orders-list">
+          {% for order in orders %}
+          <article
+            class="ticket-order-card"
+            data-status="{{ order.payment_status|lower }}"
+            data-search="
+              {{ order.order_number }}
+              {{ order.customer_name }}
+              {{ order.customer_email }}
+              {{ order.customer_phone }}
+              {{ order.event_name }}
+              {% for item in order.ticket_items %}
+                {{ item.display_name or item.name }}
+              {% endfor %}
+            "
+          >
+            <div class="ticket-order-summary">
+              <div>
+                <small>Order</small>
+                <div class="ticket-order-number">
+                  {{ order.order_number }}
+                </div>
+              </div>
+
+              <div>
+                <small>Customer</small>
+                <strong>{{ order.customer_name }}</strong>
+              </div>
+
+              <div>
+                <small>Event</small>
+                <strong>{{ order.event_name }}</strong>
+              </div>
+
+              <div>
+                <small>Tickets</small>
+                <strong>
+                  {{ order.total_ticket_quantity }}
+                </strong>
+              </div>
+
+              <div>
+                <small>Total</small>
+                <div class="ticket-order-total">
+                  ${{ "%.2f"|format(
+                    (order.total_cents or 0) / 100
+                  ) }}
+                </div>
+              </div>
+
+              <div>
+                <small>Payment</small>
+                <span
+                  class="ticket-payment-status
+                    {% if order.payment_status|lower != 'paid' %}
+                      pending
+                    {% endif %}
+                  "
+                >
+                  {{ order.payment_status }}
+                </span>
+              </div>
+            </div>
+
+            <details class="ticket-details">
+              <summary>View Order Details</summary>
+
+              <div class="ticket-details-content">
+                <div class="ticket-detail-grid">
+                  <div class="ticket-detail-box">
+                    <span class="ticket-detail-label">
+                      Email
+                    </span>
+                    <div class="ticket-detail-value">
+                      {{ order.customer_email }}
+                    </div>
+                  </div>
+
+                  <div class="ticket-detail-box">
+                    <span class="ticket-detail-label">
+                      Phone
+                    </span>
+                    <div class="ticket-detail-value">
+                      {{ order.customer_phone or "—" }}
+                    </div>
+                  </div>
+
+                  <div class="ticket-detail-box">
+                    <span class="ticket-detail-label">
+                      Purchased
+                    </span>
+                    <div class="ticket-detail-value">
+                      {{ order.created_at }}
+                    </div>
+                  </div>
+
+                  <div class="ticket-detail-box">
+                    <span class="ticket-detail-label">
+                      Square Payment
+                    </span>
+                    <div class="ticket-detail-value">
+                      {{ order.square_payment_id or "Not paid" }}
+                    </div>
+                  </div>
+
+                  <div class="ticket-detail-box">
+                    <span class="ticket-detail-label">
+                      QR Tickets Created
+                    </span>
+                    <div class="ticket-detail-value">
+                      {{ order.qr_ticket_count }}
+                    </div>
+                  </div>
+
+                  <div class="ticket-detail-box">
+                    <span class="ticket-detail-label">
+                      Confirmation Email
+                    </span>
+                    <div class="ticket-detail-value">
+                      {% if order.confirmation_email_sent_at %}
+                        Sent
+                      {% else %}
+                        Not sent
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                <table class="ticket-items-table">
+                  <thead>
+                    <tr>
+                      <th>Ticket Type</th>
+                      <th>Unit Price</th>
+                      <th>Quantity</th>
+                      <th>Line Total</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {% for item in order.ticket_items %}
+                    <tr>
+                      <td>
+                        {{ item.display_name or item.name }}
+                      </td>
+                      <td>
+                        ${{ "%.2f"|format(
+                          (item.unit_price_cents or 0) / 100
+                        ) }}
+                      </td>
+                      <td>{{ item.quantity }}</td>
+                      <td>
+                        ${{ "%.2f"|format(
+                          (item.line_total_cents or 0) / 100
+                        ) }}
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+
+                {% if order.created_tickets %}
+                <div class="ticket-qr-list">
+                  {% for ticket in order.created_tickets %}
+                  <div class="ticket-qr-row">
+                    <span>{{ ticket.ticket_id }}</span>
+                    <span>{{ ticket.ticket_type }}</span>
+                    <span>
+                      {% if ticket.checked_in %}
+                        Checked In
+                      {% else %}
+                        Not Checked In
+                      {% endif %}
+                    </span>
+                  </div>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+            </details>
+          </article>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="ticket-empty-state">
+          No website ticket orders have been created yet.
+        </div>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (() => {
+      const searchInput = document.getElementById(
+        "ticketOrderSearch"
+      );
+
+      const statusFilter = document.getElementById(
+        "ticketOrderStatusFilter"
+      );
+
+      const cards = Array.from(
+        document.querySelectorAll(".ticket-order-card")
+      );
+
+      function applyFilters() {
+        const searchValue = (
+          searchInput.value || ""
+        ).trim().toLowerCase();
+
+        const statusValue = (
+          statusFilter.value || ""
+        ).trim().toLowerCase();
+
+        cards.forEach((card) => {
+          const searchText = (
+            card.dataset.search || ""
+          ).toLowerCase();
+
+          const paymentStatus = (
+            card.dataset.status || ""
+          ).toLowerCase();
+
+          const searchMatches = (
+            !searchValue ||
+            searchText.includes(searchValue)
+          );
+
+          const statusMatches = (
+            !statusValue ||
+            paymentStatus === statusValue
+          );
+
+          card.hidden = !(
+            searchMatches &&
+            statusMatches
+          );
+        });
+      }
+
+      searchInput.addEventListener("input", applyFilters);
+      statusFilter.addEventListener("change", applyFilters);
+    })();
+  </script>
+</body>
+</html>

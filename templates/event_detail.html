@@ -97,41 +97,105 @@
     {% endif %}
 
     {% if event.status != "postponed" %}
-    <div class="ticket-grid {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}">
-        {% if is_quiet_storm %}
-        <div class="ticket-box">
-            <h3>General Admission</h3>
-            <p>Access to The Quiet Storm Live experience.</p>
-            <p>${{ "%.2f"|format(12) }}</p>
-            <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Get Tickets</a>
+        {% if event.name == "Battle of the DJs Part Two" %}
+        <div class="ticket-comparison-panel">
+            <div class="ticket-comparison-heading">
+                <p class="ticket-cta-kicker">Tickets Available Now</p>
+                <h2>Choose Your Battle Experience</h2>
+                <p>
+                    Review the options below, then choose quantities on the secure checkout page.
+                </p>
+            </div>
+
+            <div class="ticket-comparison-grid">
+                <article>
+                    <h3>Early Bird</h3>
+                    <strong>$15</strong>
+                    <p>
+                        Discounted admission with standing room on the lawn.
+                        Best for guests who want the full experience at the lowest price.
+                    </p>
+                </article>
+
+                <article>
+                    <h3>General Admission</h3>
+                    <strong>$18</strong>
+                    <p>
+                        Standard event admission with standing room on the lawn
+                        and freedom to move around and enjoy the full event.
+                    </p>
+                </article>
+
+                <article>
+                    <h3>VIP Section</h3>
+                    <strong>$200</strong>
+                    <p>
+                        Reserved shaded VIP booth for up to six guests.
+                        Ideal for groups wanting comfort and a dedicated space.
+                    </p>
+                </article>
+
+                <article>
+                    <h3>DJ VIP Section</h3>
+                    <strong>$200</strong>
+                    <p>
+                        Reserved booth behind the DJ for up to six guests
+                        with an elevated view. This section is not shaded.
+                    </p>
+                </article>
+            </div>
+
+            <div class="ticket-comparison-footer">
+                <span>Secure Square checkout</span>
+                <span>QR tickets delivered by email</span>
+            </div>
+
+            <a
+                class="ticket-cta-button"
+                href="{{ url_for(
+                    'ticket_checkout_page',
+                    event_name=event.name
+                ) }}"
+            >
+                Select Tickets
+            </a>
         </div>
         {% else %}
-        {% for t in ticket_data %}
-        <div class="ticket-box
-            {% if t.name == 'Early Bird' %}highlight{% endif %}
-            {% if t.name == 'VIP Section' %}vip{% endif %}
-            {% if t.name == 'DJ VIP Section' %}ultra{% endif %}
-        ">
-            <h3>{{ display_name_map.get(t.name, t.name) }}</h3>
-            <p>
-                {% if t.name == "Early Bird" %}
-                Enjoy access to the event with standing room on the lawn. This ticket is perfect for guests who want a casual, open-air experience.
-                {% elif t.name == "General Admission" %}
-                Enjoy access to the event with standing room on the lawn and full freedom to move around and enjoy the vibe.
-                {% elif t.name == "VIP Section" %}
-                Upgrade your experience with a reserved VIP booth in a shaded area for up to six guests.
-                {% elif t.name == "DJ VIP Section" %}
-                Reserved booth behind the DJ with an elevated view. Seating for six guests. Not shaded.
-                {% endif %}
-            </p>
-            <p>${{ "%.2f"|format(t.price) }}</p>
-            {% if event.name == "Battle of the DJs" %}
-            <span class="btn disabled">Online Sales Closed</span>
-            {% elif event.tickets_coming_soon %}
-            <span class="btn disabled">Coming Soon</span>
-            {% elif t.sold_out %}
-            <span class="btn disabled">Sold Out</span>
+        <div class="ticket-grid {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}">
+            {% if is_quiet_storm %}
+            <div class="ticket-box">
+                <h3>General Admission</h3>
+                <p>Access to The Quiet Storm Live experience.</p>
+                <p>${{ "%.2f"|format(12) }}</p>
+                <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Get Tickets</a>
+            </div>
             {% else %}
+            {% for t in ticket_data %}
+            <div class="ticket-box
+                {% if t.name == 'Early Bird' %}highlight{% endif %}
+                {% if t.name == 'VIP Section' %}vip{% endif %}
+                {% if t.name == 'DJ VIP Section' %}ultra{% endif %}
+            ">
+                <h3>{{ display_name_map.get(t.name, t.name) }}</h3>
+                <p>
+                    {% if t.name == "Early Bird" %}
+                    Enjoy access to the event with standing room on the lawn. This ticket is perfect for guests who want a casual, open-air experience.
+                    {% elif t.name == "General Admission" %}
+                    Enjoy access to the event with standing room on the lawn and full freedom to move around and enjoy the vibe.
+                    {% elif t.name == "VIP Section" %}
+                    Upgrade your experience with a reserved VIP booth in a shaded area for up to six guests.
+                    {% elif t.name == "DJ VIP Section" %}
+                    Reserved booth behind the DJ with an elevated view. Seating for six guests. Not shaded.
+                    {% endif %}
+                </p>
+                <p>${{ "%.2f"|format(t.price) }}</p>
+                {% if event.name == "Battle of the DJs" %}
+                <span class="btn disabled">Online Sales Closed</span>
+                {% elif event.tickets_coming_soon %}
+                <span class="btn disabled">Coming Soon</span>
+                {% elif t.sold_out %}
+                <span class="btn disabled">Sold Out</span>
+                {% else %}
                 <a
                     class="btn
                         {% if t.name == 'VIP Section' %}vip-btn{% endif %}
@@ -144,21 +208,12 @@
                 >
                     Select Tickets
                 </a>
-
-                {% if t.remaining == 1 %}
-                <p class="vip-left-note">
-                    Only 1 {{ display_name_map.get(t.name, t.name) }} left.
-                </p>
-                {% elif t.almost_gone %}
-                <p class="vip-left-note">
-                    Only {{ t.remaining }} remaining.
-                </p>
                 {% endif %}
+            </div>
+            {% endfor %}
             {% endif %}
         </div>
-        {% endfor %}
         {% endif %}
-    </div>
     {% endif %}
 
     <section class="full-ticket-policy" id="ticket-refund-policy">
