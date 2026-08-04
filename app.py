@@ -3743,10 +3743,7 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
     {
         "id": 4,
         "name": "Battle of the DJs Part Two",
-        "status": "postponed",
-        "postponement_notice": """Due to weather conditions, Battle of the DJs Part Two has been postponed. The safety of our guests, DJs, staff, and partners is our top priority.
-
-A new event date will be announced soon. All previously purchased tickets will remain valid for the rescheduled date. Please continue checking our website and social media pages for updates.""",
+        "status": "upcoming",
         "flyer": "/static/images/battle-of-the-djs-part-2.png",
         "description": """The battle continues. Four DJs will go head-to-head across three high-energy rounds for one championship title. Expect live mixes, crowd interaction, great food, and the grown Jukebox Lounge energy that made the original Battle of the DJs unforgettable.
 
@@ -3757,7 +3754,7 @@ Hosted by DJ Fatz “The Governor,” the ultimate DJ showdown returns to Kore D
 
 This is an exclusive 30+ event. Valid government-issued ID is required for entry.""",
         "ticket_link": "https://square.link/u/X7vdfLd9",
-        "event_datetime": "Sunday, August 2, 2026",
+        "event_datetime": "Sunday, August 16, 2026",
         "location": "Kore Durham — 923 E Main St, Durham, NC 27701",
         "time": "3:00 PM",
         "doors": "3:00 PM",
