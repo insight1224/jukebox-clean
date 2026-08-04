@@ -810,6 +810,31 @@ def init_db():
     ensure_column("event_tickets", "refunded_at", "TEXT")
 
     cursor.execute("""
+    CREATE TABLE IF NOT EXISTS ticket_refunds (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        square_refund_id TEXT UNIQUE,
+        idempotency_key TEXT NOT NULL UNIQUE,
+        square_payment_id TEXT NOT NULL,
+        event_name TEXT,
+        customer_name TEXT,
+        customer_email TEXT,
+        amount_cents INTEGER NOT NULL,
+        reason TEXT,
+        status TEXT NOT NULL DEFAULT 'PENDING',
+        ticket_ids_json TEXT NOT NULL,
+        requested_by TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        completed_at TEXT
+    )
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_ticket_refunds_payment
+    ON ticket_refunds (square_payment_id, created_at)
+    """)
+
+    cursor.execute("""
     CREATE TABLE IF NOT EXISTS events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL UNIQUE,
@@ -3499,6 +3524,112 @@ def square_retrieve_payment(payment_id):
     except Exception as exc:
         print("Square retrieve payment error:", exc)
     return {}
+
+
+def square_refund_payment(
+    payment_id,
+    amount_cents,
+    reason="Ticket refund",
+    idempotency_key=None,
+):
+    payment_id = (payment_id or "").strip()
+
+    try:
+        amount_cents = int(amount_cents or 0)
+    except (TypeError, ValueError):
+        amount_cents = 0
+
+    if not SQUARE_ACCESS_TOKEN:
+        return {
+            "ok": False,
+            "error": "Square access token is missing.",
+        }
+
+    if not payment_id:
+        return {
+            "ok": False,
+            "error": "Square payment ID is missing.",
+        }
+
+    if amount_cents <= 0:
+        return {
+            "ok": False,
+            "error": "Refund amount must be greater than zero.",
+        }
+
+    refund_key = (
+        (idempotency_key or "").strip()
+        or f"ticket-refund-{secrets.token_hex(16)}"
+    )
+
+    payload = {
+        "idempotency_key": refund_key,
+        "payment_id": payment_id,
+        "amount_money": {
+            "amount": amount_cents,
+            "currency": "USD",
+        },
+        "reason": (reason or "Ticket refund").strip()[:192],
+    }
+
+    endpoint = f"{square_base_url()}/v2/refunds"
+
+    try:
+        response = requests.post(
+            endpoint,
+            headers={
+                "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+                "Square-Version": "2026-07-15",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=25,
+        )
+    except requests.RequestException as exc:
+        print("[square-refund] connection error:", exc)
+        return {
+            "ok": False,
+            "error": "Square could not be reached. No refund was submitted.",
+        }
+
+    try:
+        response_data = response.json()
+    except ValueError:
+        response_data = {}
+
+    if not response.ok:
+        print(
+            "[square-refund] API error:",
+            response.status_code,
+            response_data,
+        )
+
+        errors = response_data.get("errors") or []
+        error_message = (
+            errors[0].get("detail")
+            if errors and isinstance(errors[0], dict)
+            else "Square could not process the refund."
+        )
+
+        return {
+            "ok": False,
+            "error": error_message,
+            "status_code": response.status_code,
+        }
+
+    refund = response_data.get("refund") or {}
+
+    return {
+        "ok": True,
+        "refund": refund,
+        "refund_id": (refund.get("id") or "").strip(),
+        "status": (refund.get("status") or "PENDING").strip().upper(),
+        "amount_cents": int(
+            ((refund.get("amount_money") or {}).get("amount"))
+            or amount_cents
+        ),
+        "idempotency_key": refund_key,
+    }
 
 
 def parse_line_item_quantity(item):
@@ -12182,15 +12313,21 @@ def admin_dashboard_events():
     }
 
     cur.execute("""
-        SELECT event_name,
+        SELECT id,
+               event_name,
                name,
                email,
                ticket_type,
                ticket_id,
                payment_id,
+               amount_cents,
                checked_in,
                COALESCE(checked_in_count, 0) AS checked_in_count,
                status,
+               COALESCE(refund_status, 'Not Refunded') AS refund_status,
+               COALESCE(refunded_amount_cents, 0) AS refunded_amount_cents,
+               square_refund_id,
+               refund_reason,
                created_at
         FROM event_tickets
         ORDER BY event_name, created_at DESC
@@ -12376,6 +12513,16 @@ def admin_dashboard_events():
             "checked_in_count": checked_in_count,
             "ticket_id": row.get("ticket_id") or "",
             "ticket_ids": [row.get("ticket_id") or ""],
+            "ticket_row_ids": [row.get("id")] if row.get("id") else [],
+            "payment_ids": [payment_id] if payment_id else [],
+            "amount_cents": int(row.get("amount_cents") or 0),
+            "refund_statuses": [
+                str(row.get("refund_status") or "Not Refunded").strip()
+            ],
+            "square_refund_ids": [
+                str(row.get("square_refund_id") or "").strip()
+            ] if row.get("square_refund_id") else [],
+            "refund_reason": str(row.get("refund_reason") or "").strip(),
         }
 
         guests_by_event.setdefault(event_name, []).append(guest)
@@ -12407,6 +12554,29 @@ def admin_dashboard_events():
                     for ticket_id in guest.get("ticket_ids", [])
                     if ticket_id
                 ]
+                grouped[key]["ticket_row_ids"] = [
+                    ticket_row_id
+                    for ticket_row_id in guest.get("ticket_row_ids", [])
+                    if ticket_row_id
+                ]
+                grouped[key]["payment_ids"] = [
+                    payment_id
+                    for payment_id in guest.get("payment_ids", [])
+                    if payment_id
+                ]
+                grouped[key]["amount_cents"] = int(
+                    guest.get("amount_cents") or 0
+                )
+                grouped[key]["refund_statuses"] = [
+                    status
+                    for status in guest.get("refund_statuses", [])
+                    if status
+                ]
+                grouped[key]["square_refund_ids"] = [
+                    refund_id
+                    for refund_id in guest.get("square_refund_ids", [])
+                    if refund_id
+                ]
             else:
                 grouped[key]["quantity"] += guest_quantity
                 grouped[key]["checked_in_count"] += guest_checked_count
@@ -12416,6 +12586,33 @@ def admin_dashboard_events():
                     for ticket_id in guest.get("ticket_ids", [])
                     if ticket_id
                 ])
+                grouped[key].setdefault("ticket_row_ids", [])
+                grouped[key]["ticket_row_ids"].extend([
+                    ticket_row_id
+                    for ticket_row_id in guest.get("ticket_row_ids", [])
+                    if ticket_row_id
+                ])
+                grouped[key].setdefault("payment_ids", [])
+                grouped[key]["payment_ids"].extend([
+                    payment_id
+                    for payment_id in guest.get("payment_ids", [])
+                    if payment_id
+                ])
+                grouped[key]["amount_cents"] = int(
+                    grouped[key].get("amount_cents") or 0
+                ) + int(guest.get("amount_cents") or 0)
+                grouped[key].setdefault("refund_statuses", [])
+                grouped[key]["refund_statuses"].extend([
+                    status
+                    for status in guest.get("refund_statuses", [])
+                    if status
+                ])
+                grouped[key].setdefault("square_refund_ids", [])
+                grouped[key]["square_refund_ids"].extend([
+                    refund_id
+                    for refund_id in guest.get("square_refund_ids", [])
+                    if refund_id
+                ])
 
         cleaned = []
         for guest in grouped.values():
@@ -12423,6 +12620,44 @@ def admin_dashboard_events():
             checked_count = int(guest.get("checked_in_count") or 0)
             guest["checked_in"] = checked_count >= quantity and quantity > 0
             guest["checked_in_display"] = f"{checked_count} of {quantity}"
+
+            payment_ids = {
+                str(payment_id).split(":", 1)[0].strip()
+                for payment_id in guest.get("payment_ids", [])
+                if str(payment_id or "").strip()
+            }
+
+            refund_statuses = {
+                str(status or "Not Refunded").strip()
+                for status in guest.get("refund_statuses", [])
+            }
+
+            blocked_statuses = {
+                "Refund Pending",
+                "Pending",
+                "Refunded",
+                "Partially Refunded",
+            }
+
+            guest["payment_ids"] = sorted(payment_ids)
+            guest["refund_statuses"] = sorted(refund_statuses)
+            guest["refund_status"] = (
+                next(iter(refund_statuses))
+                if len(refund_statuses) == 1
+                else "Mixed"
+            )
+            guest["can_refund"] = (
+                str(guest.get("source") or "").strip().lower() == "square"
+                and bool(guest.get("ticket_row_ids"))
+                and len(payment_ids) == 1
+                and checked_count == 0
+                and not any(
+                    status in blocked_statuses
+                    for status in refund_statuses
+                )
+                and int(guest.get("amount_cents") or 0) > 0
+            )
+
             cleaned.append(guest)
 
         return cleaned
@@ -12591,6 +12826,366 @@ def admin_dashboard_events():
     )
 
 
+
+
+@app.route("/api/ticket-refunds/create", methods=["POST"])
+@requires_auth
+def api_create_ticket_refund():
+    data = request.get_json(silent=True) or {}
+
+    raw_ticket_ids = data.get("ticket_ids") or []
+    reason = (data.get("reason") or "Customer requested ticket refund").strip()
+
+    if not isinstance(raw_ticket_ids, list) or not raw_ticket_ids:
+        return {
+            "ok": False,
+            "error": "Please select at least one ticket to refund.",
+        }, 400
+
+    ticket_ids = []
+
+    for value in raw_ticket_ids:
+        try:
+            ticket_id = int(value)
+        except (TypeError, ValueError):
+            continue
+
+        if ticket_id not in ticket_ids:
+            ticket_ids.append(ticket_id)
+
+    if not ticket_ids:
+        return {
+            "ok": False,
+            "error": "No valid tickets were selected.",
+        }, 400
+
+    placeholders = ",".join(["?"] * len(ticket_ids))
+
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        f"""
+        SELECT
+            id,
+            name,
+            email,
+            ticket_type,
+            amount_cents,
+            ticket_id,
+            status,
+            payment_id,
+            event_name,
+            checked_in,
+            COALESCE(refund_status, 'Not Refunded') AS refund_status
+        FROM event_tickets
+        WHERE id IN ({placeholders})
+        ORDER BY id
+        """,
+        ticket_ids,
+    )
+
+    tickets = [dict(row) for row in cursor.fetchall()]
+
+    if len(tickets) != len(ticket_ids):
+        conn.close()
+        return {
+            "ok": False,
+            "error": "One or more selected tickets could not be found.",
+        }, 404
+
+    blocked_refund_statuses = {
+        "refund pending",
+        "pending",
+        "refunded",
+        "partially refunded",
+    }
+
+    for ticket in tickets:
+        refund_status = str(
+            ticket.get("refund_status") or "Not Refunded"
+        ).strip().lower()
+
+        if refund_status in blocked_refund_statuses:
+            conn.close()
+            return {
+                "ok": False,
+                "error": (
+                    f"{ticket.get('ticket_id') or 'A selected ticket'} "
+                    "has already been refunded or has a refund pending."
+                ),
+            }, 400
+
+        checked_in = int(ticket.get("checked_in") or 0) == 1
+        ticket_status = str(ticket.get("status") or "").strip().lower()
+
+        if checked_in or ticket_status in {
+            "checked_in",
+            "checked in",
+            "used",
+        }:
+            conn.close()
+            return {
+                "ok": False,
+                "error": (
+                    f"{ticket.get('ticket_id') or 'A selected ticket'} "
+                    "has already been checked in and cannot be refunded "
+                    "through this dashboard."
+                ),
+            }, 400
+
+    payment_ids = set()
+
+    for ticket in tickets:
+        payment_reference = str(
+            ticket.get("payment_id") or ""
+        ).strip()
+
+        if (
+            not payment_reference
+            or payment_reference.startswith("COMP_")
+            or payment_reference.lower().startswith("eventbrite:")
+        ):
+            conn.close()
+            return {
+                "ok": False,
+                "error": (
+                    "Only tickets paid through Square can be refunded "
+                    "from this dashboard."
+                ),
+            }, 400
+
+        base_payment_id = payment_reference.split(":", 1)[0].strip()
+
+        if not base_payment_id:
+            conn.close()
+            return {
+                "ok": False,
+                "error": "The Square payment ID is missing.",
+            }, 400
+
+        payment_ids.add(base_payment_id)
+
+    if len(payment_ids) != 1:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "Selected tickets must belong to the same Square payment. "
+                "Process separate purchases individually."
+            ),
+        }, 400
+
+    square_payment_id = next(iter(payment_ids))
+
+    amount_cents = sum(
+        max(0, int(ticket.get("amount_cents") or 0))
+        for ticket in tickets
+    )
+
+    if amount_cents <= 0:
+        conn.close()
+        return {
+            "ok": False,
+            "error": "The selected tickets do not have a refundable amount.",
+        }, 400
+
+    square_payment = square_retrieve_payment(square_payment_id)
+
+    if not square_payment:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "The Square payment could not be verified. "
+                "No refund was submitted."
+            ),
+        }, 502
+
+    payment_status = str(
+        square_payment.get("status") or ""
+    ).strip().upper()
+
+    if payment_status != "COMPLETED":
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "Only completed Square payments can be refunded. "
+                f"Current payment status: {payment_status or 'UNKNOWN'}."
+            ),
+        }, 400
+
+    payment_total_cents = int(
+        ((square_payment.get("amount_money") or {}).get("amount"))
+        or 0
+    )
+
+    already_refunded_cents = int(
+        ((square_payment.get("refunded_money") or {}).get("amount"))
+        or 0
+    )
+
+    remaining_refundable_cents = max(
+        0,
+        payment_total_cents - already_refunded_cents,
+    )
+
+    if amount_cents > remaining_refundable_cents:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "The selected refund exceeds the remaining refundable "
+                "balance in Square. "
+                f"Remaining balance: ${remaining_refundable_cents / 100:.2f}."
+            ),
+        }, 400
+
+    idempotency_key = (
+        f"dashboard-ticket-refund-"
+        f"{square_payment_id[:16]}-"
+        f"{secrets.token_hex(12)}"
+    )
+
+    refund_result = square_refund_payment(
+        payment_id=square_payment_id,
+        amount_cents=amount_cents,
+        reason=reason,
+        idempotency_key=idempotency_key,
+    )
+
+    if not refund_result.get("ok"):
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                refund_result.get("error")
+                or "Square could not process the refund."
+            ),
+        }, 502
+
+    square_refund_id = str(
+        refund_result.get("refund_id") or ""
+    ).strip()
+
+    square_status = str(
+        refund_result.get("status") or "PENDING"
+    ).strip().upper()
+
+    if square_status == "COMPLETED":
+        ticket_refund_status = "Refunded"
+        completed_at = datetime.now().isoformat(timespec="seconds")
+    elif square_status == "PENDING":
+        ticket_refund_status = "Refund Pending"
+        completed_at = None
+    else:
+        conn.close()
+        return {
+            "ok": False,
+            "error": (
+                "Square did not accept the refund. "
+                f"Refund status: {square_status or 'UNKNOWN'}."
+            ),
+        }, 502
+
+    requested_by = (
+        session.get("auth_username")
+        or session.get("auth_role")
+        or "Dashboard User"
+    )
+
+    event_name = str(tickets[0].get("event_name") or "").strip()
+    customer_name = str(tickets[0].get("name") or "").strip()
+    customer_email = str(tickets[0].get("email") or "").strip().lower()
+
+    selected_database_ids = [ticket["id"] for ticket in tickets]
+    selected_public_ids = [
+        str(ticket.get("ticket_id") or "").strip()
+        for ticket in tickets
+    ]
+
+    cursor.execute(
+        """
+        INSERT INTO ticket_refunds (
+            square_refund_id,
+            idempotency_key,
+            square_payment_id,
+            event_name,
+            customer_name,
+            customer_email,
+            amount_cents,
+            reason,
+            status,
+            ticket_ids_json,
+            requested_by,
+            created_at,
+            updated_at,
+            completed_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
+        """,
+        (
+            square_refund_id or None,
+            idempotency_key,
+            square_payment_id,
+            event_name,
+            customer_name,
+            customer_email,
+            amount_cents,
+            reason,
+            square_status,
+            json.dumps(selected_public_ids),
+            requested_by,
+            completed_at,
+        ),
+    )
+
+    update_placeholders = ",".join(
+        ["?"] * len(selected_database_ids)
+    )
+
+    cursor.execute(
+        f"""
+        UPDATE event_tickets
+        SET
+            refund_status = ?,
+            refunded_amount_cents = amount_cents,
+            refund_reason = ?,
+            square_refund_id = ?,
+            refund_requested_at = CURRENT_TIMESTAMP,
+            refunded_at = CASE
+                WHEN ? = 'Refunded' THEN CURRENT_TIMESTAMP
+                ELSE NULL
+            END
+        WHERE id IN ({update_placeholders})
+        """,
+        (
+            ticket_refund_status,
+            reason,
+            square_refund_id or None,
+            ticket_refund_status,
+            *selected_database_ids,
+        ),
+    )
+
+    conn.commit()
+    conn.close()
+
+    return {
+        "ok": True,
+        "refund_id": square_refund_id,
+        "status": square_status,
+        "ticket_count": len(tickets),
+        "amount_cents": amount_cents,
+        "message": (
+            "Refund completed successfully."
+            if square_status == "COMPLETED"
+            else "Refund submitted to Square and is pending."
+        ),
+    }, 200
 
 
 @app.route("/dashboard/ticket-orders")

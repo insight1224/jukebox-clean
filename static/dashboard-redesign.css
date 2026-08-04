@@ -5082,3 +5082,100 @@ button[data-action="delete"]:hover {
 .sidebar-website-link {
   background: rgba(255, 255, 255, 0.04);
 }
+
+/* Guest-list refund controls */
+#guestListModalOverlay .guest-refund-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(212, 175, 85, 0.35);
+  border-radius: 8px;
+  background: rgba(212, 175, 85, 0.12);
+  color: #f1d27b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+#guestListModalOverlay .guest-refund-select input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #d4af55;
+  cursor: pointer;
+}
+
+#guestListModalOverlay .guest-refund-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(212, 175, 85, 0.18);
+  border-radius: 18px;
+  background: rgba(3, 4, 7, 0.94);
+  color: rgba(255, 245, 220, 0.88);
+}
+
+#guestListModalOverlay .guest-refund-panel > div {
+  font-size: 0.95rem;
+}
+
+#guestListModalOverlay .guest-refund-panel strong,
+#guestListModalOverlay .js-refund-selected-total {
+  color: #e1b94f;
+}
+
+#guestListModalOverlay .guest-refund-panel label {
+  display: grid;
+  gap: 8px;
+  color: rgba(255, 245, 220, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+#guestListModalOverlay .guest-refund-panel input[type="text"] {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 13px;
+  border: 1px solid rgba(212, 175, 85, 0.24);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #fff4dd;
+  font: inherit;
+}
+
+#guestListModalOverlay .guest-refund-panel input[type="text"]:focus {
+  outline: none;
+  border-color: rgba(212, 175, 85, 0.7);
+  box-shadow: 0 0 0 3px rgba(212, 175, 85, 0.1);
+}
+
+#guestListModalOverlay .js-refund-selected {
+  justify-self: start;
+  min-height: 42px;
+  padding: 10px 15px;
+}
+
+#guestListModalOverlay .js-refund-selected:disabled {
+  cursor: not-allowed;
+}
+
+#guestListModalOverlay .js-refund-message {
+  min-height: 20px;
+  margin: 0;
+  color: #f1d27b;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  #guestListModalOverlay .guest-refund-panel {
+    padding: 15px;
+  }
+
+  #guestListModalOverlay .js-refund-selected {
+    width: 100%;
+    justify-self: stretch;
+  }
+}

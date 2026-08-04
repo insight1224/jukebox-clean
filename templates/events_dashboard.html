@@ -392,6 +392,7 @@
               <button class="js-event-action-checkin" type="button" data-checkin-target="checkin-modal-{{ loop.index }}" data-checkin-name="{{ event.name }}">Check-In</button>
               <button class="js-event-action-notes" type="button" data-event-name="{{ event.name }}">Notes</button>
             </div>
+
           </div>
           {% endfor %}
         </div>
@@ -432,6 +433,11 @@
                 data-quantity="{{ guest.quantity }}"
                 data-source="{{ guest.source|e }}"
                 data-ticket-id="{{ (guest.ticket_ids|first)|default('', true)|e }}"
+                data-ticket-row-ids='{{ guest.ticket_row_ids|tojson }}'
+                data-refund-amount-cents="{{ guest.amount_cents or 0 }}"
+                data-refund-status="{{ guest.refund_status|default('Not Refunded', true)|e }}"
+                data-payment-id="{{ (guest.payment_ids|first)|default('', true)|e }}"
+                data-can-refund="{{ 'true' if guest.can_refund else 'false' }}"
               >
                 <span class="guest-name-cell">{{ guest.name }}</span>
                 <span>{{ guest.email }}</span>
@@ -443,6 +449,17 @@
                   {% if (guest.source or "")|lower == "comp" %}
                   <button type="button" class="guest-action-button edit js-edit-comp-guest">Edit</button>
                   <button type="button" class="guest-action-button delete js-delete-comp-guest">Delete</button>
+                  {% elif guest.can_refund %}
+                  <label class="guest-refund-select">
+                    <input
+                      type="checkbox"
+                      class="js-refund-ticket-group"
+                      aria-label="Select {{ guest.name|e }} tickets for refund"
+                    >
+                    <span>Select</span>
+                  </label>
+                  {% elif guest.refund_status and guest.refund_status != "Not Refunded" %}
+                  <span class="guest-action-locked">{{ guest.refund_status }}</span>
                   {% else %}
                   <span class="guest-action-locked">—</span>
                   {% endif %}
@@ -459,6 +476,35 @@
                 <span>—</span>
               </div>
               {% endfor %}
+            </div>
+
+            <div class="guest-refund-panel">
+              <div>
+                <strong>Selected refund:</strong>
+                <span class="js-refund-selected-count">0 tickets</span>
+                ·
+                <span class="js-refund-selected-total">$0.00</span>
+              </div>
+
+              <label>
+                Refund reason
+                <input
+                  type="text"
+                  class="js-refund-reason"
+                  value="Customer requested ticket refund"
+                  maxlength="192"
+                >
+              </label>
+
+              <button
+                type="button"
+                class="guest-action-button delete js-refund-selected"
+                disabled
+              >
+                Refund Selected Tickets
+              </button>
+
+              <p class="js-refund-message" aria-live="polite"></p>
             </div>
           </div>
           {% endfor %}
@@ -733,6 +779,270 @@
         guestListModalOverlay.classList.add("active");
       }
     }
+
+    function parseRefundTicketRowIds(row) {
+      try {
+        const values = JSON.parse(
+          row.getAttribute("data-ticket-row-ids") || "[]"
+        );
+
+        if (!Array.isArray(values)) {
+          return [];
+        }
+
+        return values
+          .map((value) => Number.parseInt(value, 10))
+          .filter((value) => Number.isInteger(value) && value > 0);
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function updateGuestRefundPanel(content) {
+      if (!content) {
+        return;
+      }
+
+      const selectedCheckboxes = Array.from(
+        content.querySelectorAll(".js-refund-ticket-group:checked")
+      );
+
+      const ticketIds = [];
+      let totalCents = 0;
+
+      selectedCheckboxes.forEach((checkbox) => {
+        const row = checkbox.closest(".guest-list-row");
+
+        if (!row) {
+          return;
+        }
+
+        ticketIds.push(...parseRefundTicketRowIds(row));
+        totalCents += Number.parseInt(
+          row.getAttribute("data-refund-amount-cents") || "0",
+          10
+        ) || 0;
+      });
+
+      const countElement = content.querySelector(
+        ".js-refund-selected-count"
+      );
+      const totalElement = content.querySelector(
+        ".js-refund-selected-total"
+      );
+      const refundButton = content.querySelector(
+        ".js-refund-selected"
+      );
+      const messageElement = content.querySelector(
+        ".js-refund-message"
+      );
+
+      if (countElement) {
+        countElement.textContent =
+          ticketIds.length === 1
+            ? "1 ticket"
+            : `${ticketIds.length} tickets`;
+      }
+
+      if (totalElement) {
+        totalElement.textContent = (
+          totalCents / 100
+        ).toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD",
+        });
+      }
+
+      if (refundButton) {
+        refundButton.disabled = ticketIds.length === 0;
+      }
+
+      if (messageElement && ticketIds.length === 0) {
+        messageElement.textContent = "";
+      }
+    }
+
+    document.querySelectorAll(".guest-list-modal-content").forEach(
+      (content) => {
+        content.addEventListener("change", (event) => {
+          const checkbox = event.target.closest(
+            ".js-refund-ticket-group"
+          );
+
+          if (!checkbox) {
+            return;
+          }
+
+          if (checkbox.checked) {
+            const selectedRow = checkbox.closest(".guest-list-row");
+            const selectedPaymentId = (
+              selectedRow?.getAttribute("data-payment-id") || ""
+            ).trim();
+
+            content
+              .querySelectorAll(".js-refund-ticket-group:checked")
+              .forEach((otherCheckbox) => {
+                if (otherCheckbox === checkbox) {
+                  return;
+                }
+
+                const otherRow = otherCheckbox.closest(
+                  ".guest-list-row"
+                );
+                const otherPaymentId = (
+                  otherRow?.getAttribute("data-payment-id") || ""
+                ).trim();
+
+                if (
+                  selectedPaymentId &&
+                  otherPaymentId &&
+                  selectedPaymentId !== otherPaymentId
+                ) {
+                  otherCheckbox.checked = false;
+                }
+              });
+          }
+
+          updateGuestRefundPanel(content);
+        });
+
+        const refundButton = content.querySelector(
+          ".js-refund-selected"
+        );
+
+        if (!refundButton) {
+          return;
+        }
+
+        refundButton.addEventListener("click", async () => {
+          const selectedCheckboxes = Array.from(
+            content.querySelectorAll(
+              ".js-refund-ticket-group:checked"
+            )
+          );
+
+          const ticketIds = [];
+          let totalCents = 0;
+
+          selectedCheckboxes.forEach((checkbox) => {
+            const row = checkbox.closest(".guest-list-row");
+
+            if (!row) {
+              return;
+            }
+
+            ticketIds.push(...parseRefundTicketRowIds(row));
+            totalCents += Number.parseInt(
+              row.getAttribute("data-refund-amount-cents") || "0",
+              10
+            ) || 0;
+          });
+
+          if (!ticketIds.length) {
+            updateGuestRefundPanel(content);
+            return;
+          }
+
+          const reasonInput = content.querySelector(
+            ".js-refund-reason"
+          );
+          const messageElement = content.querySelector(
+            ".js-refund-message"
+          );
+          const reason = (
+            reasonInput?.value ||
+            "Customer requested ticket refund"
+          ).trim();
+
+          const formattedTotal = (
+            totalCents / 100
+          ).toLocaleString("en-US", {
+            style: "currency",
+            currency: "USD",
+          });
+
+          const confirmed = window.confirm(
+            `Refund ${formattedTotal} for ${ticketIds.length} ` +
+            `${ticketIds.length === 1 ? "ticket" : "tickets"}?\n\n` +
+            "This submits a real refund through Square and cannot " +
+            "be undone from this dashboard."
+          );
+
+          if (!confirmed) {
+            return;
+          }
+
+          refundButton.disabled = true;
+          refundButton.textContent = "Submitting Refund...";
+
+          if (messageElement) {
+            messageElement.textContent = "";
+          }
+
+          try {
+            const response = await fetch(
+              "/api/ticket-refunds/create",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  ticket_ids: ticketIds,
+                  reason,
+                }),
+              }
+            );
+
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok || !result.ok) {
+              throw new Error(
+                result.error || "The refund could not be processed."
+              );
+            }
+
+            if (messageElement) {
+              messageElement.textContent =
+                result.message || "Refund submitted successfully.";
+            }
+
+            selectedCheckboxes.forEach((checkbox) => {
+              const row = checkbox.closest(".guest-list-row");
+              const actionsCell = row?.querySelector(
+                ".guest-actions-cell"
+              );
+
+              if (actionsCell) {
+                actionsCell.innerHTML =
+                  '<span class="guest-action-locked">' +
+                  (
+                    result.status === "COMPLETED"
+                      ? "Refunded"
+                      : "Refund Pending"
+                  ) +
+                  "</span>";
+              }
+
+              checkbox.checked = false;
+            });
+
+            updateGuestRefundPanel(content);
+          } catch (error) {
+            if (messageElement) {
+              messageElement.textContent =
+                error.message ||
+                "The refund could not be processed.";
+            }
+
+            refundButton.disabled = false;
+          } finally {
+            refundButton.textContent =
+              "Refund Selected Tickets";
+          }
+        });
+      }
+    );
 
     document.querySelectorAll(".js-open-guest-list, .js-event-action-guest-list").forEach((button) => {
       button.addEventListener("click", () => {
