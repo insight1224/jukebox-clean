@@ -12535,11 +12535,26 @@ def admin_dashboard_events():
         grouped = {}
 
         for guest in rows:
+            source = (guest.get("source") or "").strip().lower()
+
+            payment_group = ""
+
+            if source == "square":
+                payment_group = next(
+                    (
+                        str(payment_id).split(":", 1)[0].strip()
+                        for payment_id in guest.get("payment_ids", [])
+                        if str(payment_id or "").strip()
+                    ),
+                    "",
+                )
+
             key = (
                 (guest.get("name") or "").strip().lower(),
                 (guest.get("email") or "").strip().lower(),
                 (guest.get("ticket_type") or "").strip().lower(),
-                (guest.get("source") or "").strip().lower(),
+                source,
+                payment_group,
             )
 
             guest_quantity = int(guest.get("quantity") or 0)
