@@ -4267,7 +4267,13 @@ def get_live_dashboard_data(include_past=False):
     """, default=0))
 
     online_ticket_revenue = float(one("""
-        SELECT SUM(COALESCE(amount_cents, 0)) / 100.0
+        SELECT SUM(
+            MAX(
+                COALESCE(amount_cents, 0)
+                - COALESCE(refunded_amount_cents, 0),
+                0
+            )
+        ) / 100.0
         FROM event_tickets
     """, default=0.0))
 
@@ -4392,7 +4398,13 @@ def get_live_dashboard_data(include_past=False):
             COALESCE(ct.event_name, 'Unknown') AS event_name,
             ct.display_ticket_type AS ticket_type,
             COUNT(*) AS quantity,
-            SUM(COALESCE(ct.amount_cents, 0)) / 100.0 AS revenue,
+            SUM(
+                MAX(
+                    COALESCE(ct.amount_cents, 0)
+                    - COALESCE(ct.refunded_amount_cents, 0),
+                    0
+                )
+            ) / 100.0 AS revenue,
             SUM(COALESCE(etr.guests_per_ticket, 1)) AS estimated_attendance
         FROM classified_tickets ct
         LEFT JOIN event_ticket_rules etr
@@ -4447,7 +4459,13 @@ def get_live_dashboard_data(include_past=False):
                  ELSE COALESCE(ticket_type, 'Ticket') || ' - Square'
                END AS source_name,
                COUNT(*) AS quantity,
-               SUM(COALESCE(amount_cents, 0)) / 100.0 AS revenue
+               SUM(
+                   MAX(
+                       COALESCE(amount_cents, 0)
+                       - COALESCE(refunded_amount_cents, 0),
+                       0
+                   )
+               ) / 100.0 AS revenue
         FROM event_tickets
         GROUP BY COALESCE(event_name, 'Unknown'), source_name
         ORDER BY event_name, source_name
