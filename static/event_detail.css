@@ -801,3 +801,62 @@ font-size: 13px;
     min-height: 0;
   }
 }
+
+/* Battle Part Two sold-out ticket styling */
+.ticket-comparison-grid .sold-out-ticket {
+  position: relative;
+  opacity: 0.72;
+  border-color: rgba(220, 85, 85, 0.55);
+  background: rgba(120, 20, 20, 0.08);
+}
+
+.ticket-comparison-grid .sold-out-ticket-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.ticket-comparison-grid .sold-out-ticket h3 {
+  margin: 0;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+
+.ticket-comparison-grid .sold-out-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(180, 45, 45, 0.2);
+  border: 1px solid rgba(235, 90, 90, 0.65);
+  color: #ffb0b0;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.ticket-comparison-grid .sold-out-price {
+  display: inline-block;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  color: rgba(255, 245, 220, 0.5);
+}
+
+.ticket-comparison-grid .sold-out-ticket p {
+  color: rgba(255, 245, 220, 0.45);
+}
+
+@media (max-width: 700px) {
+  .ticket-comparison-grid .sold-out-ticket-heading {
+    align-items: flex-start;
+  }
+
+  .ticket-comparison-grid .sold-out-badge {
+    font-size: 0.66rem;
+    padding: 5px 8px;
+  }
+}

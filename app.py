@@ -4467,6 +4467,8 @@ def get_live_dashboard_data(include_past=False):
                    )
                ) / 100.0 AS revenue
         FROM event_tickets
+        WHERE UPPER(COALESCE(payment_id, ''))
+              NOT LIKE 'MANUAL_%'
         GROUP BY COALESCE(event_name, 'Unknown'), source_name
         ORDER BY event_name, source_name
     """)
@@ -8186,6 +8188,12 @@ def build_event_ticket_catalog(event):
 
             remaining = max(0, capacity - sold)
 
+            if (
+                event.get("name") == "Battle of the DJs Part Two"
+                and ticket["name"] == "Early Bird"
+            ):
+                remaining = 0
+
             catalog.append({
                 **ticket,
                 "price_cents": price_cents,
@@ -8874,6 +8882,11 @@ def event_detail(event_name):
         sold = int(cursor.fetchone()[0] or 0)
 
         remaining = max(0, quantity - sold)
+        if (
+            event["name"] == "Battle of the DJs Part Two"
+            and ticket_name == "Early Bird"
+        ):
+            remaining = 0
         if event["name"] == "Battle of the DJs" and ticket_name == "Early Bird":
             remaining = 0
         if event["name"] == "Battle of the DJs" and ticket_name == "VIP Section":
@@ -10818,6 +10831,80 @@ def api_event_cash_revenue():
     conn.commit()
     cash_id = cur.lastrowid
 
+    manual_customer_name = ""
+    manual_ticket_type = ""
+
+    for note_part in (notes or "").split("|"):
+        note_part = note_part.strip()
+
+        if ":" not in note_part:
+            continue
+
+        note_key, note_value = note_part.split(":", 1)
+        note_key = note_key.strip().lower()
+        note_value = note_value.strip()
+
+        if note_key == "customer" and note_value:
+            manual_customer_name = note_value
+        elif note_key == "ticket type" and note_value:
+            manual_ticket_type = note_value
+
+    # Named paid manual sales need ticket records for Guest List and Check-In.
+    # The money remains in event_cash_revenue; these rows carry $0 so revenue
+    # is not duplicated.
+    if (
+        category.strip().lower() != "comp"
+        and manual_customer_name
+        and manual_ticket_type
+        and quantity > 0
+    ):
+        safe_source = "".join(
+            character if character.isalnum() else "_"
+            for character in category.strip().upper()
+        ).strip("_") or "OTHER"
+
+        for manual_index in range(1, quantity + 1):
+            manual_ticket_id = f"MANUAL_{cash_id}_{manual_index}"
+            manual_payment_id = (
+                f"MANUAL_{safe_source}_{cash_id}:{manual_index}"
+            )
+
+            cur.execute(
+                """
+                INSERT INTO event_tickets (
+                    name,
+                    email,
+                    ticket_type,
+                    amount_cents,
+                    ticket_id,
+                    status,
+                    payment_id,
+                    checkin_url,
+                    qr_url,
+                    event_name,
+                    checked_in,
+                    checked_in_count
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    manual_customer_name,
+                    "",
+                    manual_ticket_type,
+                    0,
+                    manual_ticket_id,
+                    "not_checked_in",
+                    manual_payment_id,
+                    f"/checkin/{manual_ticket_id}",
+                    f"/qr/{manual_ticket_id}",
+                    event_name,
+                    0,
+                    0,
+                ),
+            )
+
+        conn.commit()
+
     # Auto-add comps to attendees/check-in list so free guests show up for door staff.
     if category.strip().lower() == "comp":
         comp_customer_name = "Comp Guest"
@@ -12469,7 +12556,8 @@ def admin_dashboard_events():
     }
 
     cur.execute("""
-        SELECT event_name,
+        SELECT id,
+               event_name,
                category,
                COALESCE(quantity, 0) AS quantity,
                amount_cents,
@@ -12484,6 +12572,30 @@ def admin_dashboard_events():
     cash_totals_by_event = {}
     cash_quantity_by_event = {}
     cash_ticket_breakdown_by_event = {}
+
+    # Named manual sales create MANUAL_* event_tickets rows for Guest List
+    # and Check-In. Track their linked event_cash_revenue IDs so ticket
+    # quantities are not counted a second time from the revenue table.
+    manual_cash_ids = set()
+
+    for ticket_row in ticket_rows:
+        manual_payment_id = str(
+            ticket_row.get("payment_id") or ""
+        ).strip()
+
+        if not manual_payment_id.startswith("MANUAL_"):
+            continue
+
+        manual_payment_base = manual_payment_id.split(":", 1)[0]
+
+        try:
+            manual_cash_id = int(
+                manual_payment_base.rsplit("_", 1)[1]
+            )
+        except (IndexError, TypeError, ValueError):
+            continue
+
+        manual_cash_ids.add(manual_cash_id)
 
     for cash_row in cash_rows:
         cash_event_name = cash_row.get("event_name") or "Unknown"
@@ -12502,7 +12614,13 @@ def admin_dashboard_events():
         )
 
         if counts_as_ticket:
-            cash_quantity_by_event[cash_event_name] = cash_quantity_by_event.get(cash_event_name, 0) + cash_quantity
+            cash_row_id = int(cash_row.get("id") or 0)
+
+            if cash_row_id not in manual_cash_ids:
+                cash_quantity_by_event[cash_event_name] = (
+                    cash_quantity_by_event.get(cash_event_name, 0)
+                    + cash_quantity
+                )
 
             cash_ticket_type = "Cash / Door Tickets"
             for note_part in cash_notes.split("|"):
@@ -12567,6 +12685,9 @@ def admin_dashboard_events():
             source = "Comp"
         elif payment_id.startswith("eventbrite:"):
             source = "Eventbrite"
+        elif payment_id.startswith("MANUAL_"):
+            manual_source = payment_id.split("_", 2)[1] if "_" in payment_id else "OTHER"
+            source = manual_source.replace("_", " ").title()
         else:
             source = "Square"
         guests_per_ticket = ticket_rule_map.get(
