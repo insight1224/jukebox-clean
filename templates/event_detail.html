@@ -97,73 +97,17 @@
     {% endif %}
 
     {% if event.status != "postponed" %}
-        {% if event.name == "Battle of the DJs Part Two" %}
+        {% if event.name in ["Battle of the DJs Part Two", "Battle of the DJs Part 2"] %}
         <div class="ticket-comparison-panel">
             <div class="ticket-comparison-heading">
-                <p class="ticket-cta-kicker">Tickets Available Now</p>
-                <h2>Choose Your Battle Experience</h2>
+                <p class="ticket-cta-kicker">ONLINE SALES CLOSED</p>
+                <h2>Tickets Available at the Door Only — $20 General Admission</h2>
                 <p>
-                    Review the options below, then choose quantities on the secure checkout page.
+                    Online ticket sales are now closed for Battle of the DJs Part Two.
+                    General Admission tickets may still be purchased at the door for $20
+                    while availability lasts.
                 </p>
             </div>
-
-            <div class="ticket-comparison-grid">
-                <article class="sold-out-ticket">
-                    <div class="sold-out-ticket-heading">
-                        <h3>Early Bird</h3>
-                        <span class="sold-out-badge">SOLD OUT</span>
-                    </div>
-
-                    <strong class="sold-out-price">$15</strong>
-
-                    <p>
-                        Discounted admission with standing room on the lawn.
-                        Best for guests who want the full experience at the lowest price.
-                    </p>
-                </article>
-
-                <article>
-                    <h3>General Admission</h3>
-                    <strong>$18</strong>
-                    <p>
-                        Standard event admission with standing room on the lawn
-                        and freedom to move around and enjoy the full event.
-                    </p>
-                </article>
-
-                <article>
-                    <h3>VIP Section</h3>
-                    <strong>$200</strong>
-                    <p>
-                        Reserved shaded VIP booth for up to six guests.
-                        Ideal for groups wanting comfort and a dedicated space.
-                    </p>
-                </article>
-
-                <article>
-                    <h3>DJ VIP Section</h3>
-                    <strong>$200</strong>
-                    <p>
-                        Reserved booth behind the DJ for up to six guests
-                        with an elevated view. This section is not shaded.
-                    </p>
-                </article>
-            </div>
-
-            <div class="ticket-comparison-footer">
-                <span>Secure Square checkout</span>
-                <span>QR tickets delivered by email</span>
-            </div>
-
-            <a
-                class="ticket-cta-button"
-                href="{{ url_for(
-                    'ticket_checkout_page',
-                    event_name=event.name
-                ) }}"
-            >
-                Select Tickets
-            </a>
         </div>
         {% else %}
         <div class="ticket-grid {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}">

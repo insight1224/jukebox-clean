@@ -8803,6 +8803,14 @@ def ticket_checkout_page(event_name):
             url_for("event_detail", event_name=event["name"])
         )
 
+    if event["name"] in {
+        "Battle of the DJs Part Two",
+        "Battle of the DJs Part 2",
+    }:
+        return redirect(
+            url_for("event_detail", event_name=event["name"])
+        )
+
     ticket_catalog = build_event_ticket_catalog(event)
 
     return render_template(
