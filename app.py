@@ -12104,6 +12104,37 @@ def admin_dashboard_revenue():
     """)
     cash_rows = [dict(row) for row in cursor.fetchall()]
 
+    # Manual revenue entries that already created MANUAL_* ticket rows
+    # must not add their ticket quantity a second time on the Revenue page.
+    cursor.execute("""
+        SELECT payment_id
+        FROM event_tickets
+        WHERE UPPER(COALESCE(payment_id, '')) LIKE 'MANUAL_%'
+    """)
+    revenue_manual_cash_ids = set()
+    revenue_manual_source_by_cash_id = {}
+
+    for manual_row in cursor.fetchall():
+        manual_payment_id = str(manual_row["payment_id"] or "").strip()
+        manual_payment_base = manual_payment_id.split(":", 1)[0]
+
+        try:
+            manual_cash_id = int(
+                manual_payment_base.rsplit("_", 1)[1]
+            )
+        except (IndexError, TypeError, ValueError):
+            continue
+
+        revenue_manual_cash_ids.add(manual_cash_id)
+
+        source_part = manual_payment_base[len("MANUAL_"):]
+        source_part = source_part.rsplit("_", 1)[0]
+
+        if source_part:
+            revenue_manual_source_by_cash_id[manual_cash_id] = (
+                source_part.replace("_", " ").title()
+            )
+
     cursor.execute("""
         SELECT
             COALESCE(event_name, 'Unknown') AS event_name,
@@ -12327,6 +12358,13 @@ def admin_dashboard_revenue():
                 cash_notes = cash_item.get("notes") or ""
                 cash_ticket_type = "General Admission"
 
+                cash_row_id = int(cash_item.get("id") or 0)
+                breakdown_quantity = (
+                    0
+                    if cash_row_id in revenue_manual_cash_ids
+                    else cash_quantity
+                )
+
                 for note_part in cash_notes.split("|"):
                     note_part = note_part.strip()
 
@@ -12355,7 +12393,7 @@ def admin_dashboard_revenue():
                 if matching_ticket:
                     matching_ticket["quantity"] = (
                         int(matching_ticket.get("quantity", 0) or 0)
-                        + cash_quantity
+                        + breakdown_quantity
                     )
                     matching_ticket["estimated_attendance"] = (
                         int(
@@ -12365,20 +12403,21 @@ def admin_dashboard_revenue():
                             )
                             or 0
                         )
-                        + cash_quantity
+                        + breakdown_quantity
                     )
                     matching_ticket["revenue"] = (
                         float(matching_ticket.get("revenue", 0) or 0)
                         + cash_amount
                     )
                 else:
-                    event["tickets"].append({
-                        "name": cash_ticket_type,
-                        "quantity": cash_quantity,
-                        "estimated_attendance": cash_quantity,
-                        "price": 0,
-                        "revenue": cash_amount,
-                    })
+                    if breakdown_quantity > 0:
+                        event["tickets"].append({
+                            "name": cash_ticket_type,
+                            "quantity": breakdown_quantity,
+                            "estimated_attendance": breakdown_quantity,
+                            "price": 0,
+                            "revenue": cash_amount,
+                        })
 
         # Bottom-left box: other/non-ticket revenue only
         event["cash_revenue"] = other_cash_rows
@@ -12396,14 +12435,42 @@ def admin_dashboard_revenue():
             for ticket in event.get("tickets", []) or []
         )
 
-        # Top-right box: keep cash door revenue separate.
+        # Top-right box: show each manual payment source separately.
         if ticket_cash_total > 0:
             event.setdefault("revenue_sources", [])
-            event["revenue_sources"].append({
-                "name": "Door - Cash",
-                "quantity": ticket_cash_quantity,
-                "revenue": ticket_cash_total,
-            })
+
+            manual_source_totals = {}
+
+            for cash_item in ticket_cash_rows:
+                cash_row_id = int(cash_item.get("id") or 0)
+                category_label = (
+                    cash_item.get("category") or "Manual Revenue"
+                ).strip()
+
+                source_name = revenue_manual_source_by_cash_id.get(
+                    cash_row_id,
+                    category_label,
+                )
+
+                source_key = source_name.strip()
+
+                if source_key not in manual_source_totals:
+                    manual_source_totals[source_key] = {
+                        "name": source_key,
+                        "quantity": 0,
+                        "revenue": 0.0,
+                    }
+
+                manual_source_totals[source_key]["quantity"] += int(
+                    cash_item.get("quantity", 0) or 0
+                )
+                manual_source_totals[source_key]["revenue"] += float(
+                    cash_item.get("amount", 0) or 0
+                )
+
+            event["revenue_sources"].extend(
+                manual_source_totals.values()
+            )
 
     # Merge duplicate revenue rows with the same display name.
     # Example: Door Square + Door Cash should display as one Door total.
