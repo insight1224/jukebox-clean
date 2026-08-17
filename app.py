@@ -4124,7 +4124,7 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
     {
         "id": 4,
         "name": "Battle of the DJs Part Two",
-        "status": "upcoming",
+        "status": "past",
         "flyer": "/static/images/battle-of-the-djs-part-2.png",
         "description": """The battle continues. Four DJs will go head-to-head across three high-energy rounds for one championship title. Expect live mixes, crowd interaction, great food, and the grown Jukebox Lounge energy that made the original Battle of the DJs unforgettable.
 
@@ -6566,6 +6566,37 @@ def gallery_battle_of_the_djs():
             "📸 Opening-Night Memories",
             "🤝 Community"
         ]
+    )
+
+
+@app.route("/gallery/battle-of-the-djs-part-two")
+def gallery_battle_of_the_djs_part_two():
+    images, videos = load_event_gallery(
+        "battle-of-the-djs-part-two-gallery",
+        "battle-of-the-djs-part-two-videos",
+    )
+    uploaded_images = load_uploaded_gallery_images(
+        "battle-of-the-djs-part-two"
+    )
+
+    return render_template(
+        "gallery_event.html",
+        title="Battle of the DJs Part Two",
+        subtitle="The Battle Continued",
+        images=images,
+        uploaded_images=uploaded_images,
+        videos=videos,
+        recap_paragraphs=[
+            "Battle of the DJs Part Two brought the competition back with another high-energy afternoon of music, crowd interaction, and Bull City energy.",
+            "Four DJs went head-to-head across multiple rounds while guests enjoyed the full Jukebox Lounge NC experience at Kore Durham."
+        ],
+        highlights=[
+            "🎧 Four DJs",
+            "🔥 Live DJ Battle",
+            "🏆 Championship Energy",
+            "📸 Event Memories",
+            "🤝 Bull City Community",
+        ],
     )
 
 

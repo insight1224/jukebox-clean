@@ -93,7 +93,15 @@
     <div class="events-refresh-grid">
       {% for event in events %}
       {% if event.status == "past" %}
+      {% if event.name == "Battle of the DJs Part Two" %}
+      <a
+        class="event-refresh-card past"
+        href="/gallery/battle-of-the-djs-part-two"
+        style="text-decoration:none;color:inherit;"
+      >
+      {% else %}
       <article class="event-refresh-card past">
+      {% endif %}
         <div class="event-refresh-image">
           {% if event.flyer.startswith('/static/') %}
           <img src="{{ event.flyer }}" alt="{{ event.name }}">
@@ -107,7 +115,12 @@
           <h3>{{ event.name }}</h3>
           <p>Thank you to everyone who came out and supported the vibe.</p>
         </div>
+
+      {% if event.name == "Battle of the DJs Part Two" %}
+      </a>
+      {% else %}
       </article>
+      {% endif %}
       {% endif %}
       {% endfor %}
     </div>
