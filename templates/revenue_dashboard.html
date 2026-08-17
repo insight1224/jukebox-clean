@@ -436,8 +436,8 @@
               </div>
 
               <div class="event-detail-panel">
-                <h5>Other Revenue</h5>
-                {% for cash in event.cash_revenue %}
+                <h5>Manual Revenue Entries</h5>
+                {% for cash in event.manual_revenue_entries|default([]) %}
                 <div class="breakdown-row stacked-breakdown-row expense-action-row">
                   <span>
                     {{ cash.category }}
@@ -458,49 +458,6 @@
                       data-notes="{{ cash.notes }}">
                       Edit
                     </button>
-                    <button type="button"
-                      class="js-delete-cash"
-                      data-cash-id="{{ cash.id }}">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                {% else %}
-                <div class="breakdown-row">
-                  <span>No cash revenue saved for this event yet.</span>
-                  <strong>$0.00</strong>
-                </div>
-                {% endfor %}
-              </div>
-
-              <div class="event-detail-panel">
-                <h5>Saved Manual Revenue Entries</h5>
-                {% for cash in event.manual_revenue_entries|default([]) %}
-                <div class="breakdown-row stacked-breakdown-row expense-action-row">
-                  <span>
-                    {{ cash.category }}
-                    {% if cash.notes %}
-                    <small>{{ cash.notes }}</small>
-                    {% endif %}
-                    {% if cash.quantity and cash.quantity > 0 %}
-                    <small>{{ cash.quantity }} tickets</small>
-                    {% endif %}
-                  </span>
-
-                  <strong>${{ "%.2f"|format(cash.amount) }}</strong>
-
-                  <div class="expense-row-actions">
-                    <button type="button"
-                      class="js-edit-cash"
-                      data-cash-id="{{ cash.id }}"
-                      data-event-name="{{ event.name }}"
-                      data-category="{{ cash.category }}"
-                      data-quantity="{{ cash.quantity }}"
-                      data-amount="{{ cash.amount }}"
-                      data-notes="{{ cash.notes }}">
-                      Edit
-                    </button>
-
                     <button type="button"
                       class="js-delete-cash"
                       data-cash-id="{{ cash.id }}">
@@ -609,8 +566,8 @@
               </div>
 
               <div class="event-detail-panel">
-                <h5>Other Revenue</h5>
-                {% for cash in event.cash_revenue %}
+                <h5>Manual Revenue Entries</h5>
+                {% for cash in event.manual_revenue_entries|default([]) %}
                 <div class="breakdown-row stacked-breakdown-row expense-action-row">
                   <span>
                     {{ cash.category }}
@@ -631,49 +588,6 @@
                       data-notes="{{ cash.notes }}">
                       Edit
                     </button>
-                    <button type="button"
-                      class="js-delete-cash"
-                      data-cash-id="{{ cash.id }}">
-                      Delete
-                    </button>
-                  </div>
-                </div>
-                {% else %}
-                <div class="breakdown-row">
-                  <span>No cash revenue saved for this event yet.</span>
-                  <strong>$0.00</strong>
-                </div>
-                {% endfor %}
-              </div>
-
-              <div class="event-detail-panel">
-                <h5>Saved Manual Revenue Entries</h5>
-                {% for cash in event.manual_revenue_entries|default([]) %}
-                <div class="breakdown-row stacked-breakdown-row expense-action-row">
-                  <span>
-                    {{ cash.category }}
-                    {% if cash.notes %}
-                    <small>{{ cash.notes }}</small>
-                    {% endif %}
-                    {% if cash.quantity and cash.quantity > 0 %}
-                    <small>{{ cash.quantity }} tickets</small>
-                    {% endif %}
-                  </span>
-
-                  <strong>${{ "%.2f"|format(cash.amount) }}</strong>
-
-                  <div class="expense-row-actions">
-                    <button type="button"
-                      class="js-edit-cash"
-                      data-cash-id="{{ cash.id }}"
-                      data-event-name="{{ event.name }}"
-                      data-category="{{ cash.category }}"
-                      data-quantity="{{ cash.quantity }}"
-                      data-amount="{{ cash.amount }}"
-                      data-notes="{{ cash.notes }}">
-                      Edit
-                    </button>
-
                     <button type="button"
                       class="js-delete-cash"
                       data-cash-id="{{ cash.id }}">
