@@ -120,6 +120,30 @@ def automatic_event_status(event_date_value, fallback_status="Upcoming"):
     return "Past"
 
 
+def normalize_dashboard_event_name(event_name):
+    clean_name = (event_name or "").strip()
+
+    if clean_name.lower() in {
+        "battle of the djs part two",
+        "battle of the djs part 2",
+    }:
+        return "Battle of the DJs Part 2"
+
+    return clean_name
+
+
+def normalize_dashboard_event_name(event_name):
+    clean_name = (event_name or "").strip()
+
+    if clean_name.lower() in {
+        "battle of the djs part two",
+        "battle of the djs part 2",
+    }:
+        return "Battle of the DJs Part 2"
+
+    return clean_name
+
+
 def event_badge_class(status_label):
     status = (status_label or "").strip().lower()
 
@@ -4426,7 +4450,9 @@ def get_live_dashboard_data(include_past=False):
 
     events_map = {}
     for row in event_rows:
-        event_name = row["event_name"]
+        event_name = normalize_dashboard_event_name(
+            row["event_name"]
+        )
         events_map.setdefault(event_name, {
             "name": event_name,
             "tickets": [],
@@ -4475,7 +4501,9 @@ def get_live_dashboard_data(include_past=False):
     source_rows = cur.fetchall()
 
     for row in source_rows:
-        event_name = row["event_name"]
+        event_name = normalize_dashboard_event_name(
+            row["event_name"]
+        )
         if event_name not in events_map:
             continue
 
@@ -4499,7 +4527,9 @@ def get_live_dashboard_data(include_past=False):
     setup_ticket_rules = cur.fetchall()
 
     for rule in setup_ticket_rules:
-        rule_event_name = (rule["event_name"] or "").strip()
+        rule_event_name = normalize_dashboard_event_name(
+            rule["event_name"]
+        )
         rule_ticket_type = (rule["ticket_type"] or "General Admission").strip()
 
         if not rule_event_name or not rule_ticket_type:
@@ -4529,7 +4559,9 @@ def get_live_dashboard_data(include_past=False):
             })
 
     for setup_event in event_setup_rows:
-        setup_name = (setup_event.get("name") or "").strip()
+        setup_name = normalize_dashboard_event_name(
+            setup_event.get("name")
+        )
 
         if not setup_name:
             continue
