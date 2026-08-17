@@ -12419,8 +12419,12 @@ def admin_dashboard_revenue():
                             "revenue": cash_amount,
                         })
 
-        # Bottom-left box: other/non-ticket revenue only
+        # Bottom-left box: other/non-ticket revenue only.
         event["cash_revenue"] = other_cash_rows
+
+        # Keep every manually entered revenue row available separately
+        # so admins can edit or delete the original saved entries.
+        event["manual_revenue_entries"] = event_cash_rows
 
         event["cash_revenue_total"] = event_cash_total
         event["ticket_cash_revenue_total"] = ticket_cash_total
