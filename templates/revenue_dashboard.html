@@ -745,11 +745,12 @@
               Event
               <select id="cashRevenueEvent">
                 <option>Select Event</option>
-                {% for event in events %}
-                <option>{{ event.name }}</option>
-                {% endfor %}
-                {% for event in past_events %}
-                <option>{{ event.name }}</option>
+                {% set event_names = namespace(seen=[]) %}
+                {% for event in events + past_events %}
+                  {% if event.name not in event_names.seen %}
+                    <option>{{ event.name }}</option>
+                    {% set event_names.seen = event_names.seen + [event.name] %}
+                  {% endif %}
                 {% endfor %}
               </select>
             </label>
