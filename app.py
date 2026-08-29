@@ -4177,6 +4177,38 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
             "booth": {"price": 200, "sold": 0, "size": 6}
         }
     },
+    {
+        "id": 5,
+        "name": "All-Women Battle of the DJs",
+        "status": "upcoming",
+        "flyer": "/static/images/battlep3.png",
+        "description": """The ladies are taking the stage for an all-women edition of Battle of the DJs. Four talented women will go head-to-head, bringing real skill, real passion, and real representation to the Jukebox Lounge stage.
+
+Four women. One stage. Only one will be crowned.""",
+        "description_long": """The Jukebox Lounge NC presents the All-Women Battle of the DJs — a special showcase celebrating women behind the decks.
+
+Four talented women will take the stage and go head-to-head with real skill, real passion, and real representation. Only one will be crowned.
+
+Scorpio season is lit as we also celebrate birthday weekend with two queens. Come ready for great music, high energy, and another unforgettable Jukebox Lounge experience.""",
+        "ticket_link": "",
+        "event_datetime": "Sunday, October 25, 2026",
+        "location": "Kore Durham — 923 E Main St, Durham, NC 27701",
+        "time": "3:00 PM",
+        "doors": "3:00 PM",
+        "ticket_label": "Multiple Ticket Options",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=923+E+Main+St+Durham+NC+27701",
+        "early_link": "",
+        "ga_link": "",
+        "vip_link": "",
+        "booth_link": "",
+        "tickets_coming_soon": False,
+        "tickets": {
+            "early": {"price": 15, "sold": 0, "size": 30},
+            "ga": {"price": 18, "sold": 0, "size": 298},
+            "vip": {"price": 200, "sold": 0, "size": 6},
+            "booth": {"price": 200, "sold": 0, "size": 6}
+        }
+    },
 
 ]
 
