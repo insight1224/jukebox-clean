@@ -4205,8 +4205,9 @@ Scorpio season is lit as we also celebrate birthday weekend with two queens. Com
         "tickets": {
             "early": {"price": 15, "sold": 0, "size": 30},
             "ga": {"price": 18, "sold": 0, "size": 298},
-            "vip": {"price": 200, "sold": 0, "size": 6},
-            "booth": {"price": 200, "sold": 0, "size": 6}
+            "vip": {"price": 200, "sold": 0, "size": 4},
+            "premium_vip": {"price": 250, "sold": 0, "size": 3},
+            "booth": {"price": 225, "sold": 0, "size": 6}
         }
     },
 
@@ -8228,6 +8229,40 @@ def build_event_ticket_catalog(event):
         },
     ]
 
+    # The All-Women Battle uses three distinct VIP section levels.
+    if event.get("name") == "All-Women Battle of the DJs":
+        canonical_tickets = [
+            canonical_tickets[0],
+            canonical_tickets[1],
+            {
+                "key": "vip",
+                "name": "Regular VIP Section",
+                "display_name": "Regular VIP Section",
+                "description": (
+                    "Shaded reserved VIP seating along the side of the lawn "
+                    "for up to six guests."
+                ),
+            },
+            {
+                "key": "premium_vip",
+                "name": "Premium VIP Section",
+                "display_name": "Premium VIP Section",
+                "description": (
+                    "One of our most requested shaded VIP locations with a "
+                    "prime view of the event for up to six guests."
+                ),
+            },
+            {
+                "key": "booth",
+                "name": "DJ VIP Section",
+                "display_name": "DJ VIP Section",
+                "description": (
+                    "Shaded reserved seating positioned around the DJ area "
+                    "for up to six guests."
+                ),
+            },
+        ]
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     catalog = []
@@ -8942,12 +8977,22 @@ def event_detail(event_name):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    canonical = [
-        ("Early Bird", "early"),
-        ("General Admission", "ga"),
-        ("VIP Section", "vip"),
-        ("DJ VIP Section", "booth"),
-    ]
+    if event["name"] == "All-Women Battle of the DJs":
+        canonical = [
+            ("Early Bird", "early"),
+            ("General Admission", "ga"),
+            ("Regular VIP Section", "vip"),
+            ("Premium VIP Section", "premium_vip"),
+            ("DJ VIP Section", "booth"),
+        ]
+    else:
+        canonical = [
+            ("Early Bird", "early"),
+            ("General Admission", "ga"),
+            ("VIP Section", "vip"),
+            ("DJ VIP Section", "booth"),
+        ]
+
     ticket_data = []
     for ticket_name, key in canonical:
         cfg = (event.get("tickets", {}) or {}).get(key, {}) or {}

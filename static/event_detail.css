@@ -860,3 +860,70 @@ font-size: 13px;
     padding: 5px 8px;
   }
 }
+
+/* Five-card layout for this event only */
+
+.all-women-ticket-grid {
+    width: min(980px, 100%);
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.all-women-ticket-grid .ticket-box {
+    width: 100%;
+    grid-column: span 2;
+}
+
+.all-women-ticket-grid .ticket-box:nth-child(4) {
+    grid-column: 2 / span 2;
+}
+
+.all-women-ticket-grid .ticket-box:nth-child(5) {
+    grid-column: 4 / span 2;
+}
+
+/* Premium VIP visual treatment */
+
+.ticket-box.premium-vip {
+    border: 2px solid #f0cd4d;
+    background:
+        linear-gradient(145deg, rgba(212, 175, 55, 0.10), transparent),
+        #111;
+    box-shadow: 0 0 24px rgba(212, 175, 55, 0.14);
+}
+
+.btn.premium-vip-btn {
+    background: linear-gradient(135deg, #f1d477, #d4af37);
+    color: #080808;
+}
+
+@media (max-width: 900px) {
+    .all-women-ticket-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .all-women-ticket-grid .ticket-box,
+    .all-women-ticket-grid .ticket-box:nth-child(4),
+    .all-women-ticket-grid .ticket-box:nth-child(5) {
+        grid-column: auto;
+    }
+
+    .all-women-ticket-grid .ticket-box:last-child {
+        grid-column: 1 / -1;
+        width: min(100%, 420px);
+        justify-self: center;
+    }
+}
+
+@media (max-width: 600px) {
+    .all-women-ticket-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .all-women-ticket-grid .ticket-box,
+    .all-women-ticket-grid .ticket-box:last-child {
+        grid-column: auto;
+        width: 100%;
+    }
+}

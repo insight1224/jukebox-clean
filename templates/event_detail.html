@@ -110,7 +110,10 @@
             </div>
         </div>
         {% else %}
-        <div class="ticket-grid {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}">
+        <div class="ticket-grid
+            {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}
+            {% if event.name == 'All-Women Battle of the DJs' %}all-women-ticket-grid{% endif %}
+        ">
             {% if is_quiet_storm %}
             <div class="ticket-box">
                 <h3>General Admission</h3>
@@ -122,10 +125,17 @@
             {% for t in ticket_data %}
             <div class="ticket-box
                 {% if t.name == 'Early Bird' %}highlight{% endif %}
-                {% if t.name == 'VIP Section' %}vip{% endif %}
+                {% if t.name in ['VIP Section', 'Regular VIP Section'] %}vip{% endif %}
+                {% if t.name == 'Premium VIP Section' %}premium-vip{% endif %}
                 {% if t.name == 'DJ VIP Section' %}ultra{% endif %}
             ">
-                <h3>{{ display_name_map.get(t.name, t.name) }}</h3>
+                <h3>
+                    {% if event.name == "All-Women Battle of the DJs" and t.name == "DJ VIP Section" %}
+                    DJ VIP Section
+                    {% else %}
+                    {{ display_name_map.get(t.name, t.name) }}
+                    {% endif %}
+                </h3>
                 <p>
                     {% if t.name == "Early Bird" %}
                     Enjoy access to the event with standing room on the lawn. This ticket is perfect for guests who want a casual, open-air experience.
@@ -133,11 +143,19 @@
                     Enjoy access to the event with standing room on the lawn and full freedom to move around and enjoy the vibe.
                     {% elif t.name == "VIP Section" %}
                     Upgrade your experience with a reserved VIP booth in a shaded area for up to six guests.
+                    {% elif t.name == "Regular VIP Section" %}
+                    Reserved shaded VIP seating along the side of the lawn for up to six guests.
+                    {% elif t.name == "Premium VIP Section" %}
+                    One of our most requested shaded VIP locations with a prime view of the event for up to six guests.
+                    {% elif t.name == "DJ VIP Section" and event.name == "All-Women Battle of the DJs" %}
+                    Reserved shaded VIP seating positioned around the DJ area for up to six guests.
                     {% elif t.name == "DJ VIP Section" %}
                     Reserved booth behind the DJ with an elevated view. Seating for six guests. Not shaded.
                     {% endif %}
                 </p>
+                {% if not event.tickets_coming_soon %}
                 <p>${{ "%.2f"|format(t.price) }}</p>
+                {% endif %}
                 {% if event.name == "Battle of the DJs" %}
                 <span class="btn disabled">Online Sales Closed</span>
                 {% elif event.tickets_coming_soon %}
@@ -147,7 +165,8 @@
                 {% else %}
                 <a
                     class="btn
-                        {% if t.name == 'VIP Section' %}vip-btn{% endif %}
+                        {% if t.name in ['VIP Section', 'Regular VIP Section'] %}vip-btn{% endif %}
+                        {% if t.name == 'Premium VIP Section' %}premium-vip-btn{% endif %}
                         {% if t.name == 'DJ VIP Section' %}ultra-btn{% endif %}
                     "
                     href="{{ url_for(
