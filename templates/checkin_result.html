@@ -22,12 +22,39 @@
     .green { background: #28a745; }
     .orange { background: #ff9800; }
     .red { background: #dc3545; }
+
+    .free-shot {
+      margin: 20px auto 0;
+      padding: 24px 30px;
+      max-width: 420px;
+      border: 3px solid #f5c542;
+      border-radius: 12px;
+      background: #222;
+      color: #f5c542;
+      font-size: 24px;
+      font-weight: bold;
+      line-height: 1.4;
+    }
+
+    .free-shot span {
+      display: block;
+      margin-top: 8px;
+      color: white;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
 
 {% if status == "success" %}
   <div class="box green">✅ Checked In</div>
+
+  {% if free_shot_eligible %}
+    <div class="free-shot">
+      🥃 FREE SHOT
+      <span>GIVE GUEST A DRINK TICKET</span>
+    </div>
+  {% endif %}
 
 {% elif status == "already_checked_in" %}
   <div class="box orange">⚠️ Already Checked In</div>

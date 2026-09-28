@@ -8,7 +8,8 @@ import os
 import time
 import secrets
 import sqlite3
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 import smtplib
 import re
 import traceback
@@ -742,6 +743,8 @@ def init_db():
     )
     """)
 
+    ensure_column("ticket_orders", "event_date", "TEXT")
+
     cursor.execute("""
     CREATE INDEX IF NOT EXISTS idx_ticket_orders_event
     ON ticket_orders(event_name)
@@ -822,6 +825,8 @@ def init_db():
     """)
     ensure_column("event_tickets", "ticket_email_sent_at", "TEXT")
     ensure_column("event_tickets", "event_name", "TEXT")
+    ensure_column("event_tickets", "event_date", "TEXT")
+    ensure_column("event_tickets", "free_shot_eligible", "INTEGER DEFAULT 0")
     ensure_column("event_tickets", "checked_in", "INTEGER DEFAULT 0")
     ensure_column("event_tickets", "checked_in_count", "INTEGER DEFAULT 0")
 
@@ -1187,6 +1192,26 @@ app.config.update(
     SESSION_COOKIE_SAMESITE="Lax",
     SESSION_COOKIE_SECURE=os.getenv("FLASK_ENV", "").strip().lower() == "production",
 )
+
+
+@app.template_filter("event_date_label")
+def event_date_label(value):
+    """Format YYYY-MM-DD as Friday, October 16, 2026."""
+    if not value:
+        return ""
+
+    try:
+        parsed_date = datetime.strptime(
+            str(value).strip(),
+            "%Y-%m-%d",
+        )
+        return (
+            f"{parsed_date.strftime('%A, %B')} "
+            f"{parsed_date.day}, "
+            f"{parsed_date.year}"
+        )
+    except (TypeError, ValueError):
+        return str(value).strip()
 
 @app.errorhandler(500)
 def handle_internal_server_error(err):
@@ -2520,7 +2545,7 @@ def send_ticket_email_once(cursor, ticket_id):
     return delivered
 
 
-def send_tickets_email_bundle(cursor, payment_id, customer_email, event_title="The Jukebox Lounge NC"):
+def send_tickets_email_bundle(cursor, payment_id, customer_email, event_title="The Jukebox Lounge NC", event_date=None):
     pid = (payment_id or "").strip()
     recipient = (customer_email or "").strip().lower()
     if not pid or not recipient:
@@ -2555,6 +2580,17 @@ def send_tickets_email_bundle(cursor, payment_id, customer_email, event_title="T
         print("[ticket-email-bundle] missing SMTP credentials")
         return False
 
+    event_date_label = ""
+
+    if event_date:
+        try:
+            event_date_label = datetime.strptime(
+                str(event_date).strip(),
+                "%Y-%m-%d",
+            ).strftime("%A, %B %-d, %Y")
+        except (TypeError, ValueError):
+            event_date_label = str(event_date).strip()
+
     sections = []
     ticket_ids = []
     for ticket_id, ticket_type in rows:
@@ -2574,6 +2610,11 @@ def send_tickets_email_bundle(cursor, payment_id, customer_email, event_title="T
     <html>
       <body style="font-family:Arial,sans-serif;color:#111;">
         <h2>{event_title}</h2>
+        {
+            f'<p><strong>Event Date:</strong> {event_date_label}</p>'
+            if event_date_label
+            else ''
+        }
         <p>Thank you for your purchase. Your tickets are below.</p>
         {''.join(sections)}
       </body>
@@ -3202,6 +3243,7 @@ def create_tickets_from_ticket_order(cursor, ticket_order, payment):
 
     payment_id = str(payment.get("id") or "").strip()
     event_name = str(ticket_order.get("event_name") or "").strip()
+    event_date = str(ticket_order.get("event_date") or "").strip()
     customer_name = str(
         ticket_order.get("customer_name") or "Guest"
     ).strip()
@@ -3221,6 +3263,22 @@ def create_tickets_from_ticket_order(cursor, ticket_order, payment):
 
     if not isinstance(selected_tickets, list) or not selected_tickets:
         return []
+
+
+    free_shot_count = 0
+
+    if event_name == "The Friday Reset" and event_date:
+        cursor.execute(
+            """
+            SELECT COUNT(*)
+            FROM event_tickets
+            WHERE event_name = ?
+              AND event_date = ?
+              AND COALESCE(free_shot_eligible, 0) = 1
+            """,
+            (event_name, event_date),
+        )
+        free_shot_count = int(cursor.fetchone()[0] or 0)
 
     created_ticket_ids = []
     ticket_index = 0
@@ -3270,6 +3328,16 @@ def create_tickets_from_ticket_order(cursor, ticket_order, payment):
             checkin_url = f"{BASE_URL}/checkin/{ticket_id}"
             qr_url = f"{BASE_URL}/qr/{ticket_id}"
 
+            free_shot_eligible = 0
+
+            if (
+                event_name == "The Friday Reset"
+                and event_date
+                and free_shot_count < 30
+            ):
+                free_shot_eligible = 1
+
+
             cursor.execute(
                 """
                 INSERT INTO event_tickets (
@@ -3283,12 +3351,14 @@ def create_tickets_from_ticket_order(cursor, ticket_order, payment):
                     checkin_url,
                     qr_url,
                     event_name,
+                    event_date,
+                    free_shot_eligible,
                     checked_in,
                     checked_in_count
                 )
                 VALUES (
                     ?, ?, ?, ?, ?, 'not_checked_in',
-                    ?, ?, ?, ?, 0, 0
+                    ?, ?, ?, ?, ?, ?, 0, 0
                 )
                 """,
                 (
@@ -3301,10 +3371,15 @@ def create_tickets_from_ticket_order(cursor, ticket_order, payment):
                     checkin_url,
                     qr_url,
                     event_name,
+                    event_date,
+                    free_shot_eligible,
                 ),
             )
 
             created_ticket_ids.append(ticket_id)
+
+            if free_shot_eligible:
+                free_shot_count += 1
 
     return created_ticket_ids
 
@@ -4062,6 +4137,134 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
 # -------------------------
 # EVENTS DATA
 # -------------------------
+FRIDAY_RESET_TIMEZONE = ZoneInfo("America/New_York")
+
+FRIDAY_RESET_START_DATE = date(2026, 10, 16)
+FRIDAY_RESET_CALENDAR_MONTHS = 12
+
+FRIDAY_RESET_EXCLUDED_DATES = {
+    "2026-12-25",
+}
+
+
+def build_friday_reset_occurrences():
+    """Generate every-other-Friday dates for the rolling event calendar."""
+    today = datetime.now(FRIDAY_RESET_TIMEZONE).date()
+
+    calendar_start = min(today, FRIDAY_RESET_START_DATE)
+    calendar_end = today + timedelta(
+        days=FRIDAY_RESET_CALENDAR_MONTHS * 31
+    )
+
+    occurrence_date = FRIDAY_RESET_START_DATE
+    occurrences = []
+
+    while occurrence_date <= calendar_end:
+        date_value = occurrence_date.isoformat()
+
+        if (
+            occurrence_date >= calendar_start
+            and date_value not in FRIDAY_RESET_EXCLUDED_DATES
+        ):
+            occurrences.append({
+                "date": date_value,
+                "label": (
+                    f"{occurrence_date.strftime('%A, %B')} "
+                    f"{occurrence_date.day}, "
+                    f"{occurrence_date.year}"
+                ),
+            })
+
+        occurrence_date += timedelta(days=14)
+
+    return occurrences
+
+
+FRIDAY_RESET_OCCURRENCES = build_friday_reset_occurrences()
+
+
+def get_available_friday_reset_occurrences(now=None):
+    """
+    Return the Friday Reset dates currently available for online purchase.
+
+    Only one event month is released at a time. The next month's dates
+    become available after the final Friday Reset in the currently released
+    month has ended at 1:00 AM the following day.
+    """
+    if now is None:
+        now = datetime.now(FRIDAY_RESET_TIMEZONE)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=FRIDAY_RESET_TIMEZONE)
+    else:
+        now = now.astimezone(FRIDAY_RESET_TIMEZONE)
+
+    occurrences = [
+        occurrence
+        for occurrence in FRIDAY_RESET_OCCURRENCES
+        if occurrence["date"] not in FRIDAY_RESET_EXCLUDED_DATES
+    ]
+
+    if not occurrences:
+        return []
+
+    occurrences_by_month = {}
+
+    for occurrence in occurrences:
+        occurrence_date = datetime.strptime(
+            occurrence["date"],
+            "%Y-%m-%d",
+        ).date()
+
+        month_key = (
+            occurrence_date.year,
+            occurrence_date.month,
+        )
+
+        occurrences_by_month.setdefault(
+            month_key,
+            [],
+        ).append(occurrence)
+
+    month_keys = sorted(occurrences_by_month)
+    active_month_index = 0
+
+    for index, month_key in enumerate(month_keys[:-1]):
+        month_occurrences = occurrences_by_month[month_key]
+
+        final_date = max(
+            datetime.strptime(
+                item["date"],
+                "%Y-%m-%d",
+            ).date()
+            for item in month_occurrences
+        )
+
+        final_event_end = datetime(
+            final_date.year,
+            final_date.month,
+            final_date.day,
+            1,
+            0,
+            tzinfo=FRIDAY_RESET_TIMEZONE,
+        ) + timedelta(days=1)
+
+        if now >= final_event_end:
+            active_month_index = index + 1
+        else:
+            break
+
+    active_month = month_keys[active_month_index]
+
+    return [
+        occurrence
+        for occurrence in occurrences_by_month[active_month]
+        if datetime.strptime(
+            occurrence["date"],
+            "%Y-%m-%d",
+        ).date() >= now.date()
+    ]
+
+
 events_data = [
     {
         "id": 1,
@@ -4208,6 +4411,45 @@ Scorpio season is lit as we also celebrate birthday weekend with two queens. Com
             "vip": {"price": 200, "sold": 0, "size": 4},
             "premium_vip": {"price": 250, "sold": 0, "size": 3},
             "booth": {"price": 225, "sold": 0, "size": 6}
+        }
+    },
+
+    {
+        "id": 6,
+        "name": "The Friday Reset",
+        "status": "upcoming",
+        "flyer": "/static/images/friday-reset.png",
+        "description": """The Jukebox Lounge NC + The Situation present The Friday Reset — a grown, laid-back Friday night link-up to clock out, chill, and vibe out after the workweek.
+
+Join us every other Friday from 8:00 PM–1:00 AM with music by Legendary DJ Ease. Ages 30+.""",
+        "description_long": """The Jukebox Lounge NC + The Situation are linking up for The Friday Reset — a grown, laid-back Friday night experience created for you to clock out, chill, and vibe out after the workweek.
+
+Legendary DJ Ease brings the music every event. The Friday Reset happens every other Friday from 8:00 PM–1:00 AM at The Situation in Durham.
+
+Advance tickets are $15 online. Admission at the door is $20. The first 30 qualifying admissions for each event receive a complimentary shot.
+
+Ages 30+.""",
+        "ticket_link": "",
+        "event_datetime": "Every Other Friday",
+        "location": "The Situation — 2102 Angier Ave, Durham, NC 27703",
+        "time": "8:00 PM–1:00 AM",
+        "doors": "8:00 PM",
+        "ticket_label": "$15 Advance • $20 Door",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=2102+Angier+Ave+Durham+NC+27703",
+        "early_link": "",
+        "ga_link": "",
+        "vip_link": "",
+        "booth_link": "",
+        "tickets_coming_soon": False,
+        "recurring": True,
+        "ticket_capacity_per_date": 150,
+        "free_shot_limit_per_date": 30,
+        "occurrences": FRIDAY_RESET_OCCURRENCES,
+        "excluded_occurrences": sorted(
+            FRIDAY_RESET_EXCLUDED_DATES
+        ),
+        "tickets": {
+            "ga": {"price": 15, "sold": 0, "size": 150}
         }
     },
 
@@ -8183,7 +8425,7 @@ def buy_ticket():
 
 from urllib.parse import unquote
 
-def build_event_ticket_catalog(event):
+def build_event_ticket_catalog(event, event_date=None):
     """
     Build the server-authoritative ticket catalog for an event.
 
@@ -8228,6 +8470,20 @@ def build_event_ticket_catalog(event):
             ),
         },
     ]
+
+    # The Friday Reset has one $15 advance admission option per date.
+    if event.get("name") == "The Friday Reset":
+        canonical_tickets = [
+            {
+                "key": "ga",
+                "name": "General Admission",
+                "display_name": "Advance Admission",
+                "description": (
+                    "$15 advance admission for your selected Friday. "
+                    "Admission at the door is $20."
+                ),
+            },
+        ]
 
     # The All-Women Battle uses three distinct VIP section levels.
     if event.get("name") == "All-Women Battle of the DJs":
@@ -8301,19 +8557,39 @@ def build_event_ticket_catalog(event):
                 if database_price > 0:
                     price_cents = int(round(database_price * 100))
 
-            cursor.execute(
-                """
-                SELECT COUNT(*)
-                FROM event_tickets
-                WHERE ticket_type = ?
-                  AND COALESCE(event_name, '') = ?
-                  AND UPPER(COALESCE(payment_id, ''))
-                      NOT LIKE 'FREE_TEST_%'
-                  AND UPPER(COALESCE(payment_id, ''))
-                      NOT LIKE 'TEST_%'
-                """,
-                (ticket["name"], event["name"]),
-            )
+            if event.get("name") == "The Friday Reset":
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE ticket_type = ?
+                      AND COALESCE(event_name, '') = ?
+                      AND COALESCE(event_date, '') = ?
+                      AND UPPER(COALESCE(payment_id, ''))
+                          NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, ''))
+                          NOT LIKE 'TEST_%'
+                    """,
+                    (
+                        ticket["name"],
+                        event["name"],
+                        str(event_date or "").strip(),
+                    ),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE ticket_type = ?
+                      AND COALESCE(event_name, '') = ?
+                      AND UPPER(COALESCE(payment_id, ''))
+                          NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, ''))
+                          NOT LIKE 'TEST_%'
+                    """,
+                    (ticket["name"], event["name"]),
+                )
             sold = int(cursor.fetchone()[0] or 0)
 
             remaining = max(0, capacity - sold)
@@ -8486,6 +8762,7 @@ def ticket_order_complete():
                                 ticket_order.get("customer_email"),
                                 ticket_order.get("event_name")
                                 or "The Jukebox Lounge NC",
+                                ticket_order.get("event_date"),
                             )
 
                             if email_sent:
@@ -8588,7 +8865,40 @@ def ticket_checkout_create(event_name):
             "error": "The selected tickets are invalid.",
         }, 400
 
-    server_catalog = build_event_ticket_catalog(event)
+    selected_event_date = None
+    selected_occurrence = None
+
+    if event["name"] == "The Friday Reset":
+        selected_event_date = str(
+            payload.get("event_date") or ""
+        ).strip()
+
+        available_occurrences = (
+            get_available_friday_reset_occurrences()
+        )
+
+        selected_occurrence = next(
+            (
+                occurrence
+                for occurrence in available_occurrences
+                if occurrence["date"] == selected_event_date
+            ),
+            None,
+        )
+
+        if not selected_occurrence:
+            return {
+                "success": False,
+                "error": (
+                    "That Friday Reset date is not currently "
+                    "available for purchase."
+                ),
+            }, 400
+
+    server_catalog = build_event_ticket_catalog(
+        event,
+        selected_event_date,
+    )
     catalog_by_key = {
         ticket["key"]: ticket
         for ticket in server_catalog
@@ -8688,6 +8998,7 @@ def ticket_checkout_create(event_name):
             INSERT INTO ticket_orders (
                 order_number,
                 event_name,
+                event_date,
                 customer_name,
                 customer_email,
                 customer_phone,
@@ -8700,13 +9011,14 @@ def ticket_checkout_create(event_name):
                 order_status
             )
             VALUES (
-                ?, ?, ?, ?, ?, ?, ?, 0, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?,
                 'Pending', 'New'
             )
             """,
             (
                 order_number,
                 event["name"],
+                selected_event_date,
                 customer_name,
                 customer_email,
                 customer_phone,
@@ -8727,12 +9039,21 @@ def ticket_checkout_create(event_name):
             "error": "We could not save your ticket order. Please try again.",
         }, 500
 
+
+    square_event_name = event["name"]
+
+    if selected_occurrence:
+        square_event_name = (
+            f'{event["name"]} — '
+            f'{selected_occurrence["label"]}'
+        )
+
     square_line_items = []
 
     for ticket in validated_tickets:
         square_line_items.append({
             "name": (
-                f'{event["name"]} — '
+                f'{square_event_name} — '
                 f'{ticket["display_name"]}'
             ),
             "variation_name": ticket["display_name"],
@@ -8742,7 +9063,7 @@ def ticket_checkout_create(event_name):
                 "currency": "USD",
             },
             "note": (
-                f'Event: {event["name"]}; '
+                f'Event: {square_event_name}; '
                 f'Ticket: {ticket["name"]}; '
                 f'Order: {order_number}'
             ),
@@ -8776,7 +9097,7 @@ def ticket_checkout_create(event_name):
         },
         "payment_note": (
             f'Ticket Order {order_number}; '
-            f'Event: {event["name"]}'
+            f'Event: {square_event_name}'
         ),
     }
 
@@ -8941,12 +9262,46 @@ def ticket_checkout_page(event_name):
             url_for("event_detail", event_name=event["name"])
         )
 
-    ticket_catalog = build_event_ticket_catalog(event)
+    selected_event_date = None
+    selected_occurrence = None
+
+    if event["name"] == "The Friday Reset":
+        selected_event_date = str(
+            request.args.get("event_date") or ""
+        ).strip()
+
+        available_occurrences = (
+            get_available_friday_reset_occurrences()
+        )
+
+        selected_occurrence = next(
+            (
+                occurrence
+                for occurrence in available_occurrences
+                if occurrence["date"] == selected_event_date
+            ),
+            None,
+        )
+
+        if not selected_occurrence:
+            return redirect(
+                url_for(
+                    "event_detail",
+                    event_name=event["name"],
+                )
+            )
+
+    ticket_catalog = build_event_ticket_catalog(
+        event,
+        selected_event_date,
+    )
 
     return render_template(
         "tickets_checkout.html",
         event=event,
         ticket_catalog=ticket_catalog,
+        selected_event_date=selected_event_date,
+        selected_occurrence=selected_occurrence,
     )
 
 
@@ -9052,6 +9407,10 @@ def event_detail(event_name):
     conn.close()
 
     is_quiet_storm = event["name"] == "The Quiet Storm Live"
+
+    friday_reset_occurrences = []
+    if event["name"] == "The Friday Reset":
+        friday_reset_occurrences = get_available_friday_reset_occurrences()
     hero_flyer_url = event.get("flyer", "")
     if isinstance(hero_flyer_url, str) and hero_flyer_url.startswith("/static/"):
         hero_flyer_url = hero_flyer_url
@@ -9065,6 +9424,7 @@ def event_detail(event_name):
         display_name_map=DISPLAY_NAME_MAP,
         is_quiet_storm=is_quiet_storm,
         hero_flyer_url=hero_flyer_url,
+        friday_reset_occurrences=friday_reset_occurrences,
     )
 
 
@@ -10020,6 +10380,9 @@ def checkin(ticket_id):
             checked_in,
             payment_id,
             created_at,
+            event_name,
+            event_date,
+            COALESCE(free_shot_eligible, 0),
             COALESCE(refund_status, 'Not Refunded')
         FROM event_tickets
         WHERE ticket_id = ?
@@ -10035,7 +10398,10 @@ def checkin(ticket_id):
 
     current_status = (row[2] or "").lower()
     checked_in_flag = int(row[3] or 0)
-    refund_status = (row[6] or "Not Refunded").strip().lower()
+    event_name = str(row[6] or "").strip()
+    event_date = str(row[7] or "").strip()
+    free_shot_eligible = int(row[8] or 0) == 1
+    refund_status = (row[9] or "Not Refunded").strip().lower()
 
     if refund_status in {
         "refund pending",
@@ -10066,7 +10432,13 @@ def checkin(ticket_id):
     conn.commit()
     conn.close()
 
-    return render_template("checkin_result.html", status="success")
+    return render_template(
+        "checkin_result.html",
+        status="success",
+        event_name=event_name,
+        event_date=event_date,
+        free_shot_eligible=free_shot_eligible,
+    )
 
 
 @app.route("/tickets/admin")

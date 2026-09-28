@@ -292,7 +292,14 @@
             <h2>Event Details</h2>
 
             <div class="ticket-event-meta">
-              <span><strong>Date:</strong> {{ event.event_datetime }}</span>
+              <span>
+                <strong>Date:</strong>
+                {% if selected_occurrence %}
+                  {{ selected_occurrence.label }}
+                {% else %}
+                  {{ event.event_datetime }}
+                {% endif %}
+              </span>
               <span><strong>Time:</strong> {{ event.time }}</span>
               <span><strong>Doors:</strong> {{ event.doors }}</span>
               <span><strong>Location:</strong> {{ event.location }}</span>
@@ -512,7 +519,8 @@
         customer_name: formData.get("customer_name"),
         customer_email: formData.get("customer_email"),
         customer_phone: formData.get("customer_phone"),
-        tickets: tickets
+        tickets: tickets,
+        event_date: {{ (selected_event_date or "") | tojson }}
       };
 
       try {

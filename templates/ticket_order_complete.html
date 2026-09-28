@@ -182,6 +182,15 @@
             <strong>{{ order.event_name }}</strong>
           </div>
 
+          {% if order.event_date %}
+          <div class="ticket-order-detail">
+            <span>Event Date</span>
+            <strong>
+              {{ order.event_date | event_date_label }}
+            </strong>
+          </div>
+          {% endif %}
+
           <div class="ticket-order-detail">
             <span>Tickets</span>
             <strong>{{ order.total_ticket_quantity }}</strong>

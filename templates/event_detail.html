@@ -114,7 +114,56 @@
             {% if event.name == 'Battle of the DJs' %}battle-ticket-row{% endif %}
             {% if event.name == 'All-Women Battle of the DJs' %}all-women-ticket-grid{% endif %}
         ">
-            {% if is_quiet_storm %}
+            {% if event.name == "The Friday Reset" %}
+            <div class="ticket-comparison-panel">
+                <div class="ticket-comparison-heading">
+                    <p class="ticket-cta-kicker">THE FRIDAY RESET</p>
+                    <h2>Choose Your Friday</h2>
+                    <p>
+                        Select the Friday you want to attend. Advance admission is
+                        $15 online. Admission at the door is $20.
+                    </p>
+                </div>
+            </div>
+
+            {% if friday_reset_occurrences %}
+                {% for occurrence in friday_reset_occurrences %}
+                <div class="ticket-box">
+                    <h3>{{ occurrence.label }}</h3>
+
+                    <p>
+                        8:00 PM–1:00 AM at The Situation
+                    </p>
+
+                    <p>
+                        Music by Legendary DJ Ease • Ages 30+
+                    </p>
+
+                    <p>$15.00 Advance</p>
+
+                    <a
+                        class="btn"
+                        href="{{ url_for(
+                            'ticket_checkout_page',
+                            event_name=event.name,
+                            event_date=occurrence.date
+                        ) }}"
+                    >
+                        Select This Friday
+                    </a>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="ticket-box">
+                    <h3>Next Friday Coming Soon</h3>
+                    <p>
+                        The next Friday Reset ticket date will be released soon.
+                    </p>
+                    <span class="btn disabled">Coming Soon</span>
+                </div>
+            {% endif %}
+
+            {% elif is_quiet_storm %}
             <div class="ticket-box">
                 <h3>General Admission</h3>
                 <p>Access to The Quiet Storm Live experience.</p>
