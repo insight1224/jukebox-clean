@@ -6,6 +6,40 @@
   <title>Jukebox Lounge NC | Email Campaigns</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
   <style>
+    .full-width-field {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+      color: var(--text);
+      font-weight: 900;
+    }
+
+    .full-width-field textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      border: 1px solid var(--border);
+      background: #101010;
+      color: var(--text);
+      border-radius: 16px;
+      padding: 15px 16px;
+      font-size: 15px;
+      line-height: 1.6;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    .full-width-field textarea:focus {
+      border-color: rgba(214, 168, 79, 0.5);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
     .campaign-history-filters {
       display: flex;
       flex-wrap: wrap;
@@ -197,6 +231,7 @@
         <a href="/dashboard/ticket-orders">Ticket Orders</a>
         <a href="/dashboard/merch-orders">Merch Orders</a>
         <a href="/dashboard/email-campaigns" class="active">Email Campaigns</a>
+        <a href="/dashboard/gallery">Gallery Manager</a>
         <a href="/dashboard/contacts">Contact Log</a>
         <a href="/admin/unmapped-square">Unmapped Tickets</a>
       </nav>
@@ -217,6 +252,40 @@
           </p>
         </div>
       </header>
+
+      <section class="stats-grid">
+
+        <article class="stat-card">
+          <p>Total Campaigns</p>
+          <h3>{{ stats.total_campaigns }}</h3>
+          <span>All saved and sent campaigns</span>
+        </article>
+
+        <article class="stat-card">
+          <p>Sent Campaigns</p>
+          <h3>{{ stats.sent_campaigns }}</h3>
+          <span>Successfully completed campaigns</span>
+        </article>
+
+        <article class="stat-card">
+          <p>Drafts</p>
+          <h3>{{ stats.draft_campaigns }}</h3>
+          <span>Saved campaigns still in progress</span>
+        </article>
+
+        <article class="stat-card">
+          <p>Emails Delivered</p>
+          <h3>{{ stats.emails_delivered }}</h3>
+          <span>Total successful email deliveries</span>
+        </article>
+
+        <article class="stat-card">
+          <p>Failed Deliveries</p>
+          <h3>{{ stats.failed_deliveries }}</h3>
+          <span>Total unsuccessful email deliveries</span>
+        </article>
+
+      </section>
 
       <section class="section-panel">
         <div class="section-heading">
@@ -302,8 +371,8 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Campaign History</p>
-            <h3>Recent Campaigns</h3>
-            <p>Drafts and sent campaigns appear here.</p>
+            <h3>Campaign History</h3>
+            <p>Drafts, sent campaigns, and failed attempts remain available here.</p>
           </div>
         </div>
 
@@ -386,6 +455,16 @@
                 <span>
                   {{ campaign.sent_at or campaign.created_at or "" }}
                 </span>
+
+                {% if campaign.status == "Draft" %}
+                <button
+                  class="btn ghost edit-campaign-draft"
+                  type="button"
+                  data-campaign-id="{{ campaign.id }}"
+                >
+                  Edit Draft
+                </button>
+                {% endif %}
               </div>
             </div>
           </article>
@@ -540,6 +619,8 @@
   </script>
 
   <script>
+    window.currentEditingCampaignId = null;
+
     (function () {
       const saveButton = document.getElementById("saveCampaignDraft");
       const statusBox = document.getElementById("campaignActionStatus");
@@ -590,6 +671,15 @@
         );
 
         const imageInput = document.getElementById("campaignImage");
+        if (window.currentEditingCampaignId) {
+
+          formData.append(
+            "campaign_id",
+            window.currentEditingCampaignId
+          );
+
+        }
+
         if (imageInput.files.length) {
           formData.append("campaign_image", imageInput.files[0]);
         }
@@ -609,7 +699,21 @@
             throw new Error(result.error || "Unable to save draft.");
           }
 
-          setStatus(`Draft saved successfully. Campaign ID: ${result.campaign_id}`);
+          window.currentEditingCampaignId = result.campaign_id;
+
+          if (result.mode === "updated") {
+
+            setStatus(
+              `Draft updated successfully. Campaign ID: ${result.campaign_id}`
+            );
+
+          } else {
+
+            setStatus(
+              `Draft saved successfully. Campaign ID: ${result.campaign_id}`
+            );
+
+          }
         } catch (error) {
           setStatus(error.message || "Unable to save draft.", true);
         } finally {
@@ -813,6 +917,94 @@
   </script>
 
   <script>
+    document.querySelectorAll(".edit-campaign-draft").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const campaignId = button.getAttribute("data-campaign-id");
+        const statusBox = document.getElementById("campaignActionStatus");
+
+        button.disabled = true;
+        button.textContent = "Loading...";
+
+        try {
+          const response = await fetch(`/api/email-campaigns/${campaignId}`);
+          const result = await response.json();
+
+          if (!response.ok || !result.ok) {
+            throw new Error(result.error || "Unable to load draft.");
+          }
+
+          const campaign = result.campaign || {};
+
+          document.getElementById("campaignAudience").value =
+            campaign.audience || "vip";
+
+          document.getElementById("campaignName").value =
+            campaign.campaign_name || "";
+
+          document.getElementById("campaignSubject").value =
+            campaign.subject || "";
+
+          document.getElementById("campaignPreview").value =
+            campaign.preview_text || "";
+
+          document.getElementById("campaignHeading").value =
+            campaign.email_heading || "";
+
+          document.getElementById("campaignButtonText").value =
+            campaign.button_text || "";
+
+          document.getElementById("campaignButtonUrl").value =
+            campaign.button_url || "";
+
+          document.getElementById("campaignBody").value =
+            campaign.body || "";
+
+          const individualWrap =
+            document.getElementById("individualRecipientWrap");
+
+          const individualEmail =
+            document.getElementById("individualRecipientEmail");
+
+          if (campaign.audience === "individual") {
+            individualWrap.style.display = "";
+            individualEmail.required = true;
+            individualEmail.value = campaign.individual_email || "";
+          } else {
+            individualWrap.style.display = "none";
+            individualEmail.required = false;
+            individualEmail.value = "";
+          }
+
+          window.currentEditingCampaignId = campaign.id;
+
+          statusBox.textContent =
+            `Draft loaded. Campaign ID: ${campaign.id}`;
+          statusBox.style.color = "#D4AF37";
+
+          const builder = document.querySelector(
+            ".main-content .section-panel"
+          );
+
+          if (builder) {
+            builder.scrollIntoView({
+              behavior: "smooth",
+              block: "start"
+            });
+          }
+
+        } catch (error) {
+          statusBox.textContent =
+            error.message || "Unable to load draft.";
+          statusBox.style.color = "#ff9d9d";
+        } finally {
+          button.disabled = false;
+          button.textContent = "Edit Draft";
+        }
+      });
+    });
+  </script>
+
+  <script>
     document.querySelectorAll(".campaign-history-summary").forEach((button) => {
       button.addEventListener("click", () => {
         const card = button.closest(".campaign-history-card");
@@ -899,6 +1091,15 @@
 
         if (imageInput.files && imageInput.files.length) {
           formData.append("campaign_image", imageInput.files[0]);
+        }
+
+        if (window.currentEditingCampaignId) {
+
+          formData.append(
+            "campaign_id",
+            window.currentEditingCampaignId
+          );
+
         }
 
         return formData;
@@ -1023,6 +1224,8 @@
           if (failedCount > 0) {
             message += ` ${failedCount} delivery attempt(s) failed.`;
           }
+
+          window.currentEditingCampaignId = null;
 
           setSendStatus(message);
 

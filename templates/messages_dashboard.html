@@ -117,21 +117,16 @@
     </aside>
 
     <main class="main-content" id="top">
-      <div class="preview-banner">
-        <div>
-          <strong>Messages Tab Preview</strong>
-          <span>This screen keeps website inquiries, private event requests, VIP interest, replies, and archives in one place.</span>
-        </div>
-        <a href="/dashboard">Back to Dashboard</a>
-      </div>
-
       <header class="topbar">
         <div>
           <p class="eyebrow">Messages Dashboard</p>
           <h2>Website Inquiries & Leads</h2>
-          <p class="subtext">Review new messages, mark replies, archive old inquiries, and view message details.</p>
+          <p class="subtext">Review inquiries, applications, event suggestions, and follow-ups in one place.</p>
         </div>
 
+        <div class="topbar-actions">
+          <a class="btn secondary" href="/dashboard">Back to Dashboard</a>
+        </div>
       </header>
 
       <section class="stats-grid message-filter-grid">
@@ -154,13 +149,13 @@
         </button>
 
         <button class="stat-card message-filter-card" type="button" data-message-filter="DJ Application">
-          <p>DJ Applications</p>
+          <p>DJ Contacts</p>
           <h3>{{ message_stats.dj_applications }}</h3>
           <span>Talent submissions</span>
         </button>
 
         <button class="stat-card message-filter-card" type="button" data-message-filter="Vendor Application">
-          <p>Vendor Applications</p>
+          <p>Vendor Contacts</p>
           <h3>{{ message_stats.vendor_applications }}</h3>
           <span>Vendor submissions</span>
         </button>
@@ -186,7 +181,8 @@
           <button type="button" id="clearMessageFilter">Clear Filter</button>
         </div>
 
-        <div class="table-card">
+        <div class="table-card messages-table-card">
+          <div class="messages-table-scroll">
           <div class="table-row leads-row table-head">
             <span>Name</span>
             <span>Type</span>
@@ -245,6 +241,7 @@
             <p>New website inquiries, event suggestions, DJ applications, and vendor applications will appear here.</p>
           </div>
           {% endfor %}
+          </div>
         </div>
       </section>
 
@@ -369,7 +366,7 @@
               <textarea
                 id="messageReplyBody"
                 name="reply_body"
-                rows="7"
+                rows="4"
                 placeholder="Type your reply here..."
                 required
               ></textarea>
@@ -736,7 +733,16 @@
 
     messageFilterCards.forEach((card) => {
       card.addEventListener("click", () => {
-        applyMessageFilter(card.getAttribute("data-message-filter"));
+        const filterValue = card.getAttribute("data-message-filter");
+
+        applyMessageFilter(filterValue);
+
+        if (filterValue !== "archived") {
+          document.getElementById("messages-leads")?.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+        }
       });
     });
 

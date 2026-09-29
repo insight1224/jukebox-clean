@@ -40,89 +40,103 @@
     </aside>
 
     <main class="main-content" id="top">
-      <div class="preview-banner">
-        <div>
-          <strong>Events Tab Preview</strong>
-          <span>This screen keeps event management and check-in tools in one place.</span>
-        </div>
-        <a href="/dashboard">Back to Dashboard</a>
-      </div>
-
-      <header class="topbar">
-        <div>
+      <header class="events-command-header">
+        <div class="events-command-copy">
           <p class="eyebrow">Events Dashboard</p>
-          <h2>Event Management Center</h2>
-          <p class="subtext">Manage upcoming events, guest lists, VIP lists, and event check-in from one screen.</p>
+          <h2>Event Management</h2>
+          <p class="subtext">
+            Manage events, attendance, guest lists, check-in, and ticket activity.
+          </p>
         </div>
 
-        <div class="topbar-actions">
-          <button class="btn primary" type="button" id="addNewEventButton">Add New Event</button>
+        <div class="events-command-actions">
+          <a
+            class="btn secondary"
+            href="/dashboard"
+          >
+            Back to Dashboard
+          </a>
+
+          <button
+            class="btn primary"
+            type="button"
+            id="addNewEventButton"
+          >
+            Add New Event
+          </button>
         </div>
       </header>
 
-      <section class="stats-grid">
-        <div class="stat-card">
-          <p>Events</p>
-          <h3>{{ dashboard_preview_summary.upcoming_events_count }}</h3>
-          <span>Currently listed events</span>
-        </div>
 
-        <div class="stat-card">
-          <p>Tickets Sold</p>
-          <h3>{{ metrics.single_tickets }}</h3>
-          <span>Excludes VIP tickets</span>
-        </div>
+      <section class="events-kpi-grid">
 
-        <div class="stat-card">
-          <p>VIP Booths</p>
-          <h3>{{ metrics.vip_tickets }}</h3>
-          <span>VIP ticket purchases</span>
-        </div>
-
-        <div class="stat-card">
-          <p>Estimated Attendance</p>
-          <h3>{{ metrics.estimated_attendance }}</h3>
-          <span>Based on ticket totals</span>
-        </div>
-      </section>
-
-      <section class="section-panel" id="attendance-summary">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Attendance</p>
-            <h3>Attendance & Guest Count</h3>
-            <p>Track paid tickets, VIP tickets, cash door tickets, comps, and expected attendance.</p>
+        <div
+          class="dashboard-kpi-card events-kpi-breakdown"
+          data-kpi="events"
+          role="button"
+          tabindex="0"
+        >
+          <div class="dashboard-kpi-copy">
+            <p>Events</p>
+            <h3>{{ events|length }}</h3>
+            <span>Currently listed</span>
           </div>
+
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="revenue-summary-grid">
-          <div class="revenue-card">
+
+        <div
+          class="dashboard-kpi-card events-kpi-breakdown"
+          data-kpi="paid-tickets"
+          role="button"
+          tabindex="0"
+        >
+          <div class="dashboard-kpi-copy">
             <p>Paid Tickets</p>
-            <h4>{{ metrics.total_tickets_sold }}</h4>
-            <span>Square + Eventbrite + cash tickets</span>
+            <h3>{{ metrics.total_tickets_sold }}</h3>
+            <span>All paid ticket sales</span>
           </div>
 
-          <div class="revenue-card">
-            <p>VIP Booths</p>
-            <h4>{{ metrics.vip_tickets }}</h4>
-            <span>VIP ticket purchases</span>
-          </div>
+          <span class="dashboard-kpi-arrow">→</span>
+        </div>
 
-          <div class="revenue-card">
+
+        <div
+          class="dashboard-kpi-card events-kpi-breakdown"
+          data-kpi="comps"
+          role="button"
+          tabindex="0"
+        >
+          <div class="dashboard-kpi-copy">
             <p>Comps / Guest List</p>
-            <h4>{{ events|sum(attribute='comp_ticket_count') }}</h4>
-            <span>Free entries, promo, staff, guest list</span>
+            <h3>{{ events|sum(attribute='comp_ticket_count') }}</h3>
+            <span>Free and guest-list entries</span>
           </div>
 
-          <div class="revenue-card">
-            <p>Total Expected Attendance</p>
-            <h4>{{ events|sum(attribute='estimated_attendance') }}</h4>
+          <span class="dashboard-kpi-arrow">→</span>
+        </div>
+
+
+        <div
+          class="dashboard-kpi-card events-kpi-breakdown"
+          data-kpi="expected-attendance"
+          role="button"
+          tabindex="0"
+        >
+          <div class="dashboard-kpi-copy">
+            <p>Expected Attendance</p>
+            <h3>{{ events|sum(attribute='estimated_attendance') }}</h3>
             <span>Paid tickets + comps</span>
           </div>
+
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
+
       </section>
 
-      <section class="section-panel" id="events">
+
+      <section class="section-panel events-management-panel" id="events">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Events</p>
@@ -132,7 +146,7 @@
           <button class="btn primary" type="button" id="addNewEventButtonSecondary">Add New Event</button>
         </div>
 
-        <div class="table-card" id="eventManagementTable">
+        <div class="table-card events-management-list" id="eventManagementTable">
           <div class="table-row table-head">
             <span>Event</span>
             <span>Date</span>
@@ -162,37 +176,42 @@
         </div>
       </section>
 
-      <section class="section-panel" id="past-events">
+      <section class="section-panel events-history-panel" id="past-events">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Past Events</p>
             <h3>Completed Event History</h3>
-            <p>Review completed events, final ticket counts, attendance, and guest records.</p>
+            <p>Review final ticket counts and attendance from past events.</p>
           </div>
         </div>
 
-        <div class="table-card">
-          <div class="table-row table-head">
+        <div class="table-card events-history-scroll">
+          <div class="table-row table-head completed-history-row">
             <span>Event</span>
             <span>Date</span>
-            <span>Status</span>
             <span>Tickets</span>
             <span>Attendance</span>
-            <span>Actions</span>
+            <span>View</span>
           </div>
 
           {% for event in events %}
           {% if event.status_label == "Completed" %}
-          <div class="table-row past-event-row">
+          <div class="table-row past-event-row completed-history-row">
             <span>{{ event.name }}</span>
             <span>{{ event.date }}</span>
-            <span><span class="badge {{ event.badge_class }}">{{ event.status_label }}</span></span>
             <span>{{ event.total_tickets_sold }} sold</span>
-            <span>{{ event.estimated_attendance|default(event.total_tickets_sold) }} attended/expected</span>
+            <span>
+              {{ event.estimated_attendance|default(event.total_tickets_sold) }}
+            </span>
             <span class="row-actions">
-              <button class="js-open-event" type="button" data-event-target="event-modal-{{ loop.index }}" data-event-name="{{ event.name }}">Open</button>
-              <button class="js-open-guest-list" type="button" data-guest-target="guest-list-modal-{{ loop.index }}" data-guest-event-name="{{ event.name }}">Guest List</button>
-              <button class="js-edit-event-setup" type="button" data-event-name="{{ event.name }}">Edit Setup</button>
+              <button
+                class="js-open-event"
+                type="button"
+                data-event-target="event-modal-{{ loop.index }}"
+                data-event-name="{{ event.name }}"
+              >
+                Open
+              </button>
             </span>
           </div>
           {% endif %}
@@ -200,7 +219,7 @@
         </div>
       </section>
 
-      <section class="section-panel" id="check-in">
+      <section class="section-panel events-checkin-panel" id="check-in">
         <div class="section-heading">
           <div>
             <p class="eyebrow">Check-In</p>
@@ -210,52 +229,81 @@
         </div>
 
         <div class="checkin-event-grid">
-          {% for event in events %}
-          {% if event.status_label != "Completed" %}
-          <div class="checkin-event-card">
-            <div>
-              <p class="eyebrow">Event Check-In</p>
-              <h4>{{ event.name }}</h4>
-              <p>{{ event.total_tickets_sold }} guests/tickets currently listed for this event.</p>
-            </div>
+          {% set checkin_events = events | rejectattr("status_label", "equalto", "Completed") | list %}
 
-            <div class="checkin-event-meta">
-              <span class="badge {{ event.badge_class }}">
-                {{ event.status_label }}
-              </span>
+          {% if checkin_events %}
+            {% for event in checkin_events %}
+            <div class="checkin-event-card">
+              <div>
+                <h4>{{ event.name }}</h4>
+                <p>
+                  {{ event.total_tickets_sold }} guests/tickets currently listed
+                  for this event.
+                </p>
+              </div>
+
+              <div class="checkin-event-meta">
+                <span class="badge {{ event.badge_class }}">
+                  {{ event.status_label }}
+                </span>
+
+                <button
+                  class="btn primary js-open-checkin"
+                  type="button"
+                  data-checkin-target="checkin-modal-{{ loop.index }}"
+                  data-checkin-name="{{ event.name }}"
+                >
+                  Open Check-In
+                </button>
+              </div>
+            </div>
+            {% endfor %}
+
+          {% else %}
+            <div class="events-checkin-empty">
+              <div>
+                <strong>No events available for check-in.</strong>
+                <span>
+                  Upcoming events will appear here automatically when they are ready.
+                </span>
+              </div>
+
               <button
-                class="btn primary js-open-checkin"
+                class="btn secondary"
                 type="button"
-                data-checkin-target="checkin-modal-{{ loop.index }}"
-                data-checkin-name="{{ event.name }}"
+                id="checkinAddEventButton"
               >
-                Open Check-In
+                Add an Event
               </button>
             </div>
-          </div>
           {% endif %}
-          {% endfor %}
         </div>
       </section>
 
-      <section class="section-panel" id="door-sales">
+      <section class="section-panel quick-ticket-panel" id="door-sales">
         <div class="section-heading">
           <div>
-            <p class="eyebrow">Ticket Sales</p>
-            <h3>Add Ticket Sale</h3>
-            <p>Choose the ticket type once, then select how it was paid. Use Comp for free tickets.</p>
+            <p class="eyebrow">Guest List</p>
+            <h3>Add Comp Ticket</h3>
+            <p>Add a complimentary guest for an event. Comp tickets are recorded at $0 and added to the event guest list and check-in list.</p>
           </div>
         </div>
 
-        <form class="form-grid" id="ticketSaleForm">
+        <form class="form-grid quick-ticket-form" id="ticketSaleForm">
           <select id="ticketSaleEvent">
             <option value="">Select Event</option>
             {% for event in events %}
+            {% if event.status_label != "Completed" %}
             <option value="{{ event.name }}">{{ event.name }}</option>
+            {% endif %}
             {% endfor %}
           </select>
 
-          <input id="ticketSaleCustomer" type="text" placeholder="Customer name" />
+          <input
+            id="ticketSaleCustomer"
+            type="text"
+            placeholder="Guest name"
+          />
 
           <select id="ticketSaleType" disabled>
             <option value="">Select an event first</option>
@@ -270,44 +318,84 @@
             placeholder="Quantity"
           />
 
-          <select id="ticketSaleSource">
-            <option value="">Select Payment Type</option>
-            <option>Cash</option>
-            <option>Card</option>
-            <option>Apple Pay</option>
-            <option>Cash App</option>
-            <option>Zelle</option>
-            <option>Eventbrite</option>
-            <option>Square</option>
-            <option>Comp</option>
-            <option>Other</option>
-          </select>
+          <input
+            id="ticketSaleNotes"
+            type="text"
+            placeholder="Comp reason / notes"
+          />
+
+          <input
+            id="ticketSaleSource"
+            type="hidden"
+            value="Comp"
+          />
 
           <input
             id="ticketSaleAmount"
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Amount paid"
+            type="hidden"
+            value="0.00"
           />
-
-          <input id="ticketSaleNotes" type="text" placeholder="Staff / notes" />
 
           <div
             class="note-preview"
             id="compTicketNotice"
-            hidden
           >
             This automatically adds the guest to the guest list and check-in list.
-            Do not add this ticket again as a separate paid ticket.
+            Do not enter this guest again as a paid ticket.
           </div>
 
-          <button class="btn primary" type="button" id="saveTicketSaleButton">Save Ticket Sale</button>
+          <button
+            class="btn primary"
+            type="button"
+            id="saveTicketSaleButton"
+          >
+            Add Comp Ticket
+          </button>
+
           <div class="note-preview" id="ticketSaleStatus">
-            Select one ticket type and one payment type for each entry.
+            Select the event, ticket type, and enter the guest name.
           </div>
         </form>
       </section>
+
+      <div
+        class="event-modal-overlay"
+        id="eventsKpiModalOverlay"
+      >
+        <div class="event-modal dashboard-kpi-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Events Breakdown</p>
+
+              <h3 id="eventsKpiTitle">
+                Events Overview
+              </h3>
+
+              <p id="eventsKpiSubtitle">
+                Review this Events dashboard total.
+              </p>
+            </div>
+
+            <button
+              class="event-modal-close"
+              type="button"
+              id="eventsKpiClose"
+            >
+              Close
+            </button>
+          </div>
+
+          <div class="dashboard-kpi-modal-total">
+            <span>Total</span>
+            <strong id="eventsKpiTotal">0</strong>
+          </div>
+
+          <div
+            class="dashboard-kpi-breakdown-list"
+            id="eventsKpiList"
+          ></div>
+        </div>
+      </div>
 
       <div class="event-modal-overlay" id="eventModalOverlay">
         <div class="event-modal">
@@ -392,6 +480,13 @@
               <button class="js-event-action-vip-list" type="button" data-vip-target="vip-list-modal-{{ loop.index }}" data-vip-event-name="{{ event.name }}">VIP List</button>
               <button class="js-event-action-checkin" type="button" data-checkin-target="checkin-modal-{{ loop.index }}" data-checkin-name="{{ event.name }}">Check-In</button>
               <button class="js-event-action-notes" type="button" data-event-name="{{ event.name }}">Notes</button>
+
+              <a
+                class="event-detail-transaction-link"
+                href="/dashboard/ticket-orders?event={{ event.name|urlencode }}"
+              >
+                Ticket Transactions
+              </a>
             </div>
 
           </div>
@@ -653,83 +748,189 @@
             <div>
               <p class="eyebrow" id="addEventModalEyebrow">Event Setup</p>
               <h3 id="addEventModalTitle">Add New Event</h3>
-              <p id="addEventModalDescription">Create or update event setup, ticket rules, Square names, and Eventbrite mapping.</p>
+              <p id="addEventModalDescription">Create the event and configure how tickets should be tracked.</p>
             </div>
             <button class="event-modal-close" type="button" id="addEventModalClose">Close</button>
           </div>
 
-          <form class="add-event-form">
-            <label>
-              Event Name
-              <input id="newEventName" type="text" placeholder="Example: R&B Night" />
-            </label>
+          <form class="add-event-form clean-event-setup-form">
 
-            <label>
-              Event Date
-              <input id="newEventDate" type="date" />
-            </label>
+            <section class="event-setup-section event-basic-section">
+              <div class="event-setup-section-heading">
+                <div>
+                  <p class="eyebrow">Event Details</p>
+                  <h4>Basic Information</h4>
+                  <span>
+                    Enter the event name, date, and current status.
+                  </span>
+                </div>
+              </div>
 
-            <label>
-              Event Status
-              <select id="newEventStatus">
-                <option>Upcoming</option>
-                <option>Live</option>
-                <option>Completed</option>
-              </select>
-            </label>
+              <div class="event-basic-grid">
+                <label>
+                  Event Name
+                  <input
+                    id="newEventName"
+                    type="text"
+                    placeholder="Example: All-Women Battle of the DJs"
+                  />
+                </label>
 
-            <div class="setup-builder-block">
+                <label>
+                  Event Date
+                  <input id="newEventDate" type="date" />
+                </label>
+
+                <label>
+                  Event Status
+                  <select id="newEventStatus">
+                    <option>Upcoming</option>
+                    <option>Live</option>
+                    <option>Completed</option>
+                  </select>
+                </label>
+              </div>
+            </section>
+
+
+            <section class="event-setup-section">
               <div class="setup-builder-heading">
                 <div>
-                  <p class="eyebrow">Ticket Rules</p>
-                  <h4>Guests Included Per Ticket</h4>
+                  <p class="eyebrow">Ticket Types</p>
+                  <h4>Ticket Types & Guest Counts</h4>
+                  <span>
+                    Set how many guests each ticket type admits.
+                  </span>
                 </div>
-                <button class="btn secondary" type="button" id="addTicketRuleButton">Add Ticket Rule</button>
+
+                <button
+                  class="btn secondary"
+                  type="button"
+                  id="addTicketRuleButton"
+                >
+                  Add Ticket Type
+                </button>
               </div>
 
               <div id="ticketRulesList" class="setup-list">
                 <div class="setup-row ticket-rule-row">
-                  <input type="text" placeholder="Ticket type, ex: General Admission" data-field="ticket_type" />
-                  <input type="number" min="1" step="1" value="1" placeholder="Guests" data-field="guests_per_ticket" />
+                  <input
+                    type="text"
+                    placeholder="Ticket type, ex: General Admission"
+                    data-field="ticket_type"
+                  />
+
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value="1"
+                    placeholder="Guests"
+                    data-field="guests_per_ticket"
+                  />
                 </div>
               </div>
-            </div>
+            </section>
 
-            <div class="setup-builder-block">
-              <div class="setup-builder-heading">
+
+            <details class="event-advanced-settings">
+              <summary>
                 <div>
-                  <p class="eyebrow">Square Mapping</p>
-                  <h4>Square Item Names or Catalog IDs</h4>
+                  <strong>Advanced Integrations</strong>
+                  <span>
+                    Square and Eventbrite mapping settings
+                  </span>
                 </div>
-                <button class="btn secondary" type="button" id="addSquareMappingButton">Add Square Mapping</button>
+
+                <span class="event-advanced-arrow">⌄</span>
+              </summary>
+
+              <div class="event-advanced-content">
+
+                <section class="event-setup-section">
+                  <div class="setup-builder-heading">
+                    <div>
+                      <p class="eyebrow">Square</p>
+                      <h4>Square Ticket Mapping</h4>
+                      <span>
+                        Only use this when Square items need to map to dashboard ticket types.
+                      </span>
+                    </div>
+
+                    <button
+                      class="btn secondary"
+                      type="button"
+                      id="addSquareMappingButton"
+                    >
+                      Add Square Mapping
+                    </button>
+                  </div>
+
+                  <div id="squareMappingsList" class="setup-list">
+                    <div class="setup-row square-mapping-row">
+                      <input
+                        type="text"
+                        placeholder="Square item name or catalog ID"
+                        data-field="square_item_name"
+                      />
+
+                      <input
+                        type="text"
+                        placeholder="Dashboard ticket type"
+                        data-field="ticket_type"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+
+                <section class="event-setup-section">
+                  <div class="event-setup-section-heading">
+                    <div>
+                      <p class="eyebrow">Eventbrite</p>
+                      <h4>Eventbrite Mapping</h4>
+                      <span>
+                        Optional connection for an Eventbrite event.
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="setup-row eventbrite-setup-row">
+                    <input
+                      id="newEventbriteEventId"
+                      type="text"
+                      placeholder="Eventbrite Event ID"
+                    />
+
+                    <input
+                      id="newEventbriteEventName"
+                      type="text"
+                      placeholder="Eventbrite event name, optional"
+                    />
+                  </div>
+                </section>
+
+              </div>
+            </details>
+
+
+            <div class="event-setup-save-row">
+              <div>
+                <strong>Ready to save?</strong>
+                <span>
+                  Event details and ticket rules will be available throughout the dashboard.
+                </span>
               </div>
 
-              <div id="squareMappingsList" class="setup-list">
-                <div class="setup-row square-mapping-row">
-                  <input type="text" placeholder="Square item name or catalog ID, ex: Juneteenth Celebration - General Admission" data-field="square_item_name" />
-                  <input type="text" placeholder="Dashboard ticket type, ex: VIP Section" data-field="ticket_type" />
-                </div>
-              </div>
+              <button
+                class="btn primary"
+                type="button"
+                id="saveNewEventButton"
+              >
+                Save Event
+              </button>
             </div>
 
-            <div class="setup-builder-block">
-              <div class="setup-builder-heading">
-                <div>
-                  <p class="eyebrow">Eventbrite Mapping</p>
-                  <h4>Connect Eventbrite Event</h4>
-                </div>
-              </div>
-
-              <div class="setup-row">
-                <input id="newEventbriteEventId" type="text" placeholder="Eventbrite Event ID" />
-                <input id="newEventbriteEventName" type="text" placeholder="Eventbrite event name, optional" />
-              </div>
-            </div>
-
-            <button class="btn primary" type="button" id="saveNewEventButton">Save Event Setup</button>
-            <div class="note-preview">
-              Save ticket rules, Square mappings, and Eventbrite mapping for this event.
-            </div>
           </form>
         </div>
       </div>
@@ -1447,7 +1648,7 @@
 
       if (ticketSaleStatus) {
         ticketSaleStatus.textContent = isComp
-          ? "Comp selected: this creates one free ticket and automatically adds the guest to check-in."
+          ? "Comp tickets are recorded at $0 and automatically added to the guest list and check-in list."
           : "Select one ticket type and one payment type for each entry.";
       }
     }
@@ -1506,7 +1707,7 @@
         saveTicketSaleButton.disabled = true;
         saveTicketSaleButton.textContent = "Saving...";
         if (ticketSaleStatus) {
-          ticketSaleStatus.textContent = "Saving ticket sale...";
+          ticketSaleStatus.textContent = "Adding comp ticket...";
         }
 
         const combinedNotes = [
@@ -1544,15 +1745,14 @@
           }
 
           if (ticketSaleStatus) {
-            ticketSaleStatus.textContent = "Ticket sale saved. Refreshing totals...";
+            ticketSaleStatus.textContent = "Comp ticket added. Refreshing totals...";
           }
 
           ticketSaleCustomer.value = "";
           ticketSaleType.value = "";
           ticketSaleQuantity.value = "1";
-          ticketSaleSource.value = "";
-          ticketSaleAmount.disabled = false;
-          ticketSaleAmount.value = "";
+          ticketSaleSource.value = "Comp";
+          ticketSaleAmount.value = "0.00";
           ticketSaleNotes.value = "";
           updateCompTicketFields();
 
@@ -1560,11 +1760,11 @@
         } catch (error) {
           alert(error.message || "Unable to save ticket sale.");
           if (ticketSaleStatus) {
-            ticketSaleStatus.textContent = "Ticket sale could not be saved.";
+            ticketSaleStatus.textContent = "Comp ticket could not be added.";
           }
         } finally {
           saveTicketSaleButton.disabled = false;
-          saveTicketSaleButton.textContent = "Save Ticket Sale";
+          saveTicketSaleButton.textContent = "Add Comp Ticket";
         }
       });
     }
@@ -1666,7 +1866,7 @@
     function resetEventSetupModal() {
       document.getElementById("addEventModalEyebrow").textContent = "Event Setup";
       document.getElementById("addEventModalTitle").textContent = "Add New Event";
-      document.getElementById("addEventModalDescription").textContent = "Create or update event setup, ticket rules, Square names, and Eventbrite mapping.";
+      document.getElementById("addEventModalDescription").textContent = "Create the event and configure how tickets should be tracked.";
 
       newEventName.disabled = false;
       newEventName.value = "";
@@ -1681,7 +1881,7 @@
       squareMappingsList.innerHTML = "";
       squareMappingsList.appendChild(createSquareMappingRow());
 
-      saveNewEventButton.textContent = "Save Event Setup";
+      saveNewEventButton.textContent = "Save Event";
       saveNewEventButton.disabled = false;
     }
 
@@ -1690,7 +1890,7 @@
 
       document.getElementById("addEventModalEyebrow").textContent = "Edit Event";
       document.getElementById("addEventModalTitle").textContent = "Edit Event Setup";
-      document.getElementById("addEventModalDescription").textContent = "Update ticket rules, Square mappings, Eventbrite mapping, date, or status.";
+      document.getElementById("addEventModalDescription").textContent = "Update event details, ticket types, or advanced integrations.";
 
       addEventModalOverlay.classList.add("active");
 
@@ -1821,7 +2021,7 @@
       } catch (error) {
         alert(error.message || "Unable to save event setup.");
         saveNewEventButton.disabled = false;
-        saveNewEventButton.textContent = "Save Event Setup";
+        saveNewEventButton.textContent = "Save Event";
       }
     });
 
@@ -1971,5 +2171,204 @@
     });
 
 </script>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const checkinAddEventButton = document.getElementById(
+    "checkinAddEventButton"
+  );
+
+  const addNewEventButton = document.getElementById(
+    "addNewEventButton"
+  );
+
+  checkinAddEventButton?.addEventListener("click", () => {
+    addNewEventButton?.click();
+  });
+});
+</script>
+
+<script
+  id="eventsKpiBreakdownData"
+  type="application/json"
+>
+  {{ events_kpi_breakdowns | tojson }}
+</script>
+
+<script>
+(() => {
+  const cards = document.querySelectorAll(
+    ".events-kpi-breakdown"
+  );
+
+  const overlay = document.getElementById(
+    "eventsKpiModalOverlay"
+  );
+
+  const closeButton = document.getElementById(
+    "eventsKpiClose"
+  );
+
+  const title = document.getElementById(
+    "eventsKpiTitle"
+  );
+
+  const subtitle = document.getElementById(
+    "eventsKpiSubtitle"
+  );
+
+  const total = document.getElementById(
+    "eventsKpiTotal"
+  );
+
+  const list = document.getElementById(
+    "eventsKpiList"
+  );
+
+  const dataNode = document.getElementById(
+    "eventsKpiBreakdownData"
+  );
+
+  let breakdowns = {};
+
+  try {
+    breakdowns = JSON.parse(
+      dataNode?.textContent || "{}"
+    );
+  } catch (error) {
+    console.error(
+      "Could not parse Events KPI data:",
+      error
+    );
+    return;
+  }
+
+  function formatValue(value) {
+    return Number(value || 0).toLocaleString(
+      "en-US"
+    );
+  }
+
+  function openBreakdown(key) {
+    const breakdown = breakdowns[key];
+
+    if (!breakdown || !overlay) {
+      return;
+    }
+
+    title.textContent =
+      breakdown.title || "Events Breakdown";
+
+    subtitle.textContent =
+      breakdown.subtitle || "";
+
+    total.textContent = formatValue(
+      breakdown.total
+    );
+
+    list.innerHTML = "";
+
+    const rows = Array.isArray(breakdown.rows)
+      ? breakdown.rows
+      : [];
+
+    if (!rows.length) {
+      const empty = document.createElement("div");
+
+      empty.className = "dashboard-kpi-empty";
+
+      empty.innerHTML = `
+        <strong>No breakdown entries yet.</strong>
+        <span>
+          This total currently has no contributing records.
+        </span>
+      `;
+
+      list.appendChild(empty);
+    } else {
+      rows.forEach((row) => {
+        const item = document.createElement("div");
+
+        item.className =
+          "dashboard-kpi-breakdown-row";
+
+        const label = document.createElement("span");
+        label.textContent =
+          row.label || "Unknown";
+
+        const value = document.createElement("strong");
+
+        if (row.status) {
+          value.textContent = row.status;
+          value.className = "events-kpi-status";
+        } else {
+          value.textContent = formatValue(row.value);
+        }
+
+        item.appendChild(label);
+        item.appendChild(value);
+        list.appendChild(item);
+      });
+    }
+
+    overlay.classList.add("active");
+  }
+
+  function closeBreakdown() {
+    overlay?.classList.remove("active");
+  }
+
+  cards.forEach((card) => {
+    card.addEventListener("click", () => {
+      openBreakdown(
+        card.getAttribute("data-kpi")
+      );
+    });
+
+    card.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key === "Enter"
+          || event.key === " "
+        ) {
+          event.preventDefault();
+
+          openBreakdown(
+            card.getAttribute("data-kpi")
+          );
+        }
+      }
+    );
+  });
+
+  closeButton?.addEventListener(
+    "click",
+    closeBreakdown
+  );
+
+  overlay?.addEventListener(
+    "click",
+    (event) => {
+      if (event.target === overlay) {
+        closeBreakdown();
+      }
+    }
+  );
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key === "Escape"
+        && overlay?.classList.contains("active")
+      ) {
+        closeBreakdown();
+      }
+    }
+  );
+})();
+</script>
+
 </body>
 </html>

@@ -386,6 +386,48 @@
       border-radius: 10px;
     }
 
+    /* Compact manual merch order modal */
+    .merch-create-modal {
+      width: min(900px, 96vw);
+      max-height: 90vh;
+      padding: 20px 22px;
+    }
+
+    .merch-create-modal-header {
+      margin-bottom: 16px;
+    }
+
+    .merch-create-modal-header p {
+      margin-bottom: 0;
+    }
+
+    .merch-create-grid {
+      gap: 11px 14px;
+    }
+
+    .merch-create-field {
+      gap: 5px;
+    }
+
+    .merch-create-field input,
+    .merch-create-field select,
+    .merch-create-field textarea {
+      padding: 9px 11px;
+      min-height: 40px;
+    }
+
+    .merch-create-field textarea {
+      min-height: 68px;
+    }
+
+    .merch-create-actions {
+      margin-top: 16px;
+    }
+
+    .merch-shipping-fields {
+      gap: 11px 14px;
+    }
+
     @media (max-width: 1100px) {
       .merch-order-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -498,120 +540,38 @@
       <div class="dashboard-notice">{{ message }}</div>
       {% endif %}
 
-      <section class="stats-grid">
+      <section class="stats-grid merch-summary-kpis">
+
         <article class="stat-card">
           <p>Total Orders</p>
           <h3>{{ stats.total_orders }}</h3>
-          <span>All saved merch orders</span>
+          <span>All merchandise orders</span>
         </article>
 
         <article class="stat-card">
-          <p>Paid Orders</p>
-          <h3>{{ stats.paid_orders }}</h3>
-          <span>Square and manual payments</span>
+          <p>Shirts Sold</p>
+          <h3>{{ stats.paid_shirts }}</h3>
+          <span>Paid merchandise</span>
+        </article>
+
+        <article class="stat-card">
+          <p>Complimentary</p>
+          <h3>{{ stats.complimentary_shirts }}</h3>
+          <span>Free or promotional shirts</span>
         </article>
 
         <article class="stat-card">
           <p>In Production</p>
-          <h3>{{ stats.processing_orders }}</h3>
-          <span>New or processing</span>
-        </article>
-
-        <article class="stat-card">
-          <p>Pickup Orders</p>
-          <h3>{{ stats.pickup_orders }}</h3>
-          <span>Local pickup selected</span>
-        </article>
-
-        <article class="stat-card">
-          <p>Shipping Orders</p>
-          <h3>{{ stats.shipping_orders }}</h3>
-          <span>Shipping selected</span>
+          <h3>{{ stats.production_shirts }}</h3>
+          <span>Currently being fulfilled</span>
         </article>
 
         <article class="stat-card">
           <p>Paid Revenue</p>
           <h3>${{ '%.2f'|format(stats.revenue_cents / 100) }}</h3>
-          <span>Paid merch orders</span>
+          <span>Total merch revenue</span>
         </article>
-      </section>
 
-      <section class="section-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Inventory Summary</p>
-            <h3>Shirt Totals</h3>
-            <p>Track the number of shirts sold, gifted, in production, and completed.</p>
-          </div>
-        </div>
-
-        <div class="stats-grid">
-          <article class="stat-card">
-            <p>Total Shirts</p>
-            <h3>{{ stats.total_shirts }}</h3>
-            <span>All shirts across every order</span>
-          </article>
-
-          <article class="stat-card">
-            <p>Paid Shirts</p>
-            <h3>{{ stats.paid_shirts }}</h3>
-            <span>Square and manual paid sales</span>
-          </article>
-
-          <article class="stat-card">
-            <p>Complimentary Shirts</p>
-            <h3>{{ stats.complimentary_shirts }}</h3>
-            <span>Free or promotional merchandise</span>
-          </article>
-
-          <article class="stat-card">
-            <p>In Production</p>
-            <h3>{{ stats.production_shirts }}</h3>
-            <span>New, processing, or ready for pickup</span>
-          </article>
-
-          <article class="stat-card">
-            <p>Completed Shirts</p>
-            <h3>{{ stats.completed_shirts }}</h3>
-            <span>Finished orders</span>
-          </article>
-        </div>
-      </section>
-
-      <section class="section-panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Payment Summary</p>
-            <h3>Payment Method Breakdown</h3>
-            <p>Compare order counts, shirt quantities, and revenue by payment method.</p>
-          </div>
-        </div>
-
-        <div class="table-card">
-          <div class="table-row table-head payment-breakdown-row">
-            <span>Payment Method</span>
-            <span>Orders</span>
-            <span>Shirts</span>
-            <span>Revenue</span>
-          </div>
-
-          {% for method, totals in payment_breakdown.items() %}
-          <div class="table-row payment-breakdown-row">
-            <span>
-              <strong>{{ method }}</strong>
-            </span>
-            <span>{{ totals.orders }}</span>
-            <span>{{ totals.shirts }}</span>
-            <span>
-              {% if method == 'Complimentary' %}
-                $0.00
-              {% else %}
-                ${{ '%.2f'|format(totals.revenue_cents / 100) }}
-              {% endif %}
-            </span>
-          </div>
-          {% endfor %}
-        </div>
       </section>
 
       <section class="section-panel">
@@ -759,10 +719,6 @@
                 <strong>{{ order.customer_name }}</strong>
               </div>
 
-              <div>
-                <small>Items</small>
-                <strong>{{ order.item_quantity }}</strong>
-              </div>
 
               <div>
                 <small>Fulfillment</small>
@@ -771,14 +727,28 @@
                 </span>
               </div>
 
+
               <div>
-                <small>Payment</small>
-                <span class="badge {% if order.payment_status == 'Paid' %}success{% elif order.payment_status in ['Pending', 'Awaiting Payment'] %}warning{% endif %}">
-                  {{ order.payment_status }}
+                <small>Status</small>
+
+                <span class="badge
+                  {% if order.order_status == 'Completed' %}
+                    success
+                  {% elif order.order_status == 'Cancelled' %}
+                    danger
+                  {% elif order.order_status in ['Processing', 'Ready for Pickup'] %}
+                    warning
+                  {% else %}
+                    live
+                  {% endif %}
+                ">
+                  {{ order.order_status or 'New' }}
                 </span>
+
               </div>
 
               <div>
+
                 <small>Total</small>
                 <span class="merch-order-total">
                   ${{ '%.2f'|format((order.total_cents or 0) / 100) }}
@@ -787,7 +757,7 @@
             </div>
 
             <details class="merch-details">
-              <summary>View order details</summary>
+              <summary>View Details</summary>
 
               <div class="merch-details-content">
                 <div class="merch-detail-grid">
@@ -994,6 +964,42 @@
           {% endfor %}
         </div>
       </section>
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Payment Summary</p>
+            <h3>Payment Method Breakdown</h3>
+            <p>Compare order counts, shirt quantities, and revenue by payment method.</p>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-row table-head payment-breakdown-row">
+            <span>Payment Method</span>
+            <span>Orders</span>
+            <span>Shirts</span>
+            <span>Revenue</span>
+          </div>
+
+          {% for method, totals in payment_breakdown.items() %}
+          <div class="table-row payment-breakdown-row">
+            <span>
+              <strong>{{ method }}</strong>
+            </span>
+            <span>{{ totals.orders }}</span>
+            <span>{{ totals.shirts }}</span>
+            <span>
+              {% if method == 'Complimentary' %}
+                $0.00
+              {% else %}
+                ${{ '%.2f'|format(totals.revenue_cents / 100) }}
+              {% endif %}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+
     </main>
   </div>
   <div class="merch-create-overlay" id="complimentaryOrderOverlay">

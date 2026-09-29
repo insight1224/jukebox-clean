@@ -467,6 +467,10 @@ def init_db():
         "membership_group": "TEXT DEFAULT 'Circle'",
         "started_at": "TEXT",
         "last_payment_at": "TEXT",
+        "square_customer_id": "TEXT",
+        "square_subscription_id": "TEXT",
+        "square_subscription_status": "TEXT",
+        "membership_status_updated_at": "TEXT",
     }
     for column_name, column_type in membership_missing_columns.items():
         if column_name not in membership_columns:
@@ -3419,18 +3423,43 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
     if not clean_email:
         clean_email = f"unknown-{payment_id}@square-payment.local" if payment_id else "unknown@square-payment.local"
 
-    # Find an existing active membership by email.
-    # A monthly renewal should update this row, not create a second member.
+    square_customer_id = str(payment.get("customer_id") or "").strip()
+
+    # Find the existing Square-backed membership even if it is currently
+    # Payment Issue or Inactive. A successful renewal should reactivate
+    # the same row instead of creating a duplicate membership.
     cursor.execute(
         """
         SELECT id, name, membership_group, started_at
         FROM memberships
-        WHERE LOWER(COALESCE(email, '')) = ?
-          AND LOWER(COALESCE(status, '')) = 'active'
-        ORDER BY id
+        WHERE source = 'square'
+          AND (
+                (
+                    ? <> ''
+                    AND square_customer_id = ?
+                )
+                OR LOWER(COALESCE(email, '')) = ?
+              )
+        ORDER BY
+            CASE
+                WHEN ? <> ''
+                     AND square_customer_id = ? THEN 0
+                ELSE 1
+            END,
+            CASE
+                WHEN LOWER(COALESCE(status, '')) = 'active' THEN 0
+                ELSE 1
+            END,
+            id
         LIMIT 1
         """,
-        (clean_email,),
+        (
+            square_customer_id,
+            square_customer_id,
+            clean_email,
+            square_customer_id,
+            square_customer_id,
+        ),
     )
     existing_member = cursor.fetchone()
 
@@ -3451,11 +3480,21 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
                 status = 'Active',
                 payment_id = ?,
                 source = 'square',
+                square_customer_id = COALESCE(NULLIF(?, ''), square_customer_id),
                 last_payment_at = COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP),
-                started_at = COALESCE(started_at, COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP))
+                started_at = COALESCE(started_at, COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP)),
+                membership_status_updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
             """,
-            (final_name, amount_dollars, payment_id, paid_at, paid_at, membership_id),
+            (
+                final_name,
+                amount_dollars,
+                payment_id,
+                square_customer_id,
+                paid_at,
+                paid_at,
+                membership_id,
+            ),
         )
     else:
         cursor.execute(
@@ -3623,6 +3662,423 @@ def square_retrieve_payment(payment_id):
     except Exception as exc:
         print("Square retrieve payment error:", exc)
     return {}
+
+
+def square_retrieve_customer(customer_id):
+    customer_id = str(customer_id or "").strip()
+
+    if not SQUARE_ACCESS_TOKEN or not customer_id:
+        return {}
+
+    endpoint = f"{square_base_url()}/v2/customers/{urllib.parse.quote(customer_id)}"
+
+    req = urlrequest.Request(
+        endpoint,
+        headers={
+            "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+            "Square-Version": "2026-09-16",
+            "Content-Type": "application/json",
+        },
+        method="GET",
+    )
+
+    try:
+        with urlrequest.urlopen(req, timeout=20) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+            return payload.get("customer", {}) or {}
+    except urlerror.HTTPError as exc:
+        print("Square retrieve customer HTTP error:", exc.code)
+    except Exception as exc:
+        print("Square retrieve customer error:", exc)
+
+    return {}
+
+
+def square_retrieve_subscription(subscription_id):
+    subscription_id = str(subscription_id or "").strip()
+
+    if not SQUARE_ACCESS_TOKEN or not subscription_id:
+        return {}
+
+    endpoint = (
+        f"{square_base_url()}/v2/subscriptions/"
+        f"{urllib.parse.quote(subscription_id)}"
+    )
+
+    req = urlrequest.Request(
+        endpoint,
+        headers={
+            "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+            "Square-Version": "2026-09-16",
+            "Content-Type": "application/json",
+        },
+        method="GET",
+    )
+
+    try:
+        with urlrequest.urlopen(req, timeout=20) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+            return payload.get("subscription", {}) or {}
+    except urlerror.HTTPError as exc:
+        print("Square retrieve subscription HTTP error:", exc.code)
+    except Exception as exc:
+        print("Square retrieve subscription error:", exc)
+
+    return {}
+
+
+def apply_square_membership_lifecycle(
+    cursor,
+    event_type,
+    subscription=None,
+    invoice=None,
+    customer=None,
+):
+    """
+    Match a Square subscription/invoice event to an existing Square-backed
+    membership and apply the appropriate local membership status.
+    """
+
+    subscription = subscription or {}
+    invoice = invoice or {}
+
+    subscription_id = str(
+        subscription.get("id")
+        or invoice.get("subscription_id")
+        or ""
+    ).strip()
+
+    customer_id = str(
+        subscription.get("customer_id")
+        or invoice.get("primary_recipient", {}).get("customer_id")
+        or ""
+    ).strip()
+
+    square_subscription_status = str(
+        subscription.get("status") or ""
+    ).strip().upper()
+
+    local_status = None
+
+    if event_type == "invoice.scheduled_charge_failed":
+        local_status = "Payment Issue"
+
+    elif event_type == "invoice.payment_made":
+        local_status = "Active"
+
+    elif event_type in ("subscription.created", "subscription.updated"):
+        if square_subscription_status in ("CANCELED", "DEACTIVATED"):
+            local_status = "Inactive"
+        elif square_subscription_status == "ACTIVE":
+            local_status = "Active"
+
+    membership_id = None
+
+    # 1. Exact Square subscription ID.
+    if subscription_id:
+        cursor.execute(
+            """
+            SELECT id
+            FROM memberships
+            WHERE source = 'square'
+              AND square_subscription_id = ?
+            ORDER BY id
+            LIMIT 1
+            """,
+            (subscription_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            membership_id = row[0]
+
+    # 2. Exact Square customer ID.
+    if membership_id is None and customer_id:
+        cursor.execute(
+            """
+            SELECT id
+            FROM memberships
+            WHERE source = 'square'
+              AND square_customer_id = ?
+            ORDER BY id
+            LIMIT 1
+            """,
+            (customer_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            membership_id = row[0]
+
+    # 3. Existing legacy Square membership matched by customer email.
+    if customer is None:
+        customer = square_retrieve_customer(customer_id) if customer_id else {}
+
+    customer_email = str(
+        (customer or {}).get("email_address") or ""
+    ).strip().lower()
+
+    if membership_id is None and customer_email:
+        cursor.execute(
+            """
+            SELECT id
+            FROM memberships
+            WHERE source = 'square'
+              AND LOWER(TRIM(COALESCE(email, ''))) = ?
+            ORDER BY
+                CASE
+                    WHEN LOWER(COALESCE(status, '')) = 'active' THEN 0
+                    ELSE 1
+                END,
+                id
+            LIMIT 1
+            """,
+            (customer_email,),
+        )
+        row = cursor.fetchone()
+        if row:
+            membership_id = row[0]
+
+    if membership_id is None:
+        return {
+            "matched": False,
+            "membership_id": None,
+            "subscription_id": subscription_id,
+            "customer_id": customer_id,
+            "customer_email": customer_email,
+            "square_status": square_subscription_status,
+            "local_status": None,
+        }
+
+    cursor.execute(
+        """
+        UPDATE memberships
+        SET square_customer_id =
+                COALESCE(NULLIF(?, ''), square_customer_id),
+            square_subscription_id =
+                COALESCE(NULLIF(?, ''), square_subscription_id),
+            square_subscription_status =
+                COALESCE(NULLIF(?, ''), square_subscription_status),
+            status = COALESCE(?, status),
+            membership_status_updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+        """,
+        (
+            customer_id,
+            subscription_id,
+            square_subscription_status,
+            local_status,
+            membership_id,
+        ),
+    )
+
+    return {
+        "matched": True,
+        "membership_id": membership_id,
+        "subscription_id": subscription_id,
+        "customer_id": customer_id,
+        "customer_email": customer_email,
+        "square_status": square_subscription_status,
+        "local_status": local_status,
+    }
+
+
+def square_search_subscriptions(limit=100):
+    if not SQUARE_ACCESS_TOKEN:
+        return []
+
+    endpoint = f"{square_base_url()}/v2/subscriptions/search"
+
+    body = {
+        "limit": min(max(int(limit or 100), 1), 200),
+    }
+
+    req = urlrequest.Request(
+        endpoint,
+        data=json.dumps(body).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+            "Square-Version": "2026-09-16",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlrequest.urlopen(req, timeout=25) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+            return payload.get("subscriptions", []) or []
+    except urlerror.HTTPError as exc:
+        print("Square search subscriptions HTTP error:", exc.code)
+    except Exception as exc:
+        print("Square search subscriptions error:", exc)
+
+    return []
+
+
+def reconcile_square_membership_subscriptions(cursor, apply_status=False):
+    """
+    Match Square subscriptions to existing Square-backed memberships.
+
+    Safe first-pass behavior:
+    - Match by an already-linked Square subscription/customer ID first.
+    - Otherwise retrieve the Square customer and match by email.
+    - Preserve the existing membership_group.
+    - Never attach Square subscriptions to manual-entry memberships.
+    - Status changes are disabled unless apply_status=True.
+    """
+
+    subscriptions = square_search_subscriptions(limit=200)
+
+    summary = {
+        "seen": len(subscriptions),
+        "matched": 0,
+        "unmatched": 0,
+        "status_updated": 0,
+        "details": [],
+    }
+
+    for subscription in subscriptions:
+        subscription_id = str(subscription.get("id") or "").strip()
+        customer_id = str(subscription.get("customer_id") or "").strip()
+        square_status = str(subscription.get("status") or "").strip().upper()
+
+        if not subscription_id:
+            continue
+
+        customer = square_retrieve_customer(customer_id) if customer_id else {}
+
+        customer_email = str(
+            customer.get("email_address")
+            or ""
+        ).strip().lower()
+
+        customer_name = " ".join(
+            part.strip()
+            for part in (
+                str(customer.get("given_name") or ""),
+                str(customer.get("family_name") or ""),
+            )
+            if part.strip()
+        )
+
+        # Prefer an existing Square ID link.
+        cursor.execute(
+            """
+            SELECT id, name, email, status, membership_group, source
+            FROM memberships
+            WHERE source = 'square'
+              AND (
+                    square_subscription_id = ?
+                    OR (
+                        ? <> ''
+                        AND square_customer_id = ?
+                    )
+                  )
+            ORDER BY id
+            LIMIT 1
+            """,
+            (subscription_id, customer_id, customer_id),
+        )
+        member = cursor.fetchone()
+
+        # Existing records predate subscription IDs, so fall back to email.
+        if not member and customer_email:
+            cursor.execute(
+                """
+                SELECT id, name, email, status, membership_group, source
+                FROM memberships
+                WHERE source = 'square'
+                  AND LOWER(TRIM(COALESCE(email, ''))) = ?
+                ORDER BY
+                    CASE
+                        WHEN LOWER(COALESCE(status, '')) = 'active' THEN 0
+                        ELSE 1
+                    END,
+                    id
+                LIMIT 1
+                """,
+                (customer_email,),
+            )
+            member = cursor.fetchone()
+
+        if not member:
+            summary["unmatched"] += 1
+            summary["details"].append(
+                {
+                    "subscription_id": subscription_id,
+                    "customer_id": customer_id,
+                    "email": customer_email,
+                    "name": customer_name,
+                    "square_status": square_status,
+                    "result": "unmatched",
+                }
+            )
+            continue
+
+        membership_id = member[0]
+        existing_name = str(member[1] or "").strip()
+
+        final_name = (
+            existing_name
+            if existing_name and existing_name.lower() != "member"
+            else customer_name or existing_name or "Member"
+        )
+
+        cursor.execute(
+            """
+            UPDATE memberships
+            SET square_customer_id = ?,
+                square_subscription_id = ?,
+                square_subscription_status = ?,
+                name = ?,
+                membership_status_updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """,
+            (
+                customer_id or None,
+                subscription_id,
+                square_status or None,
+                final_name,
+                membership_id,
+            ),
+        )
+
+        summary["matched"] += 1
+
+        if apply_status:
+            local_status = None
+
+            if square_status in ("CANCELED", "DEACTIVATED"):
+                local_status = "Inactive"
+            elif square_status == "ACTIVE":
+                local_status = "Active"
+
+            if local_status:
+                cursor.execute(
+                    """
+                    UPDATE memberships
+                    SET status = ?,
+                        membership_status_updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?
+                    """,
+                    (local_status, membership_id),
+                )
+                summary["status_updated"] += 1
+
+        summary["details"].append(
+            {
+                "membership_id": membership_id,
+                "subscription_id": subscription_id,
+                "customer_id": customer_id,
+                "email": customer_email,
+                "name": final_name,
+                "membership_group": member[4],
+                "local_status": member[3],
+                "square_status": square_status,
+                "result": "matched",
+            }
+        )
+
+    return summary
 
 
 def square_list_payment_refunds(payment_id):
@@ -5345,7 +5801,7 @@ def admin_unmapped_square():
             <div class="section-heading">
               <div>
                 <p class="eyebrow">All Clear</p>
-                <h3>No unmapped Square tickets right now.</h3>
+                <h3>No unmapped tickets right now.</h3>
                 <p>Any future Square payments that cannot be matched to an event will appear here instead of being added to the wrong event.</p>
               </div>
             </div>
@@ -5495,7 +5951,10 @@ def admin_unmapped_square():
         <a href="/dashboard/revenue">Revenue</a>
         <a href="/dashboard/messages">Messages</a>
         <a href="/dashboard/members">Members</a>
+        <a href="/dashboard/ticket-orders">Ticket Orders</a>
+        <a href="/dashboard/merch-orders">Merch Orders</a>
         <a href="/dashboard/email-campaigns">Email Campaigns</a>
+        <a href="/dashboard/gallery">Gallery Manager</a>
         <a href="/dashboard/contacts">Contact Log</a>
         <a href="/admin/unmapped-square" class="active">Unmapped Tickets</a>
       </nav>
@@ -5510,7 +5969,7 @@ def admin_unmapped_square():
         </div>
 
         <div class="topbar-actions">
-          <a class="btn secondary" href="/dashboard">Back to Dashboard</a>
+
           <a class="btn primary" href="/dashboard/events">Events</a>
         </div>
       </header>
@@ -5529,9 +5988,9 @@ def admin_unmapped_square():
         </div>
 
         <div class="stat-card">
-          <p>Status</p>
-          <h3>Safe</h3>
-          <span>Unknown tickets no longer default to Battle</span>
+          <p>Queue Status</p>
+          <h3>Clear</h3>
+          <span>No tickets currently need review</span>
         </div>
       </section>
 
@@ -6391,6 +6850,7 @@ def about():
 
 GALLERY_EVENT_OPTIONS = {
     "battle-of-the-djs": "Battle of the DJs",
+    "battle-of-the-djs-part-two": "Battle of the DJs Part Two",
     "quiet-storm": "The Quiet Storm Live",
     "juneteenth-celebration": "Juneteenth Celebration",
     "scrapbook": "The Jukebox Scrapbook",
@@ -7966,6 +8426,335 @@ def join_membership():
     return redirect("https://square.link/u/fgiSNspy")
 
 
+
+def sync_square_refund_webhook(cursor, refund, event_type="refund.updated"):
+    """
+    Sync one Square refund webhook into Jukebox ticket/refund records.
+
+    Safe behavior:
+    - Completed refunds are matched to tickets only when the refunded amount
+      maps to exactly one combination of unrefunded tickets.
+    - Ambiguous partial refunds are logged as NEEDS_REVIEW instead of guessing.
+    - Pending refunds are logged but do not lock individual tickets yet.
+    - Duplicate webhook deliveries update the existing refund log.
+    """
+
+    from itertools import combinations
+
+    refund = refund or {}
+
+    square_refund_id = str(refund.get("id") or "").strip()
+    square_payment_id = str(refund.get("payment_id") or "").strip()
+    square_status = str(refund.get("status") or "PENDING").strip().upper()
+    reason = str(
+        refund.get("reason")
+        or "Refund processed directly in Square"
+    ).strip()
+
+    amount_cents = int(
+        ((refund.get("amount_money") or {}).get("amount"))
+        or 0
+    )
+
+    if not square_refund_id or not square_payment_id or amount_cents <= 0:
+        return {
+            "ok": False,
+            "status": "IGNORED",
+            "message": "Refund webhook was missing required refund data.",
+        }
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            name,
+            email,
+            ticket_type,
+            amount_cents,
+            ticket_id,
+            payment_id,
+            event_name,
+            checked_in,
+            status,
+            COALESCE(refund_status, 'Not Refunded') AS refund_status,
+            square_refund_id
+        FROM event_tickets
+        WHERE payment_id = ?
+           OR payment_id LIKE ?
+        ORDER BY id
+        """,
+        (
+            square_payment_id,
+            f"{square_payment_id}:%",
+        ),
+    )
+
+    tickets = [dict(row) for row in cursor.fetchall()]
+
+    if not tickets:
+        return {
+            "ok": False,
+            "status": "UNMATCHED",
+            "message": "No Jukebox tickets matched this Square payment.",
+        }
+
+    # If this refund was already matched earlier, preserve those ticket links.
+    cursor.execute(
+        """
+        SELECT ticket_ids_json
+        FROM ticket_refunds
+        WHERE square_refund_id = ?
+        LIMIT 1
+        """,
+        (square_refund_id,),
+    )
+
+    existing_refund_row = cursor.fetchone()
+    existing_public_ids = []
+
+    if existing_refund_row:
+        try:
+            existing_public_ids = json.loads(
+                existing_refund_row[0] or "[]"
+            )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            existing_public_ids = []
+
+    selected_tickets = []
+
+    if existing_public_ids:
+        existing_set = {
+            str(value or "").strip()
+            for value in existing_public_ids
+            if str(value or "").strip()
+        }
+
+        selected_tickets = [
+            ticket
+            for ticket in tickets
+            if str(ticket.get("ticket_id") or "").strip()
+            in existing_set
+        ]
+
+    if not selected_tickets and square_status == "COMPLETED":
+        refundable_tickets = []
+
+        for ticket in tickets:
+            refund_status = str(
+                ticket.get("refund_status") or "Not Refunded"
+            ).strip().lower()
+
+            linked_refund_id = str(
+                ticket.get("square_refund_id") or ""
+            ).strip()
+
+            # Allow tickets already linked to this same Square refund,
+            # but exclude tickets finalized by another refund.
+            if (
+                refund_status in {
+                    "refunded",
+                    "partially refunded",
+                }
+                and linked_refund_id != square_refund_id
+            ):
+                continue
+
+            refundable_tickets.append(ticket)
+
+        matching_combinations = []
+
+        # Search for ticket combinations whose values equal the refund.
+        # Stop once we know the match is ambiguous.
+        for size in range(1, len(refundable_tickets) + 1):
+            for combo in combinations(refundable_tickets, size):
+                combo_total = sum(
+                    max(0, int(ticket.get("amount_cents") or 0))
+                    for ticket in combo
+                )
+
+                if combo_total == amount_cents:
+                    matching_combinations.append(list(combo))
+
+                    if len(matching_combinations) > 1:
+                        break
+
+            if len(matching_combinations) > 1:
+                break
+
+        if len(matching_combinations) == 1:
+            selected_tickets = matching_combinations[0]
+
+    if square_status == "COMPLETED":
+        if not selected_tickets:
+            log_status = "NEEDS_REVIEW"
+        else:
+            log_status = "COMPLETED"
+    elif square_status == "PENDING":
+        log_status = "PENDING"
+    elif square_status in {"FAILED", "REJECTED"}:
+        log_status = square_status
+    else:
+        log_status = square_status or "PENDING"
+
+    selected_public_ids = [
+        str(ticket.get("ticket_id") or "").strip()
+        for ticket in selected_tickets
+        if str(ticket.get("ticket_id") or "").strip()
+    ]
+
+    if selected_tickets and square_status == "COMPLETED":
+        selected_database_ids = [
+            int(ticket["id"])
+            for ticket in selected_tickets
+        ]
+
+        placeholders = ",".join(
+            ["?"] * len(selected_database_ids)
+        )
+
+        cursor.execute(
+            f"""
+            UPDATE event_tickets
+            SET
+                refund_status = 'Refunded',
+                refunded_amount_cents = amount_cents,
+                refund_reason = ?,
+                square_refund_id = ?,
+                refund_requested_at = COALESCE(
+                    refund_requested_at,
+                    CURRENT_TIMESTAMP
+                ),
+                refunded_at = CURRENT_TIMESTAMP
+            WHERE id IN ({placeholders})
+            """,
+            (
+                reason,
+                square_refund_id,
+                *selected_database_ids,
+            ),
+        )
+
+    event_name = str(
+        tickets[0].get("event_name") or ""
+    ).strip()
+
+    customer_name = str(
+        tickets[0].get("name") or ""
+    ).strip()
+
+    customer_email = str(
+        tickets[0].get("email") or ""
+    ).strip().lower()
+
+    webhook_key = f"square-webhook-refund-{square_refund_id}"
+
+    cursor.execute(
+        """
+        SELECT id
+        FROM ticket_refunds
+        WHERE square_refund_id = ?
+        LIMIT 1
+        """,
+        (square_refund_id,),
+    )
+
+    existing_log = cursor.fetchone()
+
+    completed_at = (
+        datetime.now().isoformat(timespec="seconds")
+        if log_status == "COMPLETED"
+        else None
+    )
+
+    if existing_log:
+        cursor.execute(
+            """
+            UPDATE ticket_refunds
+            SET
+                amount_cents = ?,
+                reason = ?,
+                status = ?,
+                ticket_ids_json = ?,
+                updated_at = CURRENT_TIMESTAMP,
+                completed_at = ?
+            WHERE square_refund_id = ?
+            """,
+            (
+                amount_cents,
+                reason,
+                log_status,
+                json.dumps(selected_public_ids),
+                completed_at,
+                square_refund_id,
+            ),
+        )
+    else:
+        cursor.execute(
+            """
+            INSERT INTO ticket_refunds (
+                square_refund_id,
+                idempotency_key,
+                square_payment_id,
+                event_name,
+                customer_name,
+                customer_email,
+                amount_cents,
+                reason,
+                status,
+                ticket_ids_json,
+                requested_by,
+                created_at,
+                updated_at,
+                completed_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?)
+            """,
+            (
+                square_refund_id,
+                webhook_key,
+                square_payment_id,
+                event_name,
+                customer_name,
+                customer_email,
+                amount_cents,
+                reason,
+                log_status,
+                json.dumps(selected_public_ids),
+                "Square Webhook",
+                completed_at,
+            ),
+        )
+
+    if log_status == "NEEDS_REVIEW":
+        return {
+            "ok": True,
+            "status": "NEEDS_REVIEW",
+            "refund_id": square_refund_id,
+            "payment_id": square_payment_id,
+            "amount_cents": amount_cents,
+            "ticket_ids": [],
+            "message": (
+                "Square refund was recorded but could not be matched "
+                "to one unique ticket combination."
+            ),
+        }
+
+    return {
+        "ok": True,
+        "status": log_status,
+        "refund_id": square_refund_id,
+        "payment_id": square_payment_id,
+        "amount_cents": amount_cents,
+        "ticket_ids": selected_public_ids,
+        "message": (
+            "Square refund synchronized successfully."
+            if log_status == "COMPLETED"
+            else f"Square refund status recorded: {log_status}."
+        ),
+    }
+
+
 # -------------------------
 # WEBHOOK
 # -------------------------
@@ -7989,7 +8778,165 @@ def square_webhook():
         print("⚠️ signature invalid — bypassed (dev mode)")
 
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+
+    if event_type in ("refund.created", "refund.updated"):
+        refund = (
+            data.get("data", {})
+            .get("object", {})
+            .get("refund", {})
+            or {}
+        )
+
+        refund_id = str(
+            refund.get("id") or ""
+        ).strip()
+
+        refund_payment_id = str(
+            refund.get("payment_id") or ""
+        ).strip()
+
+        refund_status = str(
+            refund.get("status") or ""
+        ).strip().upper()
+
+        cursor.execute(
+            """
+            INSERT INTO webhook_logs (
+                source,
+                event_id,
+                event_type,
+                note
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                "square",
+                event_id,
+                event_type,
+                (
+                    f"refund_id={refund_id} "
+                    f"payment_id={refund_payment_id} "
+                    f"status={refund_status}"
+                ),
+            ),
+        )
+
+        try:
+            result = sync_square_refund_webhook(
+                cursor,
+                refund,
+                event_type=event_type,
+            )
+
+            conn.commit()
+
+            print(
+                "[square-refund-webhook]",
+                result,
+            )
+
+            conn.close()
+            return "ok", 200
+
+        except Exception as exc:
+            conn.rollback()
+            conn.close()
+
+            print(
+                "❌ SQUARE REFUND WEBHOOK FAILED:",
+                exc,
+            )
+            traceback.print_exc()
+
+            return "refund sync failed", 500
+
+    # Square membership subscription lifecycle events.
+    # Handle these before payment parsing because subscription/invoice
+    # webhook payloads are not payment-shaped events.
+    if event_type in (
+        "subscription.created",
+        "subscription.updated",
+        "invoice.scheduled_charge_failed",
+        "invoice.payment_made",
+    ):
+        event_object = (
+            data.get("data", {})
+            .get("object", {})
+            or {}
+        )
+
+        subscription = event_object.get("subscription", {}) or {}
+        invoice = event_object.get("invoice", {}) or {}
+
+        subscription_id = str(
+            subscription.get("id")
+            or invoice.get("subscription_id")
+            or ""
+        ).strip()
+
+        # Only subscription-generated invoices should affect membership.
+        if event_type in (
+            "invoice.scheduled_charge_failed",
+            "invoice.payment_made",
+        ) and not subscription_id:
+            result_note = (
+                "membership_invoice_ignored "
+                "reason=no_subscription_id"
+            )
+
+        else:
+            # Invoice events identify the related subscription. Retrieve it
+            # so customer/status information comes directly from Square.
+            if not subscription and subscription_id:
+                subscription = square_retrieve_subscription(subscription_id)
+
+            result = apply_square_membership_lifecycle(
+                cursor,
+                event_type,
+                subscription=subscription,
+                invoice=invoice,
+            )
+
+            if result["matched"]:
+                result_note = (
+                    f"membership_id={result['membership_id']} "
+                    f"subscription_id={result['subscription_id']} "
+                    f"square_status={result['square_status']} "
+                    f"local_status={result['local_status'] or 'unchanged'}"
+                )
+            else:
+                result_note = (
+                    "membership_not_matched "
+                    f"subscription_id={result['subscription_id']} "
+                    f"customer_id={result['customer_id']} "
+                    f"email={result['customer_email']}"
+                )
+
+        cursor.execute(
+            """
+            INSERT INTO webhook_logs (
+                source,
+                event_id,
+                event_type,
+                note
+            )
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                "square",
+                event_id,
+                event_type,
+                result_note,
+            ),
+        )
+
+        conn.commit()
+        conn.close()
+
+        print("[square-membership-webhook]", result_note)
+        return "ok", 200
 
     payment, payment_id, amount_cents, note_blob, email, status = parse_square_payment(data)
     is_duplicate_payment = already_logged_payment(cursor, payment_id) if payment_id else False
@@ -10961,6 +11908,7 @@ def admin_dashboard_redesign():
             SUM(CASE WHEN LOWER(COALESCE(category, '')) = 'vendor' THEN 1 ELSE 0 END) AS vendor_count,
             COUNT(*) AS total_count
         FROM contact_log
+        WHERE LOWER(COALESCE(status, '')) <> 'archived'
         """
     )
     contact_log_counts = cursor.fetchone() or (0, 0, 0)
@@ -10973,6 +11921,677 @@ def admin_dashboard_redesign():
         "vendor_contacts": int(contact_log_counts[1] or 0),
         "total_contacts": int(contact_log_counts[2] or 0),
     }
+
+    # ---------------------------------------------------------
+    # MAIN DASHBOARD KPI BREAKDOWNS
+    # Keep these calculations aligned with get_live_dashboard_data()
+    # so every popup reconciles to the KPI shown on the dashboard.
+    # ---------------------------------------------------------
+
+    def dashboard_count_rows(query, params=()):
+        cursor.execute(query, params)
+        return {
+            str(row[0] or "Unknown"): int(row[1] or 0)
+            for row in cursor.fetchall()
+        }
+
+    def dashboard_money_rows(query, params=()):
+        cursor.execute(query, params)
+        return {
+            str(row[0] or "Unknown"): float(row[1] or 0)
+            for row in cursor.fetchall()
+        }
+
+    def combine_breakdown_maps(*maps):
+        combined = {}
+
+        for item_map in maps:
+            for label, value in item_map.items():
+                combined[label] = combined.get(label, 0) + value
+
+        return combined
+
+    def sorted_breakdown_rows(item_map):
+        return [
+            {
+                "label": label,
+                "value": value,
+            }
+            for label, value in sorted(
+                item_map.items(),
+                key=lambda item: (-item[1], item[0].lower()),
+            )
+            if abs(float(value or 0)) > 0.000001
+        ]
+
+    # General ticket rows already stored in event_tickets.
+    general_online_by_event = dashboard_count_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COUNT(*) AS quantity
+        FROM event_tickets
+        WHERE LOWER(COALESCE(ticket_type, '')) NOT LIKE '%vip%'
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    # The main KPI also counts cash/door quantities stored directly
+    # in event_cash_revenue.
+    general_cash_by_event = dashboard_count_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COALESCE(SUM(quantity), 0) AS quantity
+        FROM event_cash_revenue
+        WHERE LOWER(COALESCE(category, '')) LIKE '%cash%'
+           OR LOWER(COALESCE(category, '')) LIKE '%door%'
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    general_tickets_by_event = combine_breakdown_maps(
+        general_online_by_event,
+        general_cash_by_event,
+    )
+
+    vip_tickets_by_event = dashboard_count_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COUNT(*) AS quantity
+        FROM event_tickets
+        WHERE LOWER(COALESCE(ticket_type, '')) LIKE '%vip%'
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    all_online_tickets_by_event = dashboard_count_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COUNT(*) AS quantity
+        FROM event_tickets
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    total_tickets_by_event = combine_breakdown_maps(
+        all_online_tickets_by_event,
+        general_cash_by_event,
+    )
+
+    online_ticket_revenue_by_event = dashboard_money_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COALESCE(
+                SUM(
+                    MAX(
+                        COALESCE(amount_cents, 0)
+                        - COALESCE(refunded_amount_cents, 0),
+                        0
+                    )
+                ),
+                0
+            ) / 100.0 AS revenue
+        FROM event_tickets
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    cash_ticket_revenue_by_event = dashboard_money_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COALESCE(SUM(amount_cents), 0) / 100.0 AS revenue
+        FROM event_cash_revenue
+        WHERE
+            LOWER(COALESCE(category, '')) <> 'comp'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%donation%'
+            AND LOWER(COALESCE(notes, '')) NOT LIKE '%donation%'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%vendor%'
+            AND LOWER(COALESCE(notes, '')) NOT LIKE '%vendor%'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%sponsor%'
+            AND LOWER(COALESCE(notes, '')) NOT LIKE '%sponsor%'
+            AND LOWER(COALESCE(category, '')) NOT LIKE '%other%'
+            AND (
+                LOWER(COALESCE(category, '')) LIKE '%cash%'
+                OR LOWER(COALESCE(category, '')) LIKE '%door%'
+                OR LOWER(COALESCE(category, '')) LIKE '%ticket%'
+                OR LOWER(COALESCE(notes, '')) LIKE '%door%'
+                OR LOWER(COALESCE(notes, '')) LIKE '%ticket%'
+                OR COALESCE(quantity, 0) > 0
+            )
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    ticket_revenue_by_event = combine_breakdown_maps(
+        online_ticket_revenue_by_event,
+        cash_ticket_revenue_by_event,
+    )
+
+    donations_by_event = dashboard_money_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COALESCE(SUM(amount_cents), 0) / 100.0 AS revenue
+        FROM event_cash_revenue
+        WHERE LOWER(COALESCE(category, '')) LIKE '%donation%'
+           OR LOWER(COALESCE(notes, '')) LIKE '%donation%'
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    # Rebuild "other manual revenue" by event using the same components
+    # used by the main KPI.
+    manual_non_comp_by_event = dashboard_money_rows(
+        """
+        SELECT
+            COALESCE(event_name, 'Unknown') AS event_name,
+            COALESCE(SUM(amount_cents), 0) / 100.0 AS revenue
+        FROM event_cash_revenue
+        WHERE LOWER(COALESCE(category, '')) <> 'comp'
+        GROUP BY COALESCE(event_name, 'Unknown')
+        """
+    )
+
+    other_manual_by_event = {}
+
+    all_manual_event_names = set(manual_non_comp_by_event)
+    all_manual_event_names.update(cash_ticket_revenue_by_event)
+    all_manual_event_names.update(donations_by_event)
+
+    for event_name in all_manual_event_names:
+        value = (
+            float(manual_non_comp_by_event.get(event_name, 0) or 0)
+            - float(cash_ticket_revenue_by_event.get(event_name, 0) or 0)
+            - float(donations_by_event.get(event_name, 0) or 0)
+        )
+
+        if abs(value) > 0.000001:
+            other_manual_by_event[event_name] = value
+
+    cursor.execute(
+        """
+        SELECT COALESCE(SUM(tip_cents), 0) / 100.0
+        FROM square_payment_log
+        """
+    )
+    square_tips_total = float(cursor.fetchone()[0] or 0)
+
+    tips_other_rows = []
+
+    if square_tips_total:
+        tips_other_rows.append({
+            "label": "Square Tips",
+            "value": square_tips_total,
+        })
+
+    for row in sorted_breakdown_rows(other_manual_by_event):
+        tips_other_rows.append({
+            "label": f"{row['label']} — Other / Manual",
+            "value": row["value"],
+        })
+
+    # VIP Email List — group active subscribers by signup month.
+    cursor.execute(
+        """
+        SELECT
+            CASE
+                WHEN created_at IS NULL OR TRIM(created_at) = ''
+                    THEN 'Date Unknown'
+                ELSE strftime('%Y-%m', created_at)
+            END AS signup_month,
+            COUNT(DISTINCT LOWER(TRIM(email))) AS subscriber_count
+        FROM leads
+        WHERE type = 'VIP Signup'
+          AND LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(archived, 0) = 0
+          AND email IS NOT NULL
+          AND TRIM(email) <> ''
+        GROUP BY signup_month
+        ORDER BY signup_month DESC
+        """
+    )
+
+    vip_email_rows = []
+
+    for row in cursor.fetchall():
+        raw_month = str(row[0] or "Date Unknown")
+
+        if raw_month != "Date Unknown":
+            try:
+                from datetime import datetime
+                month_label = datetime.strptime(
+                    raw_month,
+                    "%Y-%m"
+                ).strftime("%B %Y")
+            except Exception:
+                month_label = raw_month
+        else:
+            month_label = raw_month
+
+        vip_email_rows.append({
+            "label": month_label,
+            "value": int(row[1] or 0),
+        })
+
+    # Active paid memberships by membership group.
+    cursor.execute(
+        """
+        SELECT
+            CASE
+                WHEN LOWER(COALESCE(membership_group, 'circle')) = 'original'
+                    THEN 'Jukebox Circle Originals'
+                ELSE 'Jukebox Circle Members'
+            END AS membership_type,
+            COUNT(*) AS member_count
+        FROM memberships
+        WHERE LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(amount, 0) > 0
+        GROUP BY membership_type
+        ORDER BY member_count DESC
+        """
+    )
+
+    membership_rows = [
+        {
+            "label": str(row[0] or "Membership"),
+            "value": int(row[1] or 0),
+        }
+        for row in cursor.fetchall()
+    ]
+
+    # Collected membership revenue by month.
+    cursor.execute(
+        """
+        SELECT
+            CASE
+                WHEN COALESCE(
+                    NULLIF(TRIM(paid_at), ''),
+                    NULLIF(TRIM(created_at), '')
+                ) IS NULL
+                    THEN 'Date Unknown'
+                ELSE strftime(
+                    '%Y-%m',
+                    COALESCE(
+                        NULLIF(TRIM(paid_at), ''),
+                        NULLIF(TRIM(created_at), '')
+                    )
+                )
+            END AS revenue_month,
+            COALESCE(SUM(amount_cents), 0) / 100.0 AS revenue
+        FROM membership_payments
+        WHERE COALESCE(amount_cents, 0) > 0
+        GROUP BY revenue_month
+        ORDER BY
+            CASE
+                WHEN revenue_month = 'Date Unknown' THEN 1
+                ELSE 0
+            END,
+            revenue_month DESC
+        """
+    )
+
+    membership_revenue_rows = []
+
+    for row in cursor.fetchall():
+        raw_month = str(row[0] or "Date Unknown")
+
+        if raw_month != "Date Unknown":
+            try:
+                month_label = datetime.strptime(
+                    raw_month,
+                    "%Y-%m"
+                ).strftime("%B %Y")
+            except Exception:
+                month_label = raw_month
+        else:
+            month_label = raw_month
+
+        membership_revenue_rows.append({
+            "label": month_label,
+            "value": float(row[1] or 0),
+        })
+
+    # Paid merchandise revenue by product name.
+    cursor.execute(
+        """
+        SELECT cart_json
+        FROM merch_orders
+        WHERE LOWER(TRIM(COALESCE(payment_status, ''))) = 'paid'
+        """
+    )
+
+    merch_product_totals = {}
+
+    for merch_row in cursor.fetchall():
+        try:
+            cart_items = json.loads(merch_row[0] or "[]")
+        except (TypeError, ValueError, json.JSONDecodeError):
+            cart_items = []
+
+        for item in cart_items:
+            if not isinstance(item, dict):
+                continue
+
+            product_name = (
+                item.get("name")
+                or item.get("product_name")
+                or item.get("title")
+                or "Merch Item"
+            )
+
+            try:
+                quantity = max(
+                    int(item.get("quantity") or 1),
+                    0
+                )
+            except (TypeError, ValueError):
+                quantity = 1
+
+            price_value = (
+                item.get("price_cents")
+                or item.get("unit_price_cents")
+            )
+
+            if price_value is not None:
+                try:
+                    item_revenue = (
+                        int(price_value) * quantity
+                    ) / 100.0
+                except (TypeError, ValueError):
+                    item_revenue = 0.0
+            else:
+                try:
+                    unit_price = float(
+                        item.get("price")
+                        or item.get("unit_price")
+                        or 0
+                    )
+                except (TypeError, ValueError):
+                    unit_price = 0.0
+
+                item_revenue = unit_price * quantity
+
+            merch_product_totals[product_name] = (
+                merch_product_totals.get(product_name, 0.0)
+                + item_revenue
+            )
+
+    merch_rows = sorted_breakdown_rows(
+        merch_product_totals
+    )
+
+    kpi_breakdowns = {
+        "vip-email-list": {
+            "title": "VIP Email List",
+            "subtitle": "Active VIP subscribers by signup month.",
+            "format": "count",
+            "total": int(metrics.get("vip_signups", 0) or 0),
+            "rows": vip_email_rows,
+            "detail_url": "/dashboard/members",
+            "detail_label": "View Member List",
+        },
+        "memberships": {
+            "title": "Memberships",
+            "subtitle": "Active paid members by membership group.",
+            "format": "count",
+            "total": int(metrics.get("active_memberships", 0) or 0),
+            "rows": membership_rows,
+            "detail_url": "/dashboard/members",
+            "detail_label": "View Members",
+        },
+        "membership-revenue": {
+            "title": "Membership Revenue",
+            "subtitle": "Collected membership revenue by month.",
+            "format": "currency",
+            "total": float(metrics.get("membership_revenue", 0) or 0),
+            "rows": membership_revenue_rows,
+            "detail_url": "/dashboard/members",
+            "detail_label": "View Members",
+        },
+        "tshirt-sales": {
+            "title": "T-Shirt Sales",
+            "subtitle": "Paid merchandise revenue by product.",
+            "format": "currency",
+            "total": float(metrics.get("merch_revenue", 0) or 0),
+            "rows": merch_rows,
+            "detail_url": "/dashboard/merch-orders",
+            "detail_label": "View Merch Orders",
+        },
+        "general-tickets": {
+            "title": "General Tickets",
+            "subtitle": "General and non-VIP tickets sold by event.",
+            "format": "count",
+            "total": int(metrics.get("single_tickets", 0) or 0),
+            "rows": sorted_breakdown_rows(general_tickets_by_event),
+        },
+        "vip-tickets": {
+            "title": "VIP Tickets",
+            "subtitle": "VIP ticket purchases by event.",
+            "format": "count",
+            "total": int(metrics.get("vip_tickets", 0) or 0),
+            "rows": sorted_breakdown_rows(vip_tickets_by_event),
+        },
+        "total-tickets": {
+            "title": "Total Tickets",
+            "subtitle": "All tracked ticket sales by event.",
+            "format": "count",
+            "total": int(metrics.get("total_tickets_sold", 0) or 0),
+            "rows": sorted_breakdown_rows(total_tickets_by_event),
+        },
+        "ticket-revenue": {
+            "title": "Ticket Revenue",
+            "subtitle": "Ticket revenue collected by event.",
+            "format": "currency",
+            "total": float(metrics.get("ticket_revenue", 0) or 0),
+            "rows": sorted_breakdown_rows(ticket_revenue_by_event),
+        },
+        "donations": {
+            "title": "Donations",
+            "subtitle": "Donation revenue recorded by event.",
+            "format": "currency",
+            "total": float(metrics.get("donation_revenue", 0) or 0),
+            "rows": sorted_breakdown_rows(donations_by_event),
+        },
+        "tips-other": {
+            "title": "Tips / Other",
+            "subtitle": "Square tips and other manual revenue.",
+            "format": "currency",
+            "total": float(metrics.get("tips_other_revenue", 0) or 0),
+            "rows": tips_other_rows,
+        },
+        "total-collected": {
+            "title": "Total Collected",
+            "subtitle": "All revenue currently tracked by the dashboard.",
+            "format": "currency",
+            "total": float(metrics.get("square_total_collected", 0) or 0),
+            "rows": [
+                {
+                    "label": "Ticket Revenue",
+                    "value": float(metrics.get("ticket_revenue", 0) or 0),
+                },
+                {
+                    "label": "Membership Revenue",
+                    "value": float(metrics.get("membership_revenue", 0) or 0),
+                },
+                {
+                    "label": "T-Shirt Sales",
+                    "value": float(metrics.get("merch_revenue", 0) or 0),
+                },
+                {
+                    "label": "Donations",
+                    "value": float(metrics.get("donation_revenue", 0) or 0),
+                },
+                {
+                    "label": "Tips / Other",
+                    "value": float(metrics.get("tips_other_revenue", 0) or 0),
+                },
+            ],
+        },
+    }
+
+
+    # ---------------------------------------------------------
+    # DASHBOARD SEARCH
+    # Build the search index from live database records.
+    # ---------------------------------------------------------
+    dashboard_search_items = []
+
+    cursor.execute(
+        """
+        SELECT id, name, event_date, status
+        FROM events
+        ORDER BY event_date DESC, id DESC
+        """
+    )
+    for row in cursor.fetchall():
+        event_name = str(row[1] or "").strip()
+        if not event_name:
+            continue
+
+        event_date = str(row[2] or "").strip()
+        event_status = str(row[3] or "").strip()
+
+        description_parts = []
+        if event_date:
+            description_parts.append(event_date)
+        if event_status:
+            description_parts.append(event_status)
+
+        dashboard_search_items.append(
+            {
+                "title": event_name,
+                "type": "Event",
+                "description": " • ".join(description_parts) or "Event record",
+                "target": "/dashboard/events",
+            }
+        )
+
+    cursor.execute(
+        """
+        SELECT id, name, email, ticket_type, event_name, status
+        FROM event_tickets
+        ORDER BY id DESC
+        """
+    )
+    for row in cursor.fetchall():
+        guest_name = str(row[1] or "").strip()
+        guest_email = str(row[2] or "").strip()
+        ticket_type = str(row[3] or "").strip()
+        event_name = str(row[4] or "").strip()
+        ticket_status = str(row[5] or "").strip()
+
+        title = guest_name or guest_email
+        if not title:
+            continue
+
+        description_parts = [
+            value
+            for value in (guest_email, ticket_type, event_name, ticket_status)
+            if value
+        ]
+
+        dashboard_search_items.append(
+            {
+                "title": title,
+                "type": "Ticket / Guest",
+                "description": " • ".join(description_parts) or "Ticket holder",
+                "target": "/dashboard/ticket-orders",
+            }
+        )
+
+    cursor.execute(
+        """
+        SELECT id, type, name, email, details, status
+        FROM leads
+        WHERE COALESCE(archived, 0) = 0
+        ORDER BY id DESC
+        """
+    )
+    for row in cursor.fetchall():
+        lead_type = str(row[1] or "").strip()
+        lead_name = str(row[2] or "").strip()
+        lead_email = str(row[3] or "").strip()
+        lead_details = str(row[4] or "").strip()
+        lead_status = str(row[5] or "").strip()
+
+        title = lead_name or lead_email
+        if not title:
+            continue
+
+        normalized_type = lead_type.lower()
+
+        if normalized_type in ("vip signup", "membership signup"):
+            target = "/dashboard/members"
+        else:
+            target = "/dashboard/messages"
+
+        description_parts = [
+            value
+            for value in (lead_email, lead_details, lead_status)
+            if value
+        ]
+
+        dashboard_search_items.append(
+            {
+                "title": title,
+                "type": lead_type or "Lead",
+                "description": " • ".join(description_parts) or "Dashboard record",
+                "target": target,
+            }
+        )
+
+    cursor.execute(
+        """
+        SELECT id, category, name, email, phone, contact_type, details, status
+        FROM contact_log
+        WHERE LOWER(COALESCE(status, '')) <> 'archived'
+        ORDER BY id DESC
+        """
+    )
+    for row in cursor.fetchall():
+        category = str(row[1] or "").strip()
+        contact_name = str(row[2] or "").strip()
+        contact_email = str(row[3] or "").strip()
+        contact_phone = str(row[4] or "").strip()
+        contact_type = str(row[5] or "").strip()
+        contact_details = str(row[6] or "").strip()
+        contact_status = str(row[7] or "").strip()
+
+        title = contact_name or contact_email
+        if not title:
+            continue
+
+        display_type = (
+            f"{category.title()} Contact"
+            if category
+            else "Contact"
+        )
+
+        description_parts = [
+            value
+            for value in (
+                contact_email,
+                contact_phone,
+                contact_type,
+                contact_details,
+                contact_status,
+            )
+            if value
+        ]
+
+        dashboard_search_items.append(
+            {
+                "title": title,
+                "type": display_type,
+                "description": " • ".join(description_parts) or "Contact Log record",
+                "target": "/dashboard/contacts",
+            }
+        )
 
     conn.close()
 
@@ -11002,6 +12621,8 @@ def admin_dashboard_redesign():
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
         dashboard_overview=dashboard_overview,
+        dashboard_search_items=dashboard_search_items,
+        kpi_breakdowns=kpi_breakdowns,
         square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
         staff_users=staff_users,
@@ -13030,6 +14651,7 @@ def admin_dashboard_revenue():
         business_expense_rows=business_expense_rows,
         cash_rows=cash_rows,
         events=events,
+        upcoming_events=upcoming_events,
         past_events=past_events,
         past_expenses_total=past_expenses_total,
         past_revenue_total=past_revenue_total,
@@ -13613,6 +15235,116 @@ def admin_dashboard_events():
         event["not_checked_in_count"] = max(estimated_attendance - checked_in_count, 0)
         event["checkin_progress_label"] = f"{checked_in_count} of {estimated_attendance}"
 
+    # ---------------------------------------------------------
+    # EVENTS DASHBOARD KPI BREAKDOWNS
+    # ---------------------------------------------------------
+
+    event_status_counts = {}
+
+    for event in events:
+        status = (
+            event.get("status_label")
+            or "Upcoming"
+        )
+
+        event_status_counts[status] = (
+            event_status_counts.get(status, 0) + 1
+        )
+
+    events_kpi_breakdowns = {
+        "events": {
+            "title": "Events",
+            "subtitle": "All currently listed events.",
+            "format": "count",
+            "total": len(events),
+            "rows": [
+                {
+                    "label": event.get("name") or "Unnamed Event",
+                    "status": event.get("status_label") or "Upcoming",
+                }
+                for event in events
+            ],
+        },
+
+        "paid-tickets": {
+            "title": "Paid Tickets",
+            "subtitle": "Paid tickets recorded by event.",
+            "format": "count",
+            "total": int(
+                metrics.get("total_tickets_sold", 0)
+                or 0
+            ),
+            "rows": [
+                {
+                    "label": event.get("name") or "Unknown",
+                    "value": int(
+                        event.get("total_tickets_sold")
+                        or 0
+                    ),
+                }
+                for event in events
+                if int(
+                    event.get("total_tickets_sold")
+                    or 0
+                ) > 0
+            ],
+        },
+
+        "comps": {
+            "title": "Comps / Guest List",
+            "subtitle": "Complimentary and guest-list entries by event.",
+            "format": "count",
+            "total": sum(
+                int(event.get("comp_ticket_count") or 0)
+                for event in events
+            ),
+            "rows": [
+                {
+                    "label": event.get("name") or "Unknown",
+                    "value": int(
+                        event.get("comp_ticket_count")
+                        or 0
+                    ),
+                }
+                for event in events
+                if int(
+                    event.get("comp_ticket_count")
+                    or 0
+                ) > 0
+            ],
+        },
+
+        "expected-attendance": {
+            "title": "Expected Attendance",
+            "subtitle": "Expected attendance by event.",
+            "format": "count",
+            "total": sum(
+                int(
+                    event.get("estimated_attendance")
+                    or event.get("total_tickets_sold")
+                    or 0
+                )
+                for event in events
+            ),
+            "rows": [
+                {
+                    "label": event.get("name") or "Unknown",
+                    "value": int(
+                        event.get("estimated_attendance")
+                        or event.get("total_tickets_sold")
+                        or 0
+                    ),
+                }
+                for event in events
+                if int(
+                    event.get("estimated_attendance")
+                    or event.get("total_tickets_sold")
+                    or 0
+                ) > 0
+            ],
+        },
+    }
+
     return render_template(
         "events_dashboard.html",
         metrics=metrics,
@@ -13630,6 +15362,7 @@ def admin_dashboard_events():
         membership_recipients=[],
         square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
+        events_kpi_breakdowns=events_kpi_breakdowns,
         event_ticket_types=event_ticket_types,
     )
 
@@ -14282,9 +16015,35 @@ def dashboard_ticket_orders():
         """
     )
 
+    ticket_order_rows = [
+        dict(row)
+        for row in cursor.fetchall()
+    ]
+
+    cursor.execute(
+        """
+        SELECT
+            name,
+            event_date,
+            status
+        FROM events
+        ORDER BY event_date
+        """
+    )
+
+    event_setup_rows = [
+        dict(row)
+        for row in cursor.fetchall()
+    ]
+
+    event_setup_map = {
+        str(row.get("name") or "").strip(): row
+        for row in event_setup_rows
+    }
+
     orders = []
 
-    for row in cursor.fetchall():
+    for row in ticket_order_rows:
         order = dict(row)
 
         try:
@@ -14302,12 +16061,20 @@ def dashboard_ticket_orders():
             cursor.execute(
                 """
                 SELECT
+                    id,
                     ticket_id,
                     ticket_type,
+                    amount_cents,
                     checked_in,
                     checked_in_count,
                     status,
-                    ticket_email_sent_at
+                    ticket_email_sent_at,
+                    refund_status,
+                    refunded_amount_cents,
+                    refund_reason,
+                    square_refund_id,
+                    refund_requested_at,
+                    refunded_at
                 FROM event_tickets
                 WHERE payment_id = ?
                    OR payment_id LIKE ?
@@ -14337,7 +16104,184 @@ def dashboard_ticket_orders():
             )
         )
 
+        refunded_tickets = [
+            ticket
+            for ticket in order["created_tickets"]
+            if str(
+                ticket.get("refund_status") or ""
+            ).strip().lower() == "refunded"
+        ]
+
+        pending_refund_tickets = [
+            ticket
+            for ticket in order["created_tickets"]
+            if str(
+                ticket.get("refund_status") or ""
+            ).strip().lower() == "refund pending"
+        ]
+
+        order["refunded_ticket_count"] = len(refunded_tickets)
+        order["refund_pending_count"] = len(pending_refund_tickets)
+
+        order["refunded_amount_cents"] = sum(
+            int(ticket.get("refunded_amount_cents") or 0)
+            for ticket in refunded_tickets
+        )
+
+        if (
+            order["created_tickets"]
+            and len(refunded_tickets) == len(order["created_tickets"])
+        ):
+            order["transaction_status"] = "Refunded"
+
+        elif refunded_tickets:
+            order["transaction_status"] = "Partially Refunded"
+
+        elif pending_refund_tickets:
+            order["transaction_status"] = "Refund Pending"
+
+        else:
+            order["transaction_status"] = (
+                order.get("payment_status") or "Pending"
+            )
+
+        event_name = str(
+            order.get("event_name") or ""
+        ).strip()
+
+        event_setup = event_setup_map.get(
+            event_name,
+            {},
+        )
+
+        order["event_date"] = (
+            event_setup.get("event_date")
+            or ""
+        )
+
+        order["event_status"] = (
+            event_setup.get("status")
+            or ""
+        )
+
         orders.append(order)
+
+    event_groups_map = {}
+
+    # Seed every configured event first so upcoming events still appear
+    # even when they do not have any ticket orders yet.
+    for event_setup in event_setup_rows:
+        event_name = str(
+            event_setup.get("name") or ""
+        ).strip()
+
+        if not event_name:
+            continue
+
+        event_groups_map[event_name] = {
+            "name": event_name,
+            "event_date": event_setup.get("event_date") or "",
+            "event_status": event_setup.get("status") or "",
+            "orders": [],
+            "order_count": 0,
+            "ticket_count": 0,
+            "revenue_cents": 0,
+            "refunded_order_count": 0,
+            "refunded_amount_cents": 0,
+        }
+
+    for order in orders:
+        event_name = str(
+            order.get("event_name") or "Unknown Event"
+        ).strip() or "Unknown Event"
+
+        group = event_groups_map.setdefault(
+            event_name,
+            {
+                "name": event_name,
+                "event_date": order.get("event_date") or "",
+                "event_status": order.get("event_status") or "",
+                "orders": [],
+                "order_count": 0,
+                "ticket_count": 0,
+                "revenue_cents": 0,
+                "refunded_order_count": 0,
+                "refunded_amount_cents": 0,
+            },
+        )
+
+        group["orders"].append(order)
+        group["order_count"] += 1
+        group["ticket_count"] += int(
+            order.get("total_ticket_quantity") or 0
+        )
+
+        if str(
+            order.get("payment_status") or ""
+        ).strip().lower() == "paid":
+            group["revenue_cents"] += int(
+                order.get("total_cents") or 0
+            )
+
+        if str(
+            order.get("transaction_status") or ""
+        ).strip().lower() in {
+            "refunded",
+            "partially refunded",
+        }:
+            group["refunded_order_count"] += 1
+
+        group["refunded_amount_cents"] += int(
+            order.get("refunded_amount_cents") or 0
+        )
+
+    from datetime import date
+
+    today_iso = date.today().isoformat()
+
+    upcoming_event_groups = []
+    past_event_groups = []
+
+    for group in event_groups_map.values():
+        event_date = str(
+            group.get("event_date") or ""
+        ).strip()
+
+        event_status = str(
+            group.get("event_status") or ""
+        ).strip().lower()
+
+        is_past = (
+            event_status in {
+                "past",
+                "completed",
+                "closed",
+            }
+            or (
+                event_date
+                and event_date < today_iso
+            )
+        )
+
+        if is_past:
+            past_event_groups.append(group)
+        else:
+            upcoming_event_groups.append(group)
+
+    upcoming_event_groups.sort(
+        key=lambda group: (
+            str(group.get("event_date") or "9999-12-31"),
+            str(group.get("name") or ""),
+        )
+    )
+
+    past_event_groups.sort(
+        key=lambda group: (
+            str(group.get("event_date") or ""),
+            str(group.get("name") or ""),
+        ),
+        reverse=True,
+    )
 
     paid_orders = [
         order
@@ -14347,8 +16291,33 @@ def dashboard_ticket_orders():
         ).strip().lower() == "paid"
     ]
 
+    cursor.execute(
+        """
+        SELECT COUNT(*)
+        FROM ticket_refunds
+        WHERE UPPER(COALESCE(status, '')) = 'NEEDS_REVIEW'
+        """
+    )
+
+    needs_review_count = int(cursor.fetchone()[0] or 0)
+
+    refunded_orders = [
+        order
+        for order in orders
+        if order.get("transaction_status") == "Refunded"
+    ]
+
+    partially_refunded_orders = [
+        order
+        for order in orders
+        if order.get("transaction_status") == "Partially Refunded"
+    ]
+
     stats = {
         "total_orders": len(orders),
+        "refunded_orders": len(refunded_orders),
+        "partially_refunded_orders": len(partially_refunded_orders),
+        "needs_review": needs_review_count,
         "paid_orders": len(paid_orders),
         "pending_orders": sum(
             1
@@ -14386,6 +16355,8 @@ def dashboard_ticket_orders():
         "ticket_orders_dashboard.html",
         orders=orders,
         stats=stats,
+        upcoming_event_groups=upcoming_event_groups,
+        past_event_groups=past_event_groups,
     )
 
 
@@ -14421,15 +16392,22 @@ def dashboard_merch_orders():
 
         orders.append(order)
 
-    paid_orders = [
+    active_orders = [
         order
         for order in orders
+        if (order.get("order_status") or "").strip().lower()
+        != "cancelled"
+    ]
+
+    paid_orders = [
+        order
+        for order in active_orders
         if (order.get("payment_status") or "").strip().lower() == "paid"
     ]
 
     complimentary_orders = [
         order
-        for order in orders
+        for order in active_orders
         if (order.get("payment_status") or "").strip().lower()
         == "complimentary"
     ]
@@ -14450,7 +16428,7 @@ def dashboard_merch_orders():
         },
     }
 
-    for order in orders:
+    for order in active_orders:
         payment_status = (
             order.get("payment_status") or ""
         ).strip().lower()
@@ -15321,7 +17299,27 @@ def admin_dashboard_members():
     )
     paid_members = [dict(row) for row in cursor.fetchall()]
 
-    for member in paid_members:
+    # Keep payment-problem memberships visible for staff review without
+    # counting them as active members, projected revenue, or email recipients.
+    cursor.execute(
+        """
+        SELECT id,
+               name,
+               email,
+               amount,
+               status,
+               payment_id,
+               source,
+               COALESCE(membership_group, 'Circle') AS membership_group
+        FROM memberships
+        WHERE LOWER(TRIM(COALESCE(status, ''))) = 'payment issue'
+          AND COALESCE(amount, 0) > 0
+        ORDER BY id
+        """
+    )
+    payment_issue_members = [dict(row) for row in cursor.fetchall()]
+
+    for member in paid_members + payment_issue_members:
         name = (member.get("name") or "").strip()
         email = (member.get("email") or "").strip()
 
@@ -15374,6 +17372,7 @@ def admin_dashboard_members():
         events=events,
         member_stats=member_stats,
         paid_members=paid_members,
+        payment_issue_members=payment_issue_members,
         original_members=original_members,
         circle_members=circle_members,
         vip_email_members=vip_email_members,
@@ -15501,16 +17500,24 @@ def api_delete_contact_log(contact_id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute("DELETE FROM contact_log WHERE id = ?", (contact_id,))
+    cursor.execute(
+        """
+        UPDATE contact_log
+        SET status = 'Archived'
+        WHERE id = ?
+          AND LOWER(COALESCE(status, '')) <> 'archived'
+        """,
+        (contact_id,),
+    )
 
     if cursor.rowcount == 0:
         conn.close()
-        return {"ok": False, "error": "Contact not found."}, 404
+        return {"ok": False, "error": "Contact not found or already archived."}, 404
 
     conn.commit()
     conn.close()
 
-    return {"ok": True, "deleted_id": contact_id}, 200
+    return {"ok": True, "archived_id": contact_id}, 200
 
 
 
@@ -15538,6 +17545,7 @@ def admin_dashboard_contacts():
                notes,
                created_at
         FROM contact_log
+        WHERE LOWER(COALESCE(status, '')) <> 'archived'
         ORDER BY datetime(COALESCE(created_at, '1900-01-01')) DESC, id DESC
         """
     )
@@ -15878,11 +17886,32 @@ def dashboard_email_campaigns():
         ORDER BY
             datetime(COALESCE(sent_at, created_at)) DESC,
             id DESC
-        LIMIT 5
         """
     )
 
     campaigns = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute(
+        """
+        SELECT
+            COUNT(*) AS total_campaigns,
+            SUM(CASE WHEN status = 'Sent' THEN 1 ELSE 0 END) AS sent_campaigns,
+            SUM(CASE WHEN status = 'Draft' THEN 1 ELSE 0 END) AS draft_campaigns,
+            COALESCE(SUM(sent_count), 0) AS emails_delivered,
+            COALESCE(SUM(failed_count), 0) AS failed_deliveries
+        FROM email_campaigns
+        """
+    )
+
+    stats_row = cursor.fetchone()
+    stats = {
+        "total_campaigns": stats_row["total_campaigns"] or 0,
+        "sent_campaigns": stats_row["sent_campaigns"] or 0,
+        "draft_campaigns": stats_row["draft_campaigns"] or 0,
+        "emails_delivered": stats_row["emails_delivered"] or 0,
+        "failed_deliveries": stats_row["failed_deliveries"] or 0,
+    }
+
     conn.close()
 
     audience_labels = {
@@ -15905,6 +17934,7 @@ def dashboard_email_campaigns():
     return render_template(
         "email_campaigns_dashboard.html",
         campaigns=campaigns,
+        stats=stats,
     )
 
 
@@ -15953,6 +17983,59 @@ def email_campaign_recipient_count():
     }, 200
 
 
+@app.route("/api/email-campaigns/<int:campaign_id>", methods=["GET"])
+@requires_auth
+def get_email_campaign(campaign_id):
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+
+    cursor.execute(
+        """
+        SELECT
+            id,
+            campaign_name,
+            audience,
+            individual_email,
+            subject,
+            preview_text,
+            email_heading,
+            body,
+            button_text,
+            button_url,
+            image_filename,
+            status,
+            created_at,
+            updated_at
+        FROM email_campaigns
+        WHERE id = ?
+        """,
+        (campaign_id,),
+    )
+
+    row = cursor.fetchone()
+    conn.close()
+
+    if row is None:
+        return {
+            "ok": False,
+            "error": "Campaign not found.",
+        }, 404
+
+    campaign = dict(row)
+
+    if campaign.get("status") != "Draft":
+        return {
+            "ok": False,
+            "error": "Only saved drafts can be edited.",
+        }, 400
+
+    return {
+        "ok": True,
+        "campaign": campaign,
+    }, 200
+
+
 @app.route("/api/email-campaigns/draft", methods=["POST"])
 @requires_auth
 def save_email_campaign_draft():
@@ -15965,6 +18048,19 @@ def save_email_campaign_draft():
     body = (request.form.get("body") or "").strip()
     button_text = (request.form.get("button_text") or "").strip()
     button_url = (request.form.get("button_url") or "").strip()
+
+    campaign_id_raw = (request.form.get("campaign_id") or "").strip()
+
+    campaign_id = None
+
+    if campaign_id_raw:
+        try:
+            campaign_id = int(campaign_id_raw)
+        except ValueError:
+            return {
+                "ok": False,
+                "error": "Invalid draft campaign ID.",
+            }, 400
 
     allowed_audiences = {
         "vip",
@@ -16001,6 +18097,7 @@ def save_email_campaign_draft():
     image_mimetype = None
 
     image_file = request.files.get("campaign_image")
+
     if image_file and image_file.filename:
         image_filename = os.path.basename(image_file.filename.strip())
         image_data = image_file.read()
@@ -16013,7 +18110,91 @@ def save_email_campaign_draft():
             }, 400
 
     conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+
+    if campaign_id is not None:
+        cursor.execute(
+            """
+            SELECT
+                id,
+                status,
+                image_filename,
+                image_data,
+                image_mimetype
+            FROM email_campaigns
+            WHERE id = ?
+            """,
+            (campaign_id,),
+        )
+
+        existing = cursor.fetchone()
+
+        if existing is None:
+            conn.close()
+            return {
+                "ok": False,
+                "error": "Draft campaign was not found.",
+            }, 404
+
+        if existing["status"] != "Draft":
+            conn.close()
+            return {
+                "ok": False,
+                "error": "Only Draft campaigns can be edited.",
+            }, 400
+
+        if not (image_file and image_file.filename):
+            image_filename = existing["image_filename"]
+            image_data = existing["image_data"]
+            image_mimetype = existing["image_mimetype"]
+
+        cursor.execute(
+            """
+            UPDATE email_campaigns
+            SET
+                campaign_name = ?,
+                audience = ?,
+                individual_email = ?,
+                subject = ?,
+                preview_text = ?,
+                email_heading = ?,
+                body = ?,
+                button_text = ?,
+                button_url = ?,
+                image_filename = ?,
+                image_data = ?,
+                image_mimetype = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND status = 'Draft'
+            """,
+            (
+                campaign_name,
+                audience,
+                individual_email or None,
+                subject,
+                preview_text,
+                email_heading,
+                body,
+                button_text,
+                button_url,
+                image_filename,
+                image_data,
+                image_mimetype,
+                campaign_id,
+            ),
+        )
+
+        conn.commit()
+        conn.close()
+
+        return {
+            "ok": True,
+            "campaign_id": campaign_id,
+            "status": "Draft",
+            "mode": "updated",
+        }, 200
 
     cursor.execute(
         """
@@ -16054,6 +18235,7 @@ def save_email_campaign_draft():
     )
 
     campaign_id = cursor.lastrowid
+
     conn.commit()
     conn.close()
 
@@ -16061,6 +18243,7 @@ def save_email_campaign_draft():
         "ok": True,
         "campaign_id": campaign_id,
         "status": "Draft",
+        "mode": "created",
     }, 201
 
 
@@ -16088,6 +18271,52 @@ def send_email_campaign():
     button_url = (
         request.form.get("button_url") or ""
     ).strip()
+
+    campaign_id_raw = (request.form.get("campaign_id") or "").strip()
+    campaign_id = None
+    existing_campaign = None
+
+    if campaign_id_raw:
+        try:
+            campaign_id = int(campaign_id_raw)
+        except ValueError:
+            return {
+                "ok": False,
+                "error": "Invalid campaign ID.",
+            }, 400
+
+        existing_conn = sqlite3.connect(DB_PATH)
+        existing_conn.row_factory = sqlite3.Row
+        existing_cursor = existing_conn.cursor()
+
+        existing_cursor.execute(
+            """
+            SELECT
+                id,
+                status,
+                image_filename,
+                image_data,
+                image_mimetype
+            FROM email_campaigns
+            WHERE id = ?
+            """,
+            (campaign_id,),
+        )
+
+        existing_campaign = existing_cursor.fetchone()
+        existing_conn.close()
+
+        if existing_campaign is None:
+            return {
+                "ok": False,
+                "error": "Draft campaign was not found.",
+            }, 404
+
+        if existing_campaign["status"] != "Draft":
+            return {
+                "ok": False,
+                "error": "Only Draft campaigns can be sent as an existing campaign.",
+            }, 400
 
     allowed_audiences = {
         "vip",
@@ -16173,6 +18402,18 @@ def send_email_campaign():
                 "mimetype": image_mimetype,
             }
 
+    elif existing_campaign is not None:
+        image_filename = existing_campaign["image_filename"]
+        image_data = existing_campaign["image_data"]
+        image_mimetype = existing_campaign["image_mimetype"]
+
+        if image_data:
+            flyer_inline = {
+                "filename": image_filename,
+                "content": image_data,
+                "mimetype": image_mimetype or "image/jpeg",
+            }
+
     message_parts = []
 
     if email_heading:
@@ -16225,53 +18466,102 @@ def send_email_campaign():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    cursor.execute(
-        """
-        INSERT INTO email_campaigns (
-            campaign_name,
-            audience,
-            individual_email,
-            subject,
-            preview_text,
-            email_heading,
-            body,
-            button_text,
-            button_url,
-            image_filename,
-            image_data,
-            image_mimetype,
-            status,
-            recipients_count,
-            sent_count,
-            failed_count,
-            created_at,
-            updated_at,
-            sent_at
+    if campaign_id is not None:
+        cursor.execute(
+            """
+            UPDATE email_campaigns
+            SET
+                campaign_name = ?,
+                audience = ?,
+                individual_email = ?,
+                subject = ?,
+                preview_text = ?,
+                email_heading = ?,
+                body = ?,
+                button_text = ?,
+                button_url = ?,
+                image_filename = ?,
+                image_data = ?,
+                image_mimetype = ?,
+                status = ?,
+                recipients_count = ?,
+                sent_count = ?,
+                failed_count = ?,
+                updated_at = CURRENT_TIMESTAMP,
+                sent_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+              AND status = 'Draft'
+            """,
+            (
+                campaign_name,
+                audience,
+                individual_email or None,
+                subject,
+                preview_text,
+                email_heading,
+                body,
+                button_text,
+                button_url,
+                image_filename,
+                image_data,
+                image_mimetype,
+                campaign_status,
+                len(recipients),
+                sent_count,
+                failed_count,
+                campaign_id,
+            ),
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        """,
-        (
-            campaign_name,
-            audience,
-            individual_email or None,
-            subject,
-            preview_text,
-            email_heading,
-            body,
-            button_text,
-            button_url,
-            image_filename,
-            image_data,
-            image_mimetype,
-            campaign_status,
-            len(recipients),
-            sent_count,
-            failed_count,
-        ),
-    )
 
-    campaign_id = cursor.lastrowid
+    else:
+        cursor.execute(
+            """
+            INSERT INTO email_campaigns (
+                campaign_name,
+                audience,
+                individual_email,
+                subject,
+                preview_text,
+                email_heading,
+                body,
+                button_text,
+                button_url,
+                image_filename,
+                image_data,
+                image_mimetype,
+                status,
+                recipients_count,
+                sent_count,
+                failed_count,
+                created_at,
+                updated_at,
+                sent_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            """,
+            (
+                campaign_name,
+                audience,
+                individual_email or None,
+                subject,
+                preview_text,
+                email_heading,
+                body,
+                button_text,
+                button_url,
+                image_filename,
+                image_data,
+                image_mimetype,
+                campaign_status,
+                len(recipients),
+                sent_count,
+                failed_count,
+            ),
+        )
+
+        campaign_id = cursor.lastrowid
+
     conn.commit()
     conn.close()
 

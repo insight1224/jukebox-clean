@@ -40,14 +40,6 @@
     </aside>
 
     <main class="main-content" id="top">
-      <div class="preview-banner">
-        <div>
-          <strong>Contact Log Preview</strong>
-          <span>This screen keeps talent, performer, vendor, and partner contacts in one place.</span>
-        </div>
-        <a href="/dashboard">Back to Dashboard</a>
-      </div>
-
       <header class="topbar">
         <div>
           <p class="eyebrow">Contact Log</p>
@@ -84,8 +76,8 @@
         <div class="section-heading">
           <div>
             <p class="eyebrow">Contact Log</p>
-            <h3>Talent & Vendor Contact Log</h3>
-            <p>Keep track of people she may want to book or contact for future events.</p>
+            <h3>Contacts Directory</h3>
+            <p>Keep track of talent and vendor contacts for future events.</p>
           </div>
           <button class="btn primary" type="button" id="addContactButton">Add Contact</button>
         </div>
@@ -111,7 +103,7 @@
               <div>
                 <p class="eyebrow">Entertainment</p>
                 <h4>Talent Contacts</h4>
-                <p>DJs, bands, performers, hosts, and entertainers she may want to book for future events.</p>
+                <p>DJs, bands, performers, hosts, and entertainers available for future events.</p>
               </div>
               <span class="badge warning">{{ contact_stats.talent_contacts }} Saved</span>
             </div>
@@ -143,7 +135,7 @@
                 </div>
                 <div class="row-actions">
                   <button class="js-view-contact" type="button">View</button>
-                  <button class="js-delete-contact" type="button">Delete</button>
+                  <button class="js-delete-contact" type="button">Archive</button>
                 </div>
               </div>
               {% else %}
@@ -192,7 +184,7 @@
                 </div>
                 <div class="row-actions">
                   <button class="js-view-contact" type="button">View</button>
-                  <button class="js-delete-contact" type="button">Delete</button>
+                  <button class="js-delete-contact" type="button">Archive</button>
                 </div>
               </div>
               {% else %}
@@ -389,7 +381,7 @@
           const name = row.getAttribute("data-contact-name");
           const contactId = row.getAttribute("data-contact-id");
 
-          if (!confirm("Delete " + name + " from the contact log?")) {
+          if (!confirm("Archive " + name + " from the contact log?")) {
             return;
           }
 
@@ -408,12 +400,12 @@
             const result = await response.json();
 
             if (!response.ok || !result.ok) {
-              throw new Error(result.error || "Unable to delete contact.");
+              throw new Error(result.error || "Unable to archive contact.");
             }
 
             row.remove();
           } catch (error) {
-            alert(error.message || "Unable to delete contact.");
+            alert(error.message || "Unable to archive contact.");
             button.disabled = false;
           }
         });
@@ -655,7 +647,7 @@
           </div>
           <div class="row-actions">
             <button class="js-view-contact" type="button">View</button>
-            <button class="js-delete-contact" type="button">Delete</button>
+            <button class="js-delete-contact" type="button">Archive</button>
           </div>
         `;
 
@@ -711,9 +703,7 @@
     }
 
     document.getElementById("exportContactsButton").addEventListener("click", downloadContactsCsv);
-    document.getElementById("viewFullContactLog").addEventListener("click", () => {
-      document.getElementById("applications").scrollIntoView({ behavior: "smooth" });
-    });
+
   </script>
 </body>
 </html>

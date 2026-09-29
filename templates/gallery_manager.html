@@ -11,7 +11,7 @@
       display: grid;
       grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.5fr);
       gap: 24px;
-      align-items: start;
+      align-items: stretch;
     }
 
     .gallery-manager-alert {
@@ -262,6 +262,7 @@
     @media (max-width: 1100px) {
       .gallery-manager-layout {
         grid-template-columns: 1fr;
+        align-items: start;
       }
 
       .gallery-upload-library {
@@ -316,23 +317,15 @@
     </aside>
 
     <main class="main-content" id="top">
-      <div class="preview-banner">
-        <div>
-          <strong>Gallery Manager</strong>
-          <span>Upload photos directly to the public event galleries.</span>
-        </div>
-
-        <a href="/gallery" target="_blank">View Public Gallery</a>
-      </div>
-
       <header class="topbar">
         <div>
           <p class="eyebrow">Website Content</p>
           <h2>Gallery Manager</h2>
           <p class="subtext">
-            Add event photos without editing code or contacting the website developer.
+            Upload and manage photos for the public event galleries.
           </p>
         </div>
+        <a class="btn primary" href="/gallery" target="_blank">View Public Gallery</a>
       </header>
 
       {% if message %}
@@ -380,7 +373,7 @@
             </label>
 
             <label class="gallery-form-field">
-              <span>Starting Display Order</span>
+              <span>Display Order</span>
 
               <input
                 type="number"

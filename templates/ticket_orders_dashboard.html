@@ -290,307 +290,1201 @@
       </div>
     </aside>
 
-    <main class="main-content">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Ticket Management</p>
-          <h2>Ticket Orders</h2>
-          <p class="subtext">
-            Review website ticket purchases, payment status,
-            QR-ticket creation, and check-ins.
-          </p>
+    <main class="main-content ticket-transactions-page">
+
+  <header class="dashboard-header">
+    <div>
+      <p class="eyebrow">Ticket Management</p>
+      <h1>Ticket Transactions & Refunds</h1>
+      <p>
+        Review ticket purchases, payment status, and refunds from one place.
+      </p>
+    </div>
+  </header>
+
+  <section class="stats-grid ticket-transaction-stats">
+
+    <button
+      class="stat-card ticket-transaction-kpi active"
+      type="button"
+      data-transaction-filter="all"
+    >
+      <span class="member-stat-arrow">→</span>
+      <p>Total Orders</p>
+      <h3>{{ stats.total_orders }}</h3>
+      <span>All ticket transactions</span>
+    </button>
+
+    <button
+      class="stat-card ticket-transaction-kpi"
+      type="button"
+      data-transaction-filter="paid"
+    >
+      <span class="member-stat-arrow">→</span>
+      <p>Paid Orders</p>
+      <h3>{{ stats.paid_orders }}</h3>
+      <span>Successfully paid orders</span>
+    </button>
+
+    <button
+      class="stat-card ticket-transaction-kpi"
+      type="button"
+      data-transaction-filter="refunded"
+    >
+      <span class="member-stat-arrow">→</span>
+      <p>Refunded</p>
+      <h3>
+        {{ stats.refunded_orders + stats.partially_refunded_orders }}
+      </h3>
+      <span>Full or partial refunds</span>
+    </button>
+
+    <button
+      class="stat-card ticket-transaction-kpi"
+      type="button"
+      data-transaction-filter="needs-review"
+    >
+      <span class="member-stat-arrow">→</span>
+      <p>Needs Review</p>
+      <h3>{{ stats.needs_review }}</h3>
+      <span>Refunds needing attention</span>
+    </button>
+
+  </section>
+
+
+  <section class="section-panel ticket-event-browser">
+
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Current & Upcoming Events</p>
+        <h3>Ticket Sales by Event</h3>
+        <p>
+          Choose an event to review its ticket transactions and refunds.
+        </p>
+      </div>
+    </div>
+
+    <div class="ticket-event-card-grid">
+
+      {% for event in upcoming_event_groups %}
+
+      <article class="ticket-event-card">
+
+        <div class="ticket-event-card-header">
+          <div>
+            <p class="eyebrow">Event</p>
+            <h4>{{ event.name }}</h4>
+
+            {% if event.event_date %}
+            <p
+              class="ticket-event-date js-format-event-date"
+              data-event-date="{{ event.event_date }}"
+            >
+              {{ event.event_date }}
+            </p>
+            {% endif %}
+          </div>
+
+          <span class="badge live">
+            {{ event.event_status or "Upcoming" }}
+          </span>
         </div>
-      </header>
 
-      <section class="ticket-orders-stats">
-        <article class="ticket-orders-stat">
-          <span>Total Orders</span>
-          <strong>{{ stats.total_orders }}</strong>
-        </article>
+        <div class="ticket-event-metrics">
 
-        <article class="ticket-orders-stat">
-          <span>Paid Tickets</span>
-          <strong>{{ stats.paid_tickets }}</strong>
-        </article>
+          <div>
+            <span>Orders</span>
+            <strong>{{ event.order_count }}</strong>
+          </div>
 
-        <article class="ticket-orders-stat">
-          <span>Ticket Revenue</span>
-          <strong>
-            ${{ "%.2f"|format(stats.revenue_cents / 100) }}
-          </strong>
-        </article>
+          <div>
+            <span>Tickets</span>
+            <strong>{{ event.ticket_count }}</strong>
+          </div>
 
-        <article class="ticket-orders-stat">
-          <span>Checked In</span>
-          <strong>{{ stats.checked_in_tickets }}</strong>
-        </article>
-      </section>
+          <div>
+            <span>Sales</span>
+            <strong>
+              ${{ "%.2f"|format(event.revenue_cents / 100) }}
+            </strong>
+          </div>
 
-      <section class="dashboard-panel">
-        <div class="ticket-orders-toolbar">
-          <input
-            id="ticketOrderSearch"
-            type="search"
-            placeholder="Search order, customer, event, email, or ticket type"
-          >
+          <div>
+            <span>Refunds</span>
+            <strong>{{ event.refunded_order_count }}</strong>
+          </div>
 
-          <select id="ticketOrderStatusFilter">
-            <option value="">All Payment Statuses</option>
-            <option value="paid">Paid</option>
-            <option value="awaiting payment">
-              Awaiting Payment
-            </option>
-            <option value="pending">Pending</option>
-            <option value="checkout error">
-              Checkout Error
-            </option>
-          </select>
         </div>
 
-        {% if orders %}
-        <div class="ticket-orders-list">
-          {% for order in orders %}
-          <article
-            class="ticket-order-card"
-            data-status="{{ order.payment_status|lower }}"
-            data-search="
-              {{ order.order_number }}
-              {{ order.customer_name }}
-              {{ order.customer_email }}
-              {{ order.customer_phone }}
-              {{ order.event_name }}
-              {% for item in order.ticket_items %}
-                {{ item.display_name or item.name }}
-              {% endfor %}
-            "
-          >
-            <div class="ticket-order-summary">
+        <button
+          class="btn secondary js-view-event-transactions"
+          type="button"
+          data-event-name="{{ event.name }}"
+        >
+          View Transactions
+        </button>
+
+      </article>
+
+      {% else %}
+
+      <div class="empty-state">
+        <h4>No current ticket sales</h4>
+        <p>
+          Events with ticket orders will appear here.
+        </p>
+      </div>
+
+      {% endfor %}
+
+    </div>
+
+
+    {% if past_event_groups %}
+
+    <div class="ticket-past-events">
+
+      <button
+        class="ticket-past-events-toggle"
+        type="button"
+        id="pastTicketEventsToggle"
+        aria-expanded="false"
+      >
+        <span>
+          <strong>Past Events</strong>
+          <small>
+            {{ past_event_groups|length }}
+            event{% if past_event_groups|length != 1 %}s{% endif %}
+          </small>
+        </span>
+
+        <span id="pastTicketEventsArrow">+</span>
+      </button>
+
+      <div
+        class="ticket-past-events-content"
+        id="pastTicketEventsContent"
+        hidden
+      >
+
+        <div class="ticket-event-card-grid past-ticket-event-grid">
+
+          {% for event in past_event_groups %}
+
+          <article class="ticket-event-card past-ticket-event-card">
+
+            <div class="ticket-event-card-header">
               <div>
-                <small>Order</small>
-                <div class="ticket-order-number">
-                  {{ order.order_number }}
-                </div>
+                <p class="eyebrow">Past Event</p>
+                <h4>{{ event.name }}</h4>
+
+                {% if event.event_date %}
+                <p class="ticket-event-date">
+                  {{ event.event_date }}
+                </p>
+                {% endif %}
+              </div>
+
+              <span class="badge">
+                Past
+              </span>
+            </div>
+
+            <div class="ticket-event-metrics">
+
+              <div>
+                <span>Orders</span>
+                <strong>{{ event.order_count }}</strong>
               </div>
 
               <div>
-                <small>Customer</small>
-                <strong>{{ order.customer_name }}</strong>
+                <span>Tickets</span>
+                <strong>{{ event.ticket_count }}</strong>
               </div>
 
               <div>
-                <small>Event</small>
-                <strong>{{ order.event_name }}</strong>
-              </div>
-
-              <div>
-                <small>Tickets</small>
+                <span>Sales</span>
                 <strong>
-                  {{ order.total_ticket_quantity }}
+                  ${{ "%.2f"|format(event.revenue_cents / 100) }}
                 </strong>
               </div>
 
               <div>
-                <small>Total</small>
-                <div class="ticket-order-total">
-                  ${{ "%.2f"|format(
-                    (order.total_cents or 0) / 100
-                  ) }}
-                </div>
+                <span>Refunds</span>
+                <strong>{{ event.refunded_order_count }}</strong>
               </div>
 
-              <div>
-                <small>Payment</small>
-                <span
-                  class="ticket-payment-status
-                    {% if order.payment_status|lower != 'paid' %}
-                      pending
-                    {% endif %}
-                  "
-                >
-                  {{ order.payment_status }}
-                </span>
-              </div>
             </div>
 
-            <details class="ticket-details">
-              <summary>View Order Details</summary>
+            <button
+              class="btn secondary js-view-event-transactions"
+              type="button"
+              data-event-name="{{ event.name }}"
+            >
+              View Transactions
+            </button>
 
-              <div class="ticket-details-content">
-                <div class="ticket-detail-grid">
-                  <div class="ticket-detail-box">
-                    <span class="ticket-detail-label">
-                      Email
-                    </span>
-                    <div class="ticket-detail-value">
-                      {{ order.customer_email }}
-                    </div>
-                  </div>
-
-                  <div class="ticket-detail-box">
-                    <span class="ticket-detail-label">
-                      Phone
-                    </span>
-                    <div class="ticket-detail-value">
-                      {{ order.customer_phone or "—" }}
-                    </div>
-                  </div>
-
-                  <div class="ticket-detail-box">
-                    <span class="ticket-detail-label">
-                      Purchased
-                    </span>
-                    <div class="ticket-detail-value">
-                      {{ order.created_at }}
-                    </div>
-                  </div>
-
-                  <div class="ticket-detail-box">
-                    <span class="ticket-detail-label">
-                      Square Payment
-                    </span>
-                    <div class="ticket-detail-value">
-                      {{ order.square_payment_id or "Not paid" }}
-                    </div>
-                  </div>
-
-                  <div class="ticket-detail-box">
-                    <span class="ticket-detail-label">
-                      QR Tickets Created
-                    </span>
-                    <div class="ticket-detail-value">
-                      {{ order.qr_ticket_count }}
-                    </div>
-                  </div>
-
-                  <div class="ticket-detail-box">
-                    <span class="ticket-detail-label">
-                      Confirmation Email
-                    </span>
-                    <div class="ticket-detail-value">
-                      {% if order.confirmation_email_sent_at %}
-                        Sent
-                      {% else %}
-                        Not sent
-                      {% endif %}
-                    </div>
-                  </div>
-                </div>
-
-                <table class="ticket-items-table">
-                  <thead>
-                    <tr>
-                      <th>Ticket Type</th>
-                      <th>Unit Price</th>
-                      <th>Quantity</th>
-                      <th>Line Total</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {% for item in order.ticket_items %}
-                    <tr>
-                      <td>
-                        {{ item.display_name or item.name }}
-                      </td>
-                      <td>
-                        ${{ "%.2f"|format(
-                          (item.unit_price_cents or 0) / 100
-                        ) }}
-                      </td>
-                      <td>{{ item.quantity }}</td>
-                      <td>
-                        ${{ "%.2f"|format(
-                          (item.line_total_cents or 0) / 100
-                        ) }}
-                      </td>
-                    </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-
-                {% if order.created_tickets %}
-                <div class="ticket-qr-list">
-                  {% for ticket in order.created_tickets %}
-                  <div class="ticket-qr-row">
-                    <span>{{ ticket.ticket_id }}</span>
-                    <span>{{ ticket.ticket_type }}</span>
-                    <span>
-                      {% if ticket.checked_in %}
-                        Checked In
-                      {% else %}
-                        Not Checked In
-                      {% endif %}
-                    </span>
-                  </div>
-                  {% endfor %}
-                </div>
-                {% endif %}
-              </div>
-            </details>
           </article>
+
           {% endfor %}
+
         </div>
+
+      </div>
+
+    </div>
+
+    {% endif %}
+
+  </section>
+
+
+  <section
+    class="section-panel ticket-transaction-panel"
+    id="ticketTransactionPanel"
+    style="display:none;"
+  >
+
+
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">Transaction Log</p>
+        <h3 id="selectedTicketEventTitle">Ticket Purchases</h3>
+        <p id="selectedTicketEventSubtitle">
+          Search purchases and open an order to review or process a refund.
+        </p>
+      </div>
+
+      <div class="ticket-transaction-summary">
+        <strong>{{ stats.total_tickets }}</strong>
+        <span>tickets recorded</span>
+      </div>
+    </div>
+
+    <div class="ticket-transaction-toolbar">
+
+      <label class="ticket-search-field">
+        <span>Search</span>
+        <input
+          type="search"
+          id="ticketTransactionSearch"
+          placeholder="Customer, email, order #, event..."
+        >
+      </label>
+
+      <label>
+        <span>Status</span>
+        <select id="ticketTransactionStatus">
+          <option value="all">All Statuses</option>
+          <option value="paid">Paid</option>
+          <option value="pending">Pending</option>
+          <option value="refunded">Refunded</option>
+          <option value="partially-refunded">Partially Refunded</option>
+          <option value="refund-pending">Refund Pending</option>
+        </select>
+      </label>
+
+    </div>
+
+    <div class="ticket-transaction-table-wrap">
+
+      <div class="ticket-transaction-table ticket-transaction-header">
+        <span>Date</span>
+        <span>Order</span>
+        <span>Customer</span>
+        <span>Event</span>
+        <span>Tickets</span>
+        <span>Amount</span>
+        <span>Status</span>
+        <span>Action</span>
+      </div>
+
+      <div id="ticketTransactionRows">
+
+        {% for order in orders %}
+
+        {% set transaction_status = order.transaction_status or order.payment_status or 'Pending' %}
+        {% set normalized_status = transaction_status|lower|replace(' ', '-') %}
+
+        <div
+          class="ticket-transaction-table ticket-transaction-row"
+          data-transaction-status="{{ normalized_status }}"
+          data-transaction-event="{{ order.event_name }}"
+          data-transaction-search="{{ (
+            (order.order_number or '') ~ ' ' ~
+            (order.customer_name or '') ~ ' ' ~
+            (order.customer_email or '') ~ ' ' ~
+            (order.event_name or '')
+          )|lower }}"
+        >
+
+          <span class="transaction-date">
+            {{ order.created_at or '—' }}
+          </span>
+
+          <span>
+            <strong>{{ order.order_number }}</strong>
+          </span>
+
+          <span class="transaction-customer">
+            <strong>{{ order.customer_name }}</strong>
+            <small>{{ order.customer_email }}</small>
+          </span>
+
+          <span>{{ order.event_name }}</span>
+
+          <span>
+            {{ order.total_ticket_quantity }}
+          </span>
+
+          <span>
+            <strong>
+              ${{ "%.2f"|format((order.total_cents or 0) / 100) }}
+            </strong>
+
+            {% if order.refunded_amount_cents %}
+            <small>
+              ${{ "%.2f"|format(order.refunded_amount_cents / 100) }}
+              refunded
+            </small>
+            {% endif %}
+          </span>
+
+          <span>
+            <span class="transaction-status-badge status-{{ normalized_status }}">
+              {{ transaction_status }}
+            </span>
+          </span>
+
+          <span class="row-actions">
+            <button
+              class="js-view-ticket-transaction"
+              type="button"
+              data-order-id="{{ order.id }}"
+            >
+              View
+            </button>
+          </span>
+
+        </div>
+
         {% else %}
-        <div class="ticket-empty-state">
-          No website ticket orders have been created yet.
+
+        <div class="empty-state">
+          <h4>No ticket transactions yet</h4>
+          <p>
+            Completed website ticket purchases will appear here.
+          </p>
         </div>
-        {% endif %}
-      </section>
-    </main>
+
+        {% endfor %}
+
+      </div>
+
+      <div
+        class="empty-state"
+        id="ticketTransactionFilterEmpty"
+        style="display:none;"
+      >
+        <h4>No matching transactions</h4>
+        <p>Try another search or status filter.</p>
+      </div>
+
+    </div>
+
+  </section>
+
+
+  <div class="event-modal-overlay" id="ticketTransactionModalOverlay">
+    <div class="event-modal ticket-transaction-modal">
+
+      <div class="event-modal-header">
+        <div>
+          <p class="eyebrow">Ticket Transaction</p>
+          <h3 id="ticketTransactionModalTitle">Order Details</h3>
+          <p id="ticketTransactionModalSubtitle">
+            Review purchase and refund information.
+          </p>
+        </div>
+
+        <button
+          class="event-modal-close"
+          type="button"
+          id="ticketTransactionModalClose"
+        >
+          Close
+        </button>
+      </div>
+
+      <div id="ticketTransactionModalBody"></div>
+
+    </div>
   </div>
 
-  <script>
-    (() => {
-      const searchInput = document.getElementById(
-        "ticketOrderSearch"
+</main>
+
+<script>
+  document
+    .querySelectorAll(".js-format-event-date")
+    .forEach((element) => {
+      const rawDate = element.dataset.eventDate || "";
+
+      if (!rawDate) return;
+
+      const parts = rawDate.split("-").map(Number);
+
+      if (parts.length !== 3) return;
+
+      const [year, month, day] = parts;
+
+      const date = new Date(year, month - 1, day);
+
+      element.textContent = date.toLocaleDateString(
+        undefined,
+        {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        }
       );
+    });
 
-      const statusFilter = document.getElementById(
-        "ticketOrderStatusFilter"
-      );
+  const ticketOrders = {{ orders|tojson }};
 
-      const cards = Array.from(
-        document.querySelectorAll(".ticket-order-card")
-      );
+  const transactionSearch =
+    document.getElementById("ticketTransactionSearch");
 
-      function applyFilters() {
-        const searchValue = (
-          searchInput.value || ""
-        ).trim().toLowerCase();
+  const transactionStatus =
+    document.getElementById("ticketTransactionStatus");
 
-        const statusValue = (
-          statusFilter.value || ""
-        ).trim().toLowerCase();
+  const transactionRows =
+    Array.from(
+      document.querySelectorAll(".ticket-transaction-row")
+    );
 
-        cards.forEach((card) => {
-          const searchText = (
-            card.dataset.search || ""
-          ).toLowerCase();
+  const filterEmpty =
+    document.getElementById("ticketTransactionFilterEmpty");
 
-          const paymentStatus = (
-            card.dataset.status || ""
-          ).toLowerCase();
+  const transactionKpis =
+    document.querySelectorAll(".ticket-transaction-kpi");
 
-          const searchMatches = (
-            !searchValue ||
-            searchText.includes(searchValue)
-          );
+  const transactionModal =
+    document.getElementById("ticketTransactionModalOverlay");
 
-          const statusMatches = (
-            !statusValue ||
-            paymentStatus === statusValue
-          );
+  const transactionModalClose =
+    document.getElementById("ticketTransactionModalClose");
 
-          card.hidden = !(
-            searchMatches &&
-            statusMatches
-          );
-        });
+  const transactionModalTitle =
+    document.getElementById("ticketTransactionModalTitle");
+
+  const transactionModalSubtitle =
+    document.getElementById("ticketTransactionModalSubtitle");
+
+  const transactionModalBody =
+    document.getElementById("ticketTransactionModalBody");
+
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+
+  function money(cents) {
+    return "$" + (
+      Number(cents || 0) / 100
+    ).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+
+  function normalizedStatus(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+  }
+
+
+  let selectedTransactionEvent = "";
+
+  const ticketTransactionPanel =
+    document.getElementById("ticketTransactionPanel");
+
+  const selectedTicketEventTitle =
+    document.getElementById("selectedTicketEventTitle");
+
+  const selectedTicketEventSubtitle =
+    document.getElementById("selectedTicketEventSubtitle");
+
+  const pastTicketEventsToggle =
+    document.getElementById("pastTicketEventsToggle");
+
+  const pastTicketEventsContent =
+    document.getElementById("pastTicketEventsContent");
+
+  const pastTicketEventsArrow =
+    document.getElementById("pastTicketEventsArrow");
+
+
+  function applyTransactionFilters() {
+    const search = String(
+      transactionSearch?.value || ""
+    ).trim().toLowerCase();
+
+    const status = String(
+      transactionStatus?.value || "all"
+    );
+
+    let visible = 0;
+
+    transactionRows.forEach((row) => {
+      const rowSearch =
+        row.dataset.transactionSearch || "";
+
+      const rowStatus =
+        row.dataset.transactionStatus || "";
+
+      const matchesSearch =
+        !search || rowSearch.includes(search);
+
+      const rowEvent =
+        row.dataset.transactionEvent || "";
+
+      const matchesEvent =
+        !selectedTransactionEvent ||
+        rowEvent === selectedTransactionEvent;
+
+      let matchesStatus =
+        status === "all" || rowStatus === status;
+
+      if (status === "refunded") {
+        matchesStatus = [
+          "refunded",
+          "partially-refunded"
+        ].includes(rowStatus);
       }
 
-      searchInput.addEventListener("input", applyFilters);
-      statusFilter.addEventListener("change", applyFilters);
-    })();
-  </script>
+      const show =
+        matchesSearch &&
+        matchesStatus &&
+        matchesEvent;
+
+      row.style.display = show ? "" : "none";
+
+      if (show) visible += 1;
+    });
+
+    if (filterEmpty) {
+      filterEmpty.style.display =
+        visible === 0 && transactionRows.length
+          ? ""
+          : "none";
+    }
+  }
+
+
+  transactionSearch?.addEventListener(
+    "input",
+    applyTransactionFilters
+  );
+
+  transactionStatus?.addEventListener(
+    "change",
+    () => {
+      transactionKpis.forEach((card) => {
+        card.classList.remove("active");
+      });
+
+      applyTransactionFilters();
+    }
+  );
+
+
+  document
+    .querySelectorAll(".js-view-event-transactions")
+    .forEach((button) => {
+
+      button.addEventListener("click", () => {
+
+        selectedTransactionEvent =
+          button.dataset.eventName || "";
+
+        if (transactionSearch) {
+          transactionSearch.value = "";
+        }
+
+        if (transactionStatus) {
+          transactionStatus.value = "all";
+        }
+
+        transactionKpis.forEach((card) => {
+          card.classList.remove("active");
+        });
+
+        if (selectedTicketEventTitle) {
+          selectedTicketEventTitle.textContent =
+            selectedTransactionEvent;
+        }
+
+        if (selectedTicketEventSubtitle) {
+          selectedTicketEventSubtitle.textContent =
+            "Ticket purchases and refunds for this event.";
+        }
+
+        if (ticketTransactionPanel) {
+          ticketTransactionPanel.style.display = "";
+        }
+
+        applyTransactionFilters();
+
+        ticketTransactionPanel?.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+
+      });
+
+    });
+
+
+  pastTicketEventsToggle?.addEventListener(
+    "click",
+    () => {
+
+      const opening =
+        pastTicketEventsContent?.hasAttribute("hidden");
+
+      if (opening) {
+        pastTicketEventsContent.removeAttribute("hidden");
+      } else {
+        pastTicketEventsContent?.setAttribute("hidden", "");
+      }
+
+      pastTicketEventsToggle.setAttribute(
+        "aria-expanded",
+        opening ? "true" : "false"
+      );
+
+      if (pastTicketEventsArrow) {
+        pastTicketEventsArrow.textContent =
+          opening ? "−" : "+";
+      }
+
+    }
+  );
+
+
+  transactionKpis.forEach((card) => {
+
+    card.addEventListener("click", () => {
+
+      transactionKpis.forEach((item) => {
+        item.classList.remove("active");
+      });
+
+      card.classList.add("active");
+
+      const filter =
+        card.dataset.transactionFilter || "all";
+
+      selectedTransactionEvent = "";
+
+      if (ticketTransactionPanel) {
+        ticketTransactionPanel.style.display = "";
+      }
+
+      if (selectedTicketEventTitle) {
+        selectedTicketEventTitle.textContent =
+          "All Ticket Purchases";
+      }
+
+      if (selectedTicketEventSubtitle) {
+        selectedTicketEventSubtitle.textContent =
+          "Transactions across all events.";
+      }
+
+      if (filter === "needs-review") {
+        window.location.hash = "needs-review";
+        return;
+      }
+
+      if (transactionStatus) {
+        transactionStatus.value =
+          filter === "refunded"
+            ? "refunded"
+            : filter;
+      }
+
+      applyTransactionFilters();
+
+      ticketTransactionPanel?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+
+    });
+
+  });
+
+
+  function findOrder(orderId) {
+    return ticketOrders.find(
+      (order) =>
+        String(order.id) === String(orderId)
+    );
+  }
+
+
+  function buildTicketRows(order) {
+    const tickets =
+      Array.isArray(order.created_tickets)
+        ? order.created_tickets
+        : [];
+
+    if (!tickets.length) {
+      return `
+        <div class="empty-state compact-empty-state">
+          <h4>No individual tickets found</h4>
+          <p>
+            This order does not have linked QR ticket records.
+          </p>
+        </div>
+      `;
+    }
+
+    return tickets.map((ticket) => {
+      const refundStatus =
+        ticket.refund_status || "Not Refunded";
+
+      const checkedIn =
+        Number(ticket.checked_in || 0) === 1 ||
+        ["checked_in", "checked in", "used"].includes(
+          String(ticket.status || "").toLowerCase()
+        );
+
+      const alreadyRefunded =
+        ["refunded", "partially refunded"].includes(
+          String(refundStatus).toLowerCase()
+        );
+
+      const refundPending =
+        String(refundStatus).toLowerCase() ===
+        "refund pending";
+
+      const refundable =
+        !checkedIn &&
+        !alreadyRefunded &&
+        !refundPending &&
+        Number(ticket.amount_cents || 0) > 0;
+
+      return `
+        <label class="transaction-ticket-item ${
+          refundable ? "" : "ticket-not-refundable"
+        }">
+
+          <div class="transaction-ticket-select">
+            <input
+              type="checkbox"
+              class="js-refund-ticket"
+              value="${escapeHtml(ticket.id)}"
+              data-amount="${Number(ticket.amount_cents || 0)}"
+              ${refundable ? "" : "disabled"}
+            >
+
+            <div>
+              <strong>
+                ${escapeHtml(ticket.ticket_type || "Ticket")}
+              </strong>
+
+              <span>
+                ${escapeHtml(ticket.ticket_id || "—")}
+              </span>
+            </div>
+          </div>
+
+          <div class="transaction-ticket-meta">
+            <strong>${money(ticket.amount_cents)}</strong>
+
+            <span>
+              ${
+                checkedIn
+                  ? "Checked In"
+                  : escapeHtml(refundStatus)
+              }
+            </span>
+          </div>
+
+        </label>
+      `;
+    }).join("");
+  }
+
+
+  function openTransactionModal(orderId) {
+    const order = findOrder(orderId);
+
+    if (!order) return;
+
+    const transactionStatus =
+      order.transaction_status ||
+      order.payment_status ||
+      "Pending";
+
+    const canRefund =
+      String(order.payment_status || "")
+        .toLowerCase() === "paid" &&
+      Array.isArray(order.created_tickets) &&
+      order.created_tickets.length > 0;
+
+    transactionModalTitle.textContent =
+      order.order_number || "Order Details";
+
+    transactionModalSubtitle.textContent =
+      `${order.customer_name || "Customer"} · ${
+        order.event_name || "Event"
+      }`;
+
+    transactionModalBody.innerHTML = `
+
+      <div class="transaction-detail-grid">
+
+        <div class="transaction-detail-card">
+          <span>Customer</span>
+          <strong>${escapeHtml(order.customer_name || "—")}</strong>
+          <small>${escapeHtml(order.customer_email || "—")}</small>
+          <small>${escapeHtml(order.customer_phone || "")}</small>
+        </div>
+
+        <div class="transaction-detail-card">
+          <span>Event</span>
+          <strong>${escapeHtml(order.event_name || "—")}</strong>
+          <small>
+            ${Number(order.total_ticket_quantity || 0)}
+            ticket(s)
+          </small>
+        </div>
+
+        <div class="transaction-detail-card">
+          <span>Order Total</span>
+          <strong>${money(order.total_cents)}</strong>
+          <small>
+            ${escapeHtml(transactionStatus)}
+          </small>
+        </div>
+
+        <div class="transaction-detail-card">
+          <span>Square Payment</span>
+          <strong>
+            ${
+              order.square_payment_id
+                ? "Connected"
+                : "Not Available"
+            }
+          </strong>
+          <small>
+            ${escapeHtml(order.square_payment_id || "—")}
+          </small>
+        </div>
+
+      </div>
+
+      ${
+        Number(order.refunded_amount_cents || 0) > 0
+          ? `
+            <div class="transaction-refund-summary">
+              <span>Refunded Amount</span>
+              <strong>
+                ${money(order.refunded_amount_cents)}
+              </strong>
+            </div>
+          `
+          : ""
+      }
+
+      <div class="transaction-ticket-section">
+
+        <div class="transaction-section-heading">
+          <div>
+            <p class="eyebrow">Tickets</p>
+            <h4>Tickets in this order</h4>
+          </div>
+
+          ${
+            canRefund
+              ? `<span>Select eligible tickets to refund</span>`
+              : ""
+          }
+        </div>
+
+        <div class="transaction-ticket-list">
+          ${buildTicketRows(order)}
+        </div>
+
+      </div>
+
+      ${
+        canRefund
+          ? `
+            <div class="transaction-refund-panel">
+
+              <div class="transaction-refund-total">
+                <span>Selected Refund</span>
+                <strong id="selectedRefundTotal">
+                  $0.00
+                </strong>
+              </div>
+
+              <label>
+                Refund Reason
+                <textarea
+                  id="ticketRefundReason"
+                  rows="3"
+                  placeholder="Example: Customer requested refund"
+                ></textarea>
+              </label>
+
+              <div class="transaction-refund-actions">
+                <button
+                  class="btn primary"
+                  type="button"
+                  id="processTicketRefund"
+                  data-order-id="${escapeHtml(order.id)}"
+                >
+                  Process Refund
+                </button>
+
+                <span
+                  id="ticketRefundStatus"
+                  role="status"
+                ></span>
+              </div>
+
+            </div>
+          `
+          : ""
+      }
+    `;
+
+    transactionModal.classList.add("active");
+
+    bindRefundControls(order);
+  }
+
+
+  function bindRefundControls(order) {
+    const checkboxes =
+      transactionModalBody.querySelectorAll(
+        ".js-refund-ticket"
+      );
+
+    const total =
+      document.getElementById("selectedRefundTotal");
+
+    const refundButton =
+      document.getElementById("processTicketRefund");
+
+    const reason =
+      document.getElementById("ticketRefundReason");
+
+    const status =
+      document.getElementById("ticketRefundStatus");
+
+
+    function updateTotal() {
+      let cents = 0;
+
+      checkboxes.forEach((checkbox) => {
+        if (checkbox.checked) {
+          cents += Number(
+            checkbox.dataset.amount || 0
+          );
+        }
+      });
+
+      if (total) {
+        total.textContent = money(cents);
+      }
+    }
+
+
+    checkboxes.forEach((checkbox) => {
+      checkbox.addEventListener(
+        "change",
+        updateTotal
+      );
+    });
+
+
+    refundButton?.addEventListener(
+      "click",
+      async () => {
+
+        const selectedIds =
+          Array.from(checkboxes)
+            .filter((checkbox) => checkbox.checked)
+            .map((checkbox) =>
+              Number(checkbox.value)
+            );
+
+        if (!selectedIds.length) {
+          status.textContent =
+            "Select at least one ticket.";
+          return;
+        }
+
+        const refundReason =
+          String(reason?.value || "").trim();
+
+        if (!refundReason) {
+          status.textContent =
+            "Enter a refund reason.";
+          return;
+        }
+
+        const confirmed = window.confirm(
+          "Process this refund through Square? This action cannot be undone from the dashboard."
+        );
+
+        if (!confirmed) return;
+
+        refundButton.disabled = true;
+        status.textContent =
+          "Processing refund...";
+
+        try {
+          const response = await fetch(
+            "/api/ticket-refunds/create",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                ticket_ids: selectedIds,
+                reason: refundReason
+              })
+            }
+          );
+
+          const result = await response.json();
+
+          if (!response.ok || !result.ok) {
+            throw new Error(
+              result.message ||
+              result.error ||
+              "Refund could not be processed."
+            );
+          }
+
+          status.textContent =
+            result.message ||
+            "Refund processed successfully.";
+
+          window.setTimeout(() => {
+            window.location.reload();
+          }, 900);
+
+        } catch (error) {
+          status.textContent =
+            error.message ||
+            "Refund could not be processed.";
+
+          refundButton.disabled = false;
+        }
+      }
+    );
+  }
+
+
+  const requestedEvent =
+    new URLSearchParams(window.location.search).get("event");
+
+  if (requestedEvent) {
+    selectedTransactionEvent = requestedEvent;
+
+    if (selectedTicketEventTitle) {
+      selectedTicketEventTitle.textContent =
+        requestedEvent;
+    }
+
+    if (selectedTicketEventSubtitle) {
+      selectedTicketEventSubtitle.textContent =
+        "Ticket purchases and refunds for this event.";
+    }
+
+    if (ticketTransactionPanel) {
+      ticketTransactionPanel.style.display = "";
+    }
+
+    if (transactionSearch) {
+      transactionSearch.value = "";
+    }
+
+    if (transactionStatus) {
+      transactionStatus.value = "all";
+    }
+
+    applyTransactionFilters();
+
+    window.setTimeout(() => {
+      ticketTransactionPanel?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }, 100);
+  }
+
+
+  document
+    .querySelectorAll(".js-view-ticket-transaction")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        openTransactionModal(
+          button.dataset.orderId
+        );
+      });
+    });
+
+
+  transactionModalClose?.addEventListener(
+    "click",
+    () => {
+      transactionModal.classList.remove("active");
+    }
+  );
+
+
+  transactionModal?.addEventListener(
+    "click",
+    (event) => {
+      if (event.target === transactionModal) {
+        transactionModal.classList.remove("active");
+      }
+    }
+  );
+
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key === "Escape" &&
+        transactionModal?.classList.contains("active")
+      ) {
+        transactionModal.classList.remove("active");
+      }
+    }
+  );
+
+</script>
+  </div>
 </body>
 </html>

@@ -60,25 +60,36 @@
     </aside>
 
     <main class="main-content" id="top">
-      <div class="preview-banner">
-        <div>
-          <strong>Revenue Tab Preview</strong>
-          <span>This screen keeps all event, ticket, membership, and past revenue summaries in one place.</span>
-        </div>
-        <a href="/dashboard">Back to Dashboard</a>
-      </div>
-
-      <header class="topbar">
-        <div>
+      <header class="revenue-command-header">
+        <div class="revenue-command-copy">
           <p class="eyebrow">Revenue Dashboard</p>
           <h2>Revenue Command Center</h2>
-          <p class="subtext">Review ticket revenue, membership revenue, past event revenue, expenses, and exports.</p>
+          <p class="subtext">
+            Review collected revenue, event performance, memberships,
+            expenses, and profitability.
+          </p>
         </div>
 
-        <div class="topbar-actions">
-          <button class="btn secondary js-export-revenue-report" type="button" id="exportRevenueOverview">Export Report</button>
-          <a class="btn primary" href="/dashboard/income-summary" target="_blank">Income Summary Report</a>
+        <div class="revenue-command-actions">
+          <a class="btn secondary" href="/dashboard">
+            Back to Dashboard
+          </a>
 
+          <button
+            class="btn secondary js-export-revenue-report"
+            type="button"
+            id="exportRevenueOverview"
+          >
+            Export Report
+          </button>
+
+          <a
+            class="btn primary"
+            href="/dashboard/income-summary"
+            target="_blank"
+          >
+            Income Summary
+          </a>
         </div>
       </header>
 
@@ -91,58 +102,86 @@
           </div>
         </div>
 
-        <div class="membership-kpi-grid event-ticket-overview-grid">
-          <div class="revenue-card">
-            <p>Events</p>
-            <h4>{{ dashboard_preview_summary.upcoming_events_count }}</h4>
-            <span>Currently listed events</span>
+        <div class="revenue-command-kpi-grid">
+
+          <div
+            class="dashboard-kpi-card revenue-command-kpi js-open-revenue-modal"
+            data-target="ticket-revenue-overview"
+            data-title="Ticket Revenue"
+            role="button"
+            tabindex="0"
+          >
+            <div class="dashboard-kpi-copy">
+              <p>Ticket Revenue</p>
+              <h3>${{ "%.2f"|format(metrics.ticket_revenue) }}</h3>
+              <span>Paid ticket sales</span>
+            </div>
+            <span class="dashboard-kpi-arrow">→</span>
           </div>
 
-          <div class="revenue-card">
-            <p>Tickets Sold</p>
-            <h4>{{ metrics.single_tickets }}</h4>
-            <span>Excludes VIP tickets</span>
+
+          <div
+            class="dashboard-kpi-card revenue-command-kpi js-open-revenue-modal"
+            data-target="membership-revenue-overview"
+            data-title="Membership Revenue"
+            role="button"
+            tabindex="0"
+          >
+            <div class="dashboard-kpi-copy">
+              <p>Membership Revenue</p>
+              <h3>${{ "%.2f"|format(metrics.membership_revenue) }}</h3>
+              <span>Paid memberships</span>
+            </div>
+            <span class="dashboard-kpi-arrow">→</span>
           </div>
 
-          <div class="revenue-card">
-            <p>VIP Booths</p>
-            <h4>{{ metrics.vip_tickets }}</h4>
-            <span>VIP ticket purchases</span>
+
+          <div
+            class="dashboard-kpi-card revenue-command-kpi js-open-revenue-modal"
+            data-target="other-revenue-overview"
+            data-title="Other Revenue"
+            role="button"
+            tabindex="0"
+          >
+            <div class="dashboard-kpi-copy">
+              <p>Other Revenue</p>
+              <h3>
+                ${{
+                  "%.2f"|format(
+                    metrics.merch_revenue
+                    + metrics.donation_revenue
+                    + metrics.tips_other_revenue
+                  )
+                }}
+              </h3>
+              <span>Merch, donations, tips & other</span>
+            </div>
+            <span class="dashboard-kpi-arrow">→</span>
           </div>
 
-          <div class="revenue-card">
-            <p>Ticket Revenue</p>
-            <h4>${{ "%.2f"|format(metrics.ticket_revenue) }}</h4>
-            <span>Square + Eventbrite ticket sales</span>
+
+          <div
+            class="dashboard-kpi-card dashboard-total-card revenue-command-kpi js-open-revenue-modal"
+            data-target="total-collected-overview"
+            data-title="Total Collected"
+            role="button"
+            tabindex="0"
+          >
+            <div class="dashboard-kpi-copy">
+              <p>Total Collected</p>
+              <h3>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</h3>
+              <span>All tracked revenue</span>
+            </div>
+            <span class="dashboard-kpi-arrow">→</span>
           </div>
 
-          <div class="revenue-card">
-            <p>Membership Revenue</p>
-            <h4>${{ "%.2f"|format(metrics.membership_revenue) }}</h4>
-            <span>Paid memberships</span>
-          </div>
-
-          <div class="revenue-card">
-            <p>Donations</p>
-            <h4>${{ "%.2f"|format(metrics.donation_revenue) }}</h4>
-            <span>Donations received</span>
-          </div>
-
-          <div class="revenue-card">
-            <p>Tips / Other</p>
-            <h4>${{ "%.2f"|format(metrics.tips_other_revenue) }}</h4>
-            <span>Tips + other collected revenue</span>
-          </div>
-
-          <div class="revenue-card total-revenue-highlight">
-            <p>Total Collected</p>
-            <h4>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</h4>
-            <span>Tickets + memberships + donations + tips/other + cash</span>
-          </div>
         </div>
 
-        <div class="membership-breakdown-grid event-ticket-breakdown-grid">
-          {% for event in events %}
+        <div
+          class="membership-breakdown-grid event-ticket-breakdown-grid paginated-event-grid"
+          data-pagination-grid="active-events"
+        >
+          {% for event in upcoming_events %}
           <button class="breakdown-card event-revenue-card js-open-revenue-modal" type="button" data-target="event-revenue-{{ loop.index }}" data-title="{{ event.name }}">
             <h4>{{ event.name }}</h4>
 
@@ -168,6 +207,7 @@
           </button>
           {% endfor %}
         </div>
+
       </section>
 
       <section class="section-panel past-events-summary-section" id="past-events-revenue">
@@ -205,7 +245,10 @@
           </div>
         </div>
 
-        <div class="membership-breakdown-grid past-events-breakdown-grid">
+        <div
+          class="membership-breakdown-grid past-events-breakdown-grid paginated-event-grid"
+          data-pagination-grid="past-events"
+        >
           {% for event in past_events %}
           <button class="breakdown-card past-event-revenue-card js-open-revenue-modal" type="button" data-target="past-event-revenue-{{ loop.index }}" data-title="{{ event.name }}">
             <h4>{{ event.name }}</h4>
@@ -237,6 +280,21 @@
           </div>
           {% endfor %}
         </div>
+
+        <div
+          class="event-pagination"
+          data-pagination-controls="past-events"
+        >
+          <button type="button" class="event-page-button" data-page-direction="prev">
+            ← Previous
+          </button>
+
+          <span class="event-page-status"></span>
+
+          <button type="button" class="event-page-button" data-page-direction="next">
+            Next →
+          </button>
+        </div>
       </section>
 
       <section class="section-panel membership-summary-section" id="membership-summary">
@@ -244,95 +302,163 @@
           <div>
             <p class="eyebrow">Memberships</p>
             <h3>Membership Revenue Summary</h3>
-            <p>Track membership counts, paid member activity, and recurring revenue.</p>
+            <p>Track active memberships, recurring revenue, and collected membership income.</p>
           </div>
+
+          <a class="dashboard-section-link" href="/dashboard/members">
+            View Members →
+          </a>
         </div>
 
-        <div class="membership-kpi-grid">
+        <div class="membership-kpi-grid membership-revenue-kpi-grid">
+
           <div class="revenue-card">
-            <p>Total Members</p>
+            <p>Active Paid Members</p>
             <h4>{{ member_stats.total_members }}</h4>
-            <span>Original members only</span>
+            <span>Current active memberships</span>
           </div>
 
           <div class="revenue-card">
-            <p>Original Members</p>
-            <h4>{{ member_stats.originals_count }}</h4>
-            <span>Paid original memberships</span>
-          </div>
-
-          <div class="revenue-card">
-            <p>Monthly Revenue</p>
+            <p>Monthly Recurring Revenue</p>
             <h4>${{ "%.2f"|format(member_stats.monthly_revenue) }}</h4>
-            <span>Expected recurring revenue</span>
+            <span>Expected each month</span>
           </div>
 
           <div class="revenue-card">
-            <p>Annual Projection</p>
-            <h4>${{ "%.2f"|format(member_stats.annual_projection) }}</h4>
-            <span>Expected annual recurring revenue</span>
+            <p>Collected Membership Revenue</p>
+            <h4>${{ "%.2f"|format(metrics.membership_revenue) }}</h4>
+            <span>Actual payments collected</span>
           </div>
+
+          <div class="revenue-card">
+            <p>Annual Recurring Projection</p>
+            <h4>${{ "%.2f"|format(member_stats.annual_projection) }}</h4>
+            <span>Current monthly revenue × 12</span>
+          </div>
+
         </div>
 
-        <div class="membership-breakdown-grid">
-          <div class="breakdown-card">
-            <h4>Jukebox Circle Originals</h4>
-            <div class="breakdown-row">
-              <span>Active Members</span>
-              <strong>{{ member_stats.originals_count }}</strong>
+        <div class="membership-revenue-breakdown-panel">
+
+          <div class="membership-revenue-breakdown-heading">
+            <div>
+              <p class="eyebrow">Membership Breakdown</p>
+              <h4>Active Membership Groups</h4>
             </div>
-            <div class="breakdown-row">
-              <span>Monthly Revenue</span>
-              <strong>${{ "%.2f"|format(member_stats.originals_revenue) }}</strong>
-            </div>
+
+            <span class="membership-breakdown-total">
+              {{ member_stats.total_members }} Active
+            </span>
           </div>
 
-          <div class="breakdown-card">
-            <h4>Jukebox Circle</h4>
-            <div class="breakdown-row">
-              <span>Active Members</span>
-              <strong>{{ member_stats.regular_count }}</strong>
+          <div class="membership-revenue-breakdown-list">
+
+            <div class="membership-revenue-breakdown-row">
+              <div>
+                <strong>Jukebox Circle Originals</strong>
+                <span>Original paid members</span>
+              </div>
+
+              <div class="membership-revenue-breakdown-stats">
+                <span>
+                  <strong>{{ member_stats.originals_count }}</strong>
+                  members
+                </span>
+
+                <span>
+                  <strong>${{ "%.2f"|format(member_stats.originals_revenue) }}</strong>
+                  / month
+                </span>
+              </div>
             </div>
-            <div class="breakdown-row">
-              <span>Monthly Revenue</span>
-              <strong>${{ "%.2f"|format(member_stats.regular_revenue) }}</strong>
+
+            <div class="membership-revenue-breakdown-row">
+              <div>
+                <strong>Jukebox Circle</strong>
+                <span>Current regular memberships</span>
+              </div>
+
+              <div class="membership-revenue-breakdown-stats">
+                <span>
+                  <strong>{{ member_stats.regular_count }}</strong>
+                  members
+                </span>
+
+                <span>
+                  <strong>${{ "%.2f"|format(member_stats.regular_revenue) }}</strong>
+                  / month
+                </span>
+              </div>
             </div>
+
           </div>
 
-          <div class="breakdown-card">
-            <h4>VIP Email List</h4>
-            <div class="breakdown-row">
-              <span>Email Subscribers</span>
-              <strong>{{ member_stats.vip_email_count }}</strong>
-            </div>
-            <div class="breakdown-row">
-              <span>Revenue</span>
-              <strong>$0.00</strong>
-            </div>
+          <div class="membership-revenue-note">
+            <strong>Collected vs. recurring:</strong>
+            ${{ "%.2f"|format(metrics.membership_revenue) }} is total membership payment history.
+            ${{ "%.2f"|format(member_stats.monthly_revenue) }} is the current expected monthly recurring revenue.
           </div>
+
         </div>
       </section>
 
       <section class="section-panel" id="sales-revenue">
-        <div class="section-heading">
+        <div class="section-heading revenue-tracking-heading">
           <div>
             <p class="eyebrow">Revenue</p>
             <h3>Event Revenue Tracking</h3>
-            <p>Track ticket revenue, expenses, payment methods, and profit.</p>
+            <p>Track collected revenue, expenses, and overall profitability.</p>
           </div>
-          <div class="section-actions">
-            <a class="btn secondary" href="/dashboard/events">Back to Events</a>
-            <button class="btn secondary js-export-revenue-report" type="button" id="exportEventRevenueButton">Export Report</button>
-            <button class="btn secondary" type="button" id="addCashRevenueButton" onclick="document.getElementById('cashRevenueModalOverlay').classList.add('active')">Add Cash Revenue</button>
-            <button class="btn primary" type="button" id="addExpenseButton" onclick="document.getElementById('expenseModalOverlay').classList.add('active')">Add Expense</button>
+
+          <div class="revenue-tracking-actions">
+            <a class="btn secondary revenue-back-link" href="/dashboard/events">
+              Back to Events
+            </a>
+
+            <div class="revenue-primary-actions">
+              <button
+                class="btn secondary"
+                type="button"
+                id="addCashRevenueButton"
+                onclick="document.getElementById('cashRevenueModalOverlay').classList.add('active')"
+              >
+                Add Revenue
+              </button>
+
+              <button
+                class="btn primary"
+                type="button"
+                id="addExpenseButton"
+                onclick="document.getElementById('expenseModalOverlay').classList.add('active')"
+              >
+                Add Expense
+              </button>
+
+              <button
+                class="btn secondary js-export-revenue-report"
+                type="button"
+                id="exportEventRevenueButton"
+              >
+                Export Report
+              </button>
+            </div>
           </div>
         </div>
 
         <div class="revenue-summary-grid">
-          <div class="revenue-card">
-            <p>Gross Revenue</p>
+
+          <div
+            class="revenue-card js-open-revenue-modal"
+            data-target="total-collected-overview"
+            data-title="Total Collected"
+            role="button"
+            tabindex="0"
+            style="cursor: pointer;"
+          >
+            <span class="dashboard-kpi-arrow">→</span>
+            <p>Total Collected</p>
             <h4>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</h4>
-            <span>Tickets + memberships + tips/other + cash</span>
+            <span>All tracked revenue</span>
           </div>
 
           <div
@@ -343,16 +469,24 @@
             tabindex="0"
             style="cursor: pointer;"
           >
+            <span class="dashboard-kpi-arrow">→</span>
             <p>Total Expenses</p>
             <h4 id="expenseTotal">${{ "%.2f"|format(metrics.total_expenses) }}</h4>
             <span>
               ${{ "%.2f"|format(metrics.total_expenses - metrics.business_expenses) }} event
               + ${{ "%.2f"|format(metrics.business_expenses) }} business
-              · Click for details
             </span>
           </div>
 
-          <div class="revenue-card">
+          <div
+            class="revenue-card js-open-revenue-modal"
+            data-target="net-profit-overview"
+            data-title="{{ 'Net Loss' if metrics.net_profit < 0 else 'Net Profit' }}"
+            role="button"
+            tabindex="0"
+            style="cursor: pointer;"
+          >
+            <span class="dashboard-kpi-arrow">→</span>
             <p class="{{ 'net-loss' if metrics.net_profit < 0 else 'net-profit' }}">
               {{ "Net Loss" if metrics.net_profit < 0 else "Net Profit" }}
             </p>
@@ -362,14 +496,23 @@
             >
               ${{ "%.2f"|format(metrics.net_profit) }}
             </h4>
-            <span>Gross revenue minus expenses</span>
+            <span>Total collected minus expenses</span>
           </div>
 
-          <div class="revenue-card">
+          <div
+            class="revenue-card js-open-revenue-modal"
+            data-target="cash-revenue-overview"
+            data-title="Cash Revenue"
+            role="button"
+            tabindex="0"
+            style="cursor: pointer;"
+          >
+            <span class="dashboard-kpi-arrow">→</span>
             <p>Cash Revenue</p>
             <h4>${{ "%.2f"|format(metrics.cash_revenue) }}</h4>
-            <span>Door cash / other cash</span>
+            <span>Cash payments recorded across events</span>
           </div>
+
         </div>
       </section>
 
@@ -384,13 +527,246 @@
             <button class="event-modal-close" type="button" id="revenueDetailClose">Close</button>
           </div>
 
+          <div class="revenue-detail-content revenue-overview-detail" id="ticket-revenue-overview">
+
+            <div class="revenue-overview-total">
+              <span>Total Ticket Revenue</span>
+              <strong>${{ "%.2f"|format(metrics.ticket_revenue) }}</strong>
+            </div>
+
+            <div class="event-detail-panel revenue-overview-breakdown">
+              <h5>Ticket Revenue by Event</h5>
+
+              {% for event in events %}
+              {% set event_ticket_revenue = event.ticket_revenue|default(event.total_revenue) %}
+              <div class="breakdown-row">
+                <span>{{ event.name }}</span>
+                <strong>
+                  ${{ "%.2f"|format(event_ticket_revenue) }}
+                </strong>
+              </div>
+              {% endfor %}
+            </div>
+
+          </div>
+
+
+          <div class="revenue-detail-content revenue-overview-detail" id="membership-revenue-overview">
+
+            <div class="revenue-overview-total">
+              <span>Collected Membership Revenue</span>
+              <strong>${{ "%.2f"|format(metrics.membership_revenue) }}</strong>
+            </div>
+
+            <div class="event-detail-panel revenue-overview-breakdown">
+              <h5>Membership Snapshot</h5>
+
+              <div class="breakdown-row">
+                <span>Collected Membership Revenue</span>
+                <strong>
+                  ${{ "%.2f"|format(metrics.membership_revenue) }}
+                </strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Active Paid Members</span>
+                <strong>{{ member_stats.total_members }}</strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Current Monthly Recurring Revenue</span>
+                <strong>
+                  ${{ "%.2f"|format(member_stats.monthly_revenue) }}
+                </strong>
+              </div>
+            </div>
+
+            <p class="revenue-modal-helper">
+              Collected revenue is payment history. Monthly recurring revenue reflects the current active membership rate.
+            </p>
+
+          </div>
+
+
+          <div class="revenue-detail-content revenue-overview-detail" id="other-revenue-overview">
+
+            {% set other_revenue_total =
+              metrics.merch_revenue
+              + metrics.donation_revenue
+              + metrics.tips_other_revenue
+            %}
+
+            <div class="revenue-overview-total">
+              <span>Total Other Revenue</span>
+              <strong>${{ "%.2f"|format(other_revenue_total) }}</strong>
+            </div>
+
+            <div class="event-detail-panel revenue-overview-breakdown">
+              <h5>Other Revenue Breakdown</h5>
+
+              <div class="breakdown-row">
+                <span>Merchandise</span>
+                <strong>
+                  ${{ "%.2f"|format(metrics.merch_revenue) }}
+                </strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Donations</span>
+                <strong>
+                  ${{ "%.2f"|format(metrics.donation_revenue) }}
+                </strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Tips / Other</span>
+                <strong>
+                  ${{ "%.2f"|format(metrics.tips_other_revenue) }}
+                </strong>
+              </div>
+            </div>
+
+          </div>
+
+
+          <div class="revenue-detail-content revenue-overview-detail" id="total-collected-overview">
+
+            {% set other_revenue_total =
+              metrics.merch_revenue
+              + metrics.donation_revenue
+              + metrics.tips_other_revenue
+            %}
+
+            <div class="revenue-overview-total total-collected-modal-total">
+              <span>Total Collected</span>
+              <strong>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</strong>
+            </div>
+
+            <div class="event-detail-panel revenue-overview-breakdown">
+              <h5>Collected Revenue Breakdown</h5>
+
+              <div class="breakdown-row">
+                <span>Ticket Revenue</span>
+                <strong>
+                  ${{ "%.2f"|format(metrics.ticket_revenue) }}
+                </strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Membership Revenue</span>
+                <strong>
+                  ${{ "%.2f"|format(metrics.membership_revenue) }}
+                </strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Other Revenue</span>
+                <strong>
+                  ${{ "%.2f"|format(other_revenue_total) }}
+                </strong>
+              </div>
+
+              <div class="breakdown-row revenue-total-row">
+                <span>Total Collected</span>
+                <strong>
+                  ${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}
+                </strong>
+              </div>
+            </div>
+
+          </div>
+
+
+          <div class="revenue-detail-content revenue-overview-detail" id="net-profit-overview">
+
+            <div class="revenue-overview-total">
+              <span>{{ "Net Loss" if metrics.net_profit < 0 else "Net Profit" }}</span>
+              <strong class="{{ 'net-loss' if metrics.net_profit < 0 else 'net-profit' }}">
+                ${{ "%.2f"|format(metrics.net_profit) }}
+              </strong>
+            </div>
+
+            <div class="event-detail-panel revenue-overview-breakdown">
+              <h5>Profit Calculation</h5>
+
+              <div class="breakdown-row">
+                <span>Total Collected</span>
+                <strong>${{ "%.2f"|format(metrics.gross_revenue_with_cash) }}</strong>
+              </div>
+
+              <div class="breakdown-row">
+                <span>Total Expenses</span>
+                <strong>− ${{ "%.2f"|format(metrics.total_expenses) }}</strong>
+              </div>
+
+              <div class="breakdown-row revenue-total-row">
+                <span>{{ "Net Loss" if metrics.net_profit < 0 else "Net Profit" }}</span>
+                <strong class="{{ 'net-loss' if metrics.net_profit < 0 else 'net-profit' }}">
+                  ${{ "%.2f"|format(metrics.net_profit) }}
+                </strong>
+              </div>
+            </div>
+
+          </div>
+
+
+          <div class="revenue-detail-content revenue-overview-detail" id="cash-revenue-overview">
+
+            <div class="revenue-overview-total">
+              <span>Total Cash Revenue</span>
+              <strong>${{ "%.2f"|format(metrics.cash_revenue) }}</strong>
+            </div>
+
+            <div class="event-detail-panel revenue-overview-breakdown">
+              <h5>Cash Revenue Entries</h5>
+
+              {% set cash_revenue_entries = namespace(count=0) %}
+
+              {% for cash in cash_rows %}
+              {% if (cash.amount_cents or 0) > 0 and (cash.category or "")|lower != "comp" %}
+              {% set cash_revenue_entries.count = cash_revenue_entries.count + 1 %}
+
+              <div class="breakdown-row stacked-breakdown-row">
+                <span>
+                  <strong>{{ cash.event_name or "Unknown Event" }}</strong>
+                  <small>{{ cash.category or "Cash Revenue" }}</small>
+
+                  {% if cash.notes %}
+                  <small>{{ cash.notes }}</small>
+                  {% endif %}
+
+                  {% if cash.quantity and cash.quantity > 0 %}
+                  <small>{{ cash.quantity }} ticket{{ "" if cash.quantity == 1 else "s" }}</small>
+                  {% endif %}
+                </span>
+
+                <strong>
+                  ${{ "%.2f"|format((cash.amount_cents or 0) / 100) }}
+                </strong>
+              </div>
+
+              {% endif %}
+              {% endfor %}
+
+              {% if cash_revenue_entries.count == 0 %}
+              <div class="breakdown-row">
+                <span>No cash revenue entries saved yet.</span>
+                <strong>$0.00</strong>
+              </div>
+              {% endif %}
+
+            </div>
+
+          </div>
+
+
           {% for event in events %}
           <div class="revenue-detail-content" id="event-revenue-{{ loop.index }}">
             <div class="event-detail-stats">
               <div>
                 <p>Total Revenue</p>
                 <strong>${{ "%.2f"|format(event.total_revenue_with_cash|default(event.total_revenue)) }}</strong>
-                <span>Event ticket revenue</span>
+                <span>All tracked event revenue</span>
               </div>
               <div>
                 <p>Expenses</p>
@@ -730,139 +1106,165 @@
       </div>
 
       <div class="event-modal-overlay" id="cashRevenueModalOverlay">
-        <div class="event-modal">
+        <div class="event-modal revenue-entry-modal">
           <div class="event-modal-header">
             <div>
-              <p class="eyebrow">Add Cash Revenue</p>
-              <h3>Add Event Cash</h3>
-              <p>Track door cash and other cash collected by event.</p>
+              <p class="eyebrow">Revenue Entry</p>
+              <h3>Add Revenue</h3>
+              <p>Record cash, door sales, vendor income, and other manual event revenue.</p>
             </div>
             <button class="event-modal-close" type="button" id="cashRevenueModalClose">Close</button>
           </div>
 
-          <form class="expense-form">
-            <label>
-              Event
-              <select id="cashRevenueEvent">
-                <option>Select Event</option>
-                {% set event_names = namespace(seen=[]) %}
-                {% for event in events + past_events %}
-                  {% if event.name not in event_names.seen %}
-                    <option>{{ event.name }}</option>
-                    {% set event_names.seen = event_names.seen + [event.name] %}
-                  {% endif %}
-                {% endfor %}
-              </select>
-            </label>
+          <form class="expense-form revenue-entry-form">
+            <div class="revenue-entry-grid">
+              <label>
+                Event
+                <select id="cashRevenueEvent">
+                  <option>Select Event</option>
+                  {% set event_names = namespace(seen=[]) %}
+                  {% for event in events + past_events %}
+                    {% if event.name not in event_names.seen %}
+                      <option>{{ event.name }}</option>
+                      {% set event_names.seen = event_names.seen + [event.name] %}
+                    {% endif %}
+                  {% endfor %}
+                </select>
+              </label>
 
-            <label>
-              Cash Category
-              <select id="cashRevenueCategory">
-                <option>Door Cash</option>
-                <option>Bar Cash</option>
-                <option>Vendor Cash</option>
-                <option>Other Cash</option>
-              </select>
-            </label>
+              <label>
+                Revenue Category
+                <select id="cashRevenueCategory">
+                  <option>Door Cash</option>
+                  <option>Bar Cash</option>
+                  <option>Vendor Cash</option>
+                  <option>Other Cash</option>
+                </select>
+              </label>
+            </div>
 
-            <label>
-              Number of Tickets Sold
-              <input id="cashRevenueQuantity" type="number" min="0" step="1" placeholder="Example: 10" />
-            </label>
+            <div class="revenue-entry-grid">
+              <label id="cashRevenueQuantityWrap">
+                Number of Tickets Sold
+                <input id="cashRevenueQuantity" type="number" min="0" step="1" placeholder="Example: 10" />
+                <small class="field-help">Used for door ticket sales.</small>
+              </label>
 
-            <label>
-              Amount
-              <input id="cashRevenueAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
-            </label>
+              <label>
+                Amount
+                <input id="cashRevenueAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+                <small class="field-help">Total revenue collected.</small>
+              </label>
+            </div>
 
             <label>
               Notes
               <textarea id="cashRevenueNotes" placeholder="Example: Cash collected at the door"></textarea>
             </label>
 
-            <button class="btn primary" type="button" id="cashRevenueSave">Save Cash Revenue</button>
+            <div class="revenue-entry-footer">
+              <button class="btn primary" type="button" id="cashRevenueSave">Save Revenue</button>
+            </div>
           </form>
         </div>
       </div>
 
       <div class="event-modal-overlay" id="expenseModalOverlay">
-        <div class="event-modal small-modal">
+        <div class="event-modal expense-entry-modal">
           <div class="event-modal-header">
             <div>
-              <p class="eyebrow">Expense Tracking</p>
+              <p class="eyebrow">Expense Entry</p>
               <h3>Add Expense</h3>
-              <p>Add an event-related expense or a general non-event business expense.</p>
+              <p>Record event expenses or general business expenses.</p>
             </div>
             <button class="event-modal-close" type="button" id="expenseModalClose">Close</button>
           </div>
 
-          <form class="expense-form">
-            <label>
-              Expense Type
-              <select id="expenseType">
-                <option value="event">Event Expense</option>
-                <option value="business">Non-Event Business Expense</option>
-              </select>
-            </label>
+          <form class="expense-form expense-entry-form">
 
-            <label id="expenseEventWrap">
-              Event
-              <select id="expenseEvent">
-                <option>Select Event</option>
-                {% for event in events %}
-                <option>{{ event.name }}</option>
-                {% endfor %}
-                <option>Battle of the DJs</option>
-              </select>
-            </label>
+            <div class="expense-setup-grid">
+              <label>
+                Expense Type
+                <select id="expenseType">
+                  <option value="event">Event Expense</option>
+                  <option value="business">Non-Event Business Expense</option>
+                </select>
+              </label>
 
-            <div id="expenseRows" class="expense-rows">
-              <div class="expense-entry-row">
-                <div class="expense-row-header">
-                  <strong>Expense 1</strong>
-                  <button class="btn ghost removeExpenseRow" type="button" style="display:none;">Remove</button>
-                </div>
-
-                <div class="expense-row-grid">
-                  <label>
-                    Expense Category
-                    <select class="expenseCategory">
-                      <option>Select Category</option>
-                      <option>Venue</option>
-                      <option>Staff</option>
-                      <option>DJ / Performer</option>
-                      <option>Security</option>
-                      <option>Supplies</option>
-                      <option>Marketing</option>
-                      <option>Decor</option>
-                      <option>Food / Catering</option>
-                      <option>Donations</option>
-                      <option>Other</option>
-                    </select>
-                  </label>
-
-                  <label>
-                    Amount
-                    <input class="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
-                  </label>
-                </div>
-
-                <label class="expense-notes-field">
-                  Notes
-                  <textarea class="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
-                </label>
-              </div>
+              <label id="expenseEventWrap">
+                Event
+                <select id="expenseEvent">
+                  <option>Select Event</option>
+                  {% for event in events %}
+                  <option>{{ event.name }}</option>
+                  {% endfor %}
+                  <option>Battle of the DJs</option>
+                </select>
+              </label>
             </div>
 
-            <button class="btn ghost" type="button" id="addExpenseRow">+ Add Another Expense</button>
-            <button class="btn primary" type="button" id="expenseSave">Save All Expenses</button>
+            <div class="expense-form-scroll">
 
-            <div class="expense-preview">
-              <h4>Saved Expenses Preview</h4>
-              <div id="expenseSavedList">
-                <p class="muted-preview">No new expenses added in this preview yet.</p>
+              <div id="expenseRows" class="expense-rows">
+                <div class="expense-entry-row">
+                  <div class="expense-row-header">
+                    <strong>Expense 1</strong>
+                    <button class="btn ghost removeExpenseRow" type="button" style="display:none;">Remove</button>
+                  </div>
+
+                  <div class="expense-row-grid">
+                    <label>
+                      Expense Category
+                      <select class="expenseCategory">
+                        <option>Select Category</option>
+                        <option>Venue</option>
+                        <option>Staff</option>
+                        <option>DJ / Performer</option>
+                        <option>Security</option>
+                        <option>Supplies</option>
+                        <option>Marketing</option>
+                        <option>Decor</option>
+                        <option>Food / Catering</option>
+                        <option>Donations</option>
+                        <option>Other</option>
+                      </select>
+                    </label>
+
+                    <label>
+                      Amount
+                      <input class="expenseAmount" type="number" min="0" step="0.01" placeholder="Example: 250.00" />
+                    </label>
+                  </div>
+
+                  <label class="expense-notes-field">
+                    Notes
+                    <textarea class="expenseNotes" placeholder="Example: DJ deposit, extra security, flyer printing, etc."></textarea>
+                  </label>
+                </div>
               </div>
+
+              <button class="btn ghost expense-add-row-button" type="button" id="addExpenseRow">
+                + Add Another Expense
+              </button>
+
+              <details class="expense-preview-collapsible">
+                <summary>View Saved Expenses Preview</summary>
+
+                <div class="expense-preview">
+                  <div id="expenseSavedList">
+                    <p class="muted-preview">No new expenses added in this preview yet.</p>
+                  </div>
+                </div>
+              </details>
+
             </div>
+
+            <div class="expense-modal-footer">
+              <button class="btn primary" type="button" id="expenseSave">
+                Save All Expenses
+              </button>
+            </div>
+
           </form>
         </div>
       </div>
@@ -934,56 +1336,6 @@
         </div>
       </div>
 
-  <script>
-    const revenueDetailModalOverlay = document.getElementById("revenueDetailModalOverlay");
-    const revenueDetailClose = document.getElementById("revenueDetailClose");
-    const revenueDetailTitle = document.getElementById("revenueDetailTitle");
-    const revenueDetailContents = document.querySelectorAll("#revenueDetailModalOverlay .revenue-detail-content");
-
-    function hideAllRevenueDetails() {
-      revenueDetailContents.forEach((content) => {
-        content.classList.remove("active");
-        content.style.display = "none";
-      });
-    }
-
-    hideAllRevenueDetails();
-
-    document.querySelectorAll(".js-open-revenue-modal").forEach((button) => {
-      button.addEventListener("click", () => {
-        const targetId = button.getAttribute("data-target");
-        const title = button.getAttribute("data-title") || "Revenue Details";
-
-        hideAllRevenueDetails();
-
-        const target = document.getElementById(targetId);
-
-        if (target) {
-          target.classList.add("active");
-          target.style.display = "block";
-          revenueDetailTitle.textContent = title + " Revenue";
-          revenueDetailModalOverlay.classList.add("active");
-        }
-      });
-    });
-
-    if (revenueDetailClose) {
-      revenueDetailClose.addEventListener("click", () => {
-        revenueDetailModalOverlay.classList.remove("active");
-        hideAllRevenueDetails();
-      });
-    }
-
-    if (revenueDetailModalOverlay) {
-      revenueDetailModalOverlay.addEventListener("click", (event) => {
-        if (event.target === revenueDetailModalOverlay) {
-          revenueDetailModalOverlay.classList.remove("active");
-          hideAllRevenueDetails();
-        }
-      });
-    }
-  </script>
-
 <script>
   window.addEventListener("DOMContentLoaded", () => {
     const revenueDetailModalOverlay = document.getElementById("revenueDetailModalOverlay");
@@ -1012,7 +1364,7 @@
         if (target && revenueDetailModalOverlay) {
           target.classList.add("active");
           target.style.display = "block";
-          revenueDetailTitle.textContent = title + " Revenue";
+          revenueDetailTitle.textContent = title;
           revenueDetailModalOverlay.classList.add("active");
         }
       });
@@ -1053,6 +1405,23 @@
     const cashRevenueEvent = document.getElementById("cashRevenueEvent");
     const cashRevenueCategory = document.getElementById("cashRevenueCategory");
     const cashRevenueQuantity = document.getElementById("cashRevenueQuantity");
+    const cashRevenueQuantityWrap = document.getElementById("cashRevenueQuantityWrap");
+
+    function updateCashRevenueQuantityVisibility() {
+      if (!cashRevenueCategory || !cashRevenueQuantityWrap) return;
+
+      const isDoorCash = cashRevenueCategory.value === "Door Cash";
+      cashRevenueQuantityWrap.style.display = isDoorCash ? "" : "none";
+
+      if (!isDoorCash && cashRevenueQuantity) {
+        cashRevenueQuantity.value = "";
+      }
+    }
+
+    if (cashRevenueCategory) {
+      cashRevenueCategory.addEventListener("change", updateCashRevenueQuantityVisibility);
+      updateCashRevenueQuantityVisibility();
+    }
     const cashRevenueAmount = document.getElementById("cashRevenueAmount");
     const cashRevenueNotes = document.getElementById("cashRevenueNotes");
 
@@ -1727,6 +2096,90 @@
       button.addEventListener("click", downloadRevenueReport);
     });
   });
+</script>
+
+
+<script>
+(() => {
+  const pageSize = 4;
+
+  document.querySelectorAll("[data-pagination-grid]").forEach((grid) => {
+    const key = grid.getAttribute("data-pagination-grid");
+
+    const controls = document.querySelector(
+      `[data-pagination-controls="${key}"]`
+    );
+
+    if (!controls) {
+      return;
+    }
+
+    const cards = Array.from(
+      grid.querySelectorAll(
+        ".event-revenue-card, .past-event-revenue-card"
+      )
+    );
+
+    const prevButton = controls.querySelector(
+      '[data-page-direction="prev"]'
+    );
+
+    const nextButton = controls.querySelector(
+      '[data-page-direction="next"]'
+    );
+
+    const status = controls.querySelector(
+      ".event-page-status"
+    );
+
+    let currentPage = 1;
+
+    const totalPages = Math.max(
+      1,
+      Math.ceil(cards.length / pageSize)
+    );
+
+    function renderPage() {
+      const start = (currentPage - 1) * pageSize;
+      const end = start + pageSize;
+
+      cards.forEach((card, index) => {
+        card.hidden = !(index >= start && index < end);
+      });
+
+      if (status) {
+        status.textContent =
+          `Page ${currentPage} of ${totalPages}`;
+      }
+
+      if (prevButton) {
+        prevButton.disabled = currentPage === 1;
+      }
+
+      if (nextButton) {
+        nextButton.disabled = currentPage === totalPages;
+      }
+
+      controls.hidden = cards.length <= pageSize;
+    }
+
+    prevButton?.addEventListener("click", () => {
+      if (currentPage > 1) {
+        currentPage -= 1;
+        renderPage();
+      }
+    });
+
+    nextButton?.addEventListener("click", () => {
+      if (currentPage < totalPages) {
+        currentPage += 1;
+        renderPage();
+      }
+    });
+
+    renderPage();
+  });
+})();
 </script>
 
 </body>

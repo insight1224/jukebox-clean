@@ -15,7 +15,7 @@
         </div>
         <div>
           <h1>Jukebox Lounge</h1>
-          <p>Admin Preview</p>
+          <p>Admin Dashboard</p>
         </div>
       </div>
 
@@ -40,384 +40,413 @@
     </aside>
 
     <main class="main-content" id="top">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Client Dashboard Preview</p>
-          <h2>Event Command Center</h2>
-          <p class="subtext">Track events, guests, VIPs, door sales, messages, members, and applications in one place.</p>
+      <header class="topbar dashboard-command-header">
+        <div class="dashboard-command-copy">
+          <p class="eyebrow">Admin Dashboard</p>
+          <h2>Jukebox Dashboard</h2>
+          <p class="subtext">
+            A quick view of events, ticket activity, revenue, members, and messages.
+          </p>
         </div>
 
-        <div class="topbar-actions topbar-tools">
-          <div class="global-search">
-            <span>Search</span>
-            <input type="text" id="dashboardSearch" placeholder="Search events, guests, members, messages..." />
-            <button type="button" id="dashboardSearchApply" class="dashboard-search-btn">Apply Search</button>
-            <button type="button" id="dashboardSearchClear" class="dashboard-search-btn clear">Clear Filter</button>
+        <div class="dashboard-command-tools">
+          <div class="dashboard-search-box">
+            <span class="dashboard-tool-label">Search Dashboard</span>
+
+            <div class="dashboard-search-row">
+              <input
+                type="text"
+                id="dashboardSearch"
+                placeholder="Search events, guests, members, messages..."
+              />
+
+              <button
+                type="button"
+                id="dashboardSearchApply"
+                class="dashboard-search-btn"
+              >
+                Search
+              </button>
+
+              <button
+                type="button"
+                id="dashboardSearchClear"
+                class="dashboard-search-btn clear"
+              >
+                Clear
+              </button>
+            </div>
           </div>
 
-          <div class="topbar-button-row">
-            <button class="btn secondary" type="button" id="syncSquareButton">Sync Square</button>
-            <button class="btn secondary" type="button" id="syncEventbriteButton">Sync Eventbrite</button>
-          </div>
+          <div class="dashboard-sync-row">
+            <span class="dashboard-tool-label">External Sync</span>
 
-          <span id="syncSquareStatus" class="sync-square-status"></span>
-          <span id="syncEventbriteStatus" class="sync-square-status"></span>
+            <div class="dashboard-sync-buttons">
+              <button
+                class="btn secondary"
+                type="button"
+                id="syncSquareButton"
+              >
+                Sync Square
+              </button>
+
+              <button
+                class="btn secondary"
+                type="button"
+                id="syncEventbriteButton"
+              >
+                Sync Eventbrite
+              </button>
+            </div>
+
+            <span id="syncSquareStatus" class="sync-square-status"></span>
+            <span id="syncEventbriteStatus" class="sync-square-status"></span>
+          </div>
         </div>
       </header>
 
-      
-        <section class="stats-grid">
-        <div class="stat-card">
-          <p>Events</p>
-          <h3>{{ dashboard_preview_summary.upcoming_events_count }}</h3>
-          <span>Events currently listed</span>
+
+      <section class="dashboard-overview-grid">
+
+        <a class="dashboard-kpi-card" href="/dashboard/events">
+          <div class="dashboard-kpi-copy">
+            <p>Events</p>
+            <h3>{{ dashboard_preview_summary.upcoming_events_count }}</h3>
+            <span>Currently listed</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
+        </a>
+
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="general-tickets"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>General Tickets</p>
+            <h3>{{ metrics.single_tickets }}</h3>
+            <span>Excludes VIP tickets</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>Tickets Sold</p>
-          <h3>{{ metrics.single_tickets }}</h3>
-          <span>Excludes VIP tickets</span>
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="vip-tickets"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>VIP Tickets</p>
+            <h3>{{ metrics.vip_tickets }}</h3>
+            <span>VIP ticket purchases</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>VIP Booths</p>
-          <h3>{{ metrics.vip_tickets }}</h3>
-          <span>VIP ticket purchases</span>
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="total-tickets"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>Total Tickets</p>
+            <h3>{{ metrics.total_tickets_sold }}</h3>
+            <span>All tickets sold</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>Total Tickets Sold</p>
-          <h3>{{ metrics.total_tickets_sold }}</h3>
-          <span>All tickets sold</span>
+
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="ticket-revenue"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>Ticket Revenue</p>
+            <h3>${{ "%.2f"|format(metrics.ticket_revenue) }}</h3>
+            <span>Ticket sales only</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>Ticket Sales Revenue</p>
-          <h3>${{ "%.2f"|format(metrics.ticket_revenue) }}</h3>
-          <span>Tickets only</span>
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="vip-email-list"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>VIP Email List</p>
+            <h3>{{ metrics.vip_signups }}</h3>
+            <span>Active subscribers</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>VIP Email List</p>
-          <h3>{{ metrics.vip_signups }}</h3>
-          <span>Active email subscribers</span>
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="memberships"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>Memberships</p>
+            <h3>{{ metrics.active_memberships }}</h3>
+            <span>Active paid members</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>Memberships</p>
-          <h3>{{ metrics.active_memberships }}</h3>
-          <span>Active paid memberships</span>
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="membership-revenue"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>Membership Revenue</p>
+            <h3>${{ "%.2f"|format(metrics.membership_revenue) }}</h3>
+            <span>Memberships only</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>Membership Revenue</p>
-          <h3>${{ "%.2f"|format(metrics.membership_revenue) }}</h3>
-          <span>Memberships only</span>
+
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="tshirt-sales"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>T-Shirt Sales</p>
+            <h3>${{ "%.2f"|format(metrics.merch_revenue) }}</h3>
+            <span>{{ metrics.merch_shirts_sold }} paid shirts sold</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>T-Shirt Sales</p>
-          <h3>${{ "%.2f"|format(metrics.merch_revenue) }}</h3>
-          <span>{{ metrics.merch_shirts_sold }} paid shirts sold</span>
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="donations"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>Donations</p>
+            <h3>${{ "%.2f"|format(metrics.donation_revenue) }}</h3>
+            <span>Donations received</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>Donations</p>
-          <h3>${{ "%.2f"|format(metrics.donation_revenue) }}</h3>
-          <span>Donations received</span>
+        <div class="dashboard-kpi-card dashboard-kpi-breakdown"
+             data-kpi="tips-other"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>Tips / Other</p>
+            <h3>${{ "%.2f"|format(metrics.tips_other_revenue) }}</h3>
+            <span>Tips and other revenue</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card">
-          <p>Tips / Other</p>
-          <h3>${{ "%.2f"|format(metrics.tips_other_revenue) }}</h3>
-          <span>Tips + test/other Square payments</span>
+        <a class="dashboard-kpi-card" href="/dashboard/contacts">
+          <div class="dashboard-kpi-copy">
+            <p>Vendors</p>
+            <h3>{{ dashboard_overview.vendor_contacts }}</h3>
+            <span>Active vendor contacts</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
+        </a>
+
+        <div class="dashboard-kpi-card dashboard-total-card dashboard-kpi-breakdown"
+             data-kpi="total-collected"
+             role="button"
+             tabindex="0">
+          <div class="dashboard-kpi-copy">
+            <p>Total Collected</p>
+            <h3>${{ "%.2f"|format(metrics.square_total_collected) }}</h3>
+            <span>All tracked revenue</span>
+          </div>
+          <span class="dashboard-kpi-arrow">→</span>
         </div>
 
-        <div class="stat-card total-revenue-highlight">
-          <p>Total Collected</p>
-          <h3>${{ "%.2f"|format(metrics.square_total_collected) }}</h3>
-          <span>Tickets, memberships, T-shirts, donations, tips/other</span>
-        </div>
       </section>
-<section class="dashboard-grid">
-        <div class="panel large-panel">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Upcoming Events</p>
-              <h3>Event Lineup</h3>
-            </div>
-            <span class="badge">Preview</span>
+
+
+      <section class="dashboard-upcoming-panel">
+        <div class="dashboard-section-heading">
+          <div>
+            <p class="eyebrow">Upcoming Events</p>
+            <h3>Event Lineup</h3>
           </div>
 
-          <div class="upcoming-event-list" id="upcomingEventList">
+          <a class="dashboard-section-link" href="/dashboard/events">
+            Manage Events →
+          </a>
+        </div>
+
+        <div class="dashboard-upcoming-list" id="upcomingEventList">
+          {% if events %}
+
             {% for event in events %}
-            <div class="upcoming-event-card">
-              <div class="upcoming-event-top">
+            <article class="dashboard-upcoming-event">
+              <div class="dashboard-upcoming-main">
                 <div>
                   <h4>{{ event.name }}</h4>
-                  <p>{{ event.total_tickets_sold }} tickets sold</p>
+                  <p>
+                    {{ event.total_tickets_sold }} tickets sold
+                    <span>·</span>
+                    ${{ "%.2f"|format(event.total_revenue) }} revenue
+                  </p>
                 </div>
+              </div>
+
+              <div class="dashboard-upcoming-actions">
                 <span class="badge {{ event.badge_class or 'warning' }}">
                   {{ event.status_label or "Upcoming" }}
                 </span>
-              </div>
 
-              <div class="event-progress">
-                <div>
-                  <p>Event Revenue</p>
-                  <h4>${{ "%.2f"|format(event.total_revenue) }}</h4>
-                </div>
-                <div class="progress-bar">
-                  <span style="width: {% if event.total_tickets_sold > 0 %}66{% else %}12{% endif %}%;"></span>
-                </div>
+                <a href="/dashboard/events">
+                  Manage Event
+                </a>
               </div>
-
-              
-            </div>
+            </article>
             {% endfor %}
-          </div>
-        </div>
 
-        <div class="dashboard-side-stack">
-          <div class="panel">
-            <div class="panel-header">
-              <h3>Messages & Applications</h3>
-              <span class="badge">{{ dashboard_overview.active_messages }} Active</span>
+          {% else %}
+            <div class="dashboard-empty-events">
+              <strong>No upcoming events yet.</strong>
+              <p>Create the next Jukebox event from Event Management.</p>
+              <a href="/dashboard/events">Add an Event →</a>
             </div>
-
-            <div class="mini-list">
-              <div>
-                <strong>Contact Messages</strong>
-                <p>{{ metrics.contact_messages }} active website inquiries.</p>
-              </div>
-              <div>
-                <strong>DJ Applications</strong>
-                <p>{{ metrics.dj_applications }} active DJ or talent applications.</p>
-              </div>
-              <div>
-                <strong>Vendor Applications</strong>
-                <p>{{ metrics.vendor_applications }} active vendor applications.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-header">
-              <h3>Members</h3>
-              <span class="badge">{{ metrics.active_memberships }} Paid</span>
-            </div>
-
-            <div class="mini-list">
-              <div>
-                <strong>VIP Email List</strong>
-                <p>{{ metrics.vip_signups }} active VIP email subscribers.</p>
-              </div>
-              <div>
-                <strong>Paid Members</strong>
-                <p>{{ metrics.active_memberships }} active paid memberships.</p>
-              </div>
-              <div>
-                <strong>Membership Revenue</strong>
-                <p>${{ "%.2f"|format(metrics.membership_revenue) }} collected from active memberships.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-header">
-              <h3>Contact Log</h3>
-              <span class="badge warning">{{ dashboard_overview.total_contacts }} Saved</span>
-            </div>
-
-            <div class="mini-list">
-              <div>
-                <strong>Talent Contacts</strong>
-                <p>{{ dashboard_overview.talent_contacts }} saved DJs, bands, singers, hosts, or performers.</p>
-              </div>
-              <div>
-                <strong>Vendor Contacts</strong>
-                <p>{{ dashboard_overview.vendor_contacts }} saved vendors or partners.</p>
-              </div>
-              <div>
-                <strong>Total Saved Contacts</strong>
-                <p>{{ dashboard_overview.total_contacts }} people saved for future events.</p>
-              </div>
-            </div>
-          </div>
+          {% endif %}
         </div>
       </section>
 
-      <section class="section-panel" id="reports">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Reports</p>
-            <h3>Reports & Exports</h3>
-            <p>Download event, sales, member, inquiry, and contact log reports.</p>
-          </div>
-        </div>
 
-        <div class="report-grid">
-          <div class="report-card">
-            <h4>Ticket Sales Report</h4>
-            <p>Online tickets, ticket sales, refunds, comps, and revenue by event.</p>
-            <button class="js-export-report" type="button" data-report-type="ticket-sales">Export CSV</button>
+      <section class="dashboard-summary-grid">
+
+        <a class="dashboard-summary-card" href="/dashboard/messages">
+          <div class="dashboard-summary-heading">
+            <h3>Messages</h3>
+            <span class="badge">{{ dashboard_overview.active_messages }} Active</span>
           </div>
 
-          <div class="report-card">
-            <h4>Check-In Report</h4>
-            <p>Checked-in guests, remaining guests, VIP arrivals, and no-shows.</p>
-            <button class="js-export-report" type="button" data-report-type="check-in">Download Report</button>
+          <div class="dashboard-summary-stats">
+            <div>
+              <strong>{{ metrics.contact_messages }}</strong>
+              <span>Contact Messages</span>
+            </div>
+
+            <div>
+              <strong>{{ metrics.dj_applications }}</strong>
+              <span>DJ Applications</span>
+            </div>
+
+            <div>
+              <strong>{{ metrics.vendor_applications }}</strong>
+              <span>Vendor Applications</span>
+            </div>
           </div>
 
-          <div class="report-card">
-            <h4>VIP Report</h4>
-            <p>VIP tables, guest counts, notes, reserved sections, and status.</p>
-            <button class="js-export-report" type="button" data-report-type="vip">Export CSV</button>
+          <span class="dashboard-summary-link">View Messages →</span>
+        </a>
+
+
+        <a class="dashboard-summary-card" href="/dashboard/members">
+          <div class="dashboard-summary-heading">
+            <h3>Members</h3>
+            <span class="badge">{{ metrics.active_memberships }} Paid</span>
           </div>
 
-          <div class="report-card">
-            <h4>Members Report</h4>
-            <p>VIP Email List, Jukebox Circle Originals, and Jukebox Circle members.</p>
-            <button class="js-export-report" type="button" data-report-type="members">Export CSV</button>
+          <div class="dashboard-summary-stats">
+            <div>
+              <strong>{{ metrics.vip_signups }}</strong>
+              <span>VIP Email List</span>
+            </div>
+
+            <div>
+              <strong>{{ metrics.active_memberships }}</strong>
+              <span>Paid Members</span>
+            </div>
+
+            <div>
+              <strong>${{ "%.2f"|format(metrics.membership_revenue) }}</strong>
+              <span>Membership Revenue</span>
+            </div>
           </div>
 
-          <div class="report-card">
-            <h4>Contact Log Report</h4>
-            <p>Talent contacts, vendor contacts, performers, DJs, bands, and partners.</p>
-            <button class="js-export-report" type="button" data-report-type="contacts">Export CSV</button>
+          <span class="dashboard-summary-link">View Members →</span>
+        </a>
+
+
+        <a class="dashboard-summary-card" href="/dashboard/contacts">
+          <div class="dashboard-summary-heading">
+            <h3>Contact Log</h3>
+            <span class="badge warning">
+              {{ dashboard_overview.total_contacts }} Saved
+            </span>
           </div>
 
-          <div class="report-card">
-            <h4>Inquiry Report</h4>
-            <p>General inquiries, private event requests, VIP interest, and lead statuses.</p>
-            <button class="js-export-report" type="button" data-report-type="inquiries">Export CSV</button>
+          <div class="dashboard-summary-stats">
+            <div>
+              <strong>{{ dashboard_overview.talent_contacts }}</strong>
+              <span>Talent Contacts</span>
+            </div>
+
+            <div>
+              <strong>{{ dashboard_overview.vendor_contacts }}</strong>
+              <span>Vendor Contacts</span>
+            </div>
+
+            <div>
+              <strong>{{ dashboard_overview.total_contacts }}</strong>
+              <span>Total Saved</span>
+            </div>
           </div>
-        </div>
+
+          <span class="dashboard-summary-link">View Contacts →</span>
+        </a>
+
       </section>
 
-      <section class="section-panel" id="settings">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">Settings</p>
-            <h3>Staff Access</h3>
-            <p>Create staff logins and control what each person can access.</p>
-          </div>
-        </div>
 
-        <div class="settings-grid staff-only-settings-grid">
-          <div class="staff-settings-layout">
-            <div class="staff-settings-panel">
-              <h4>Access Profiles</h4>
-              <p class="staff-settings-intro">
-                Use these roles to decide what each staff member should be able to do inside the dashboard.
+      <div class="event-modal-overlay" id="kpiBreakdownModalOverlay">
+        <div class="event-modal dashboard-kpi-modal">
+          <div class="event-modal-header">
+            <div>
+              <p class="eyebrow">Dashboard Breakdown</p>
+              <h3 id="kpiBreakdownTitle">KPI Breakdown</h3>
+              <p id="kpiBreakdownSubtitle">
+                Review how this dashboard total is distributed.
               </p>
-
-              <div class="staff-role-list">
-                <div class="staff-role-card">
-                  <div>
-                    <strong>Owner / Admin</strong>
-                    <span>Full dashboard access</span>
-                  </div>
-                  <small>Can access dashboard, events, revenue, members, messages, contact log, settings, and check-in.</small>
-                </div>
-
-                <div class="staff-role-card">
-                  <div>
-                    <strong>Manager</strong>
-                    <span>Operations access</span>
-                  </div>
-                  <small>Can access daily operations, event management, guest lists, members, messages, and check-in.</small>
-                </div>
-
-                <div class="staff-role-card">
-                  <div>
-                    <strong>Door Staff</strong>
-                    <span>Check-in only</span>
-                  </div>
-                  <small>Can only access guest lists, QR scanning, and check-in tools.</small>
-                </div>
-
-                <div class="staff-role-card">
-                  <div>
-                    <strong>Bookkeeper</strong>
-                    <span>Revenue-focused access</span>
-                  </div>
-                  <small>Can access revenue, expenses, memberships, ticket sales, and reporting tools.</small>
-                </div>
-              </div>
-
-              <div class="settings-note">
-                <strong>Tip:</strong>
-                Create a separate login for each staff member so access stays organized and easy to manage.
-              </div>
             </div>
 
-            <div class="staff-settings-actions">
-              <div class="staff-settings-panel">
-                <h4>Create Staff Login</h4>
+            <button
+              class="event-modal-close"
+              type="button"
+              id="kpiBreakdownClose"
+            >
+              Close
+            </button>
+          </div>
 
-                <form class="staff-user-form" id="staffUserForm">
-                  <label>
-                    Staff Name
-                    <input type="text" id="staffName" placeholder="Example: Jasmine Smith" required />
-                  </label>
+          <div class="dashboard-kpi-modal-total">
+            <span>Total</span>
+            <strong id="kpiBreakdownTotal">0</strong>
+          </div>
 
-                  <label>
-                    Username
-                    <input type="text" id="staffUsername" placeholder="Example: jasmine" required />
-                  </label>
+          <div
+            class="dashboard-kpi-breakdown-list"
+            id="kpiBreakdownList"
+          ></div>
 
-                  <label>
-                    Temporary Password
-                    <input type="text" id="staffPassword" placeholder="Example: Door123!" required />
-                  </label>
-
-                  <label>
-                    Role
-                    <select id="staffRole" required>
-                      <option value="manager">Manager</option>
-                      <option value="door">Door Staff</option>
-                      <option value="bookkeeper">Bookkeeper</option>
-                      <option value="admin">Owner / Admin</option>
-                    </select>
-                  </label>
-
-                  <button class="btn primary" type="submit">Add Staff User</button>
-                  <div class="form-status" id="staffUserStatus"></div>
-                </form>
-              </div>
-
-              <div class="staff-settings-panel staff-user-list">
-                <h5>Current Staff Users</h5>
-
-                {% if staff_users %}
-                  {% for staff in staff_users %}
-                  <div class="staff-user-row">
-                    <div>
-                      <strong>{{ staff.name }}</strong>
-                      <span>@{{ staff.username }}</span>
-                      <small>{{ staff.role|title }}{% if not staff.active %} · Inactive{% endif %}</small>
-                    </div>
-
-                    {% if staff.active %}
-                    <button class="btn secondary js-deactivate-staff" type="button" data-staff-id="{{ staff.id }}">
-                      Deactivate
-                    </button>
-                    {% else %}
-                    <span class="status-pill muted">Inactive</span>
-                    {% endif %}
-                  </div>
-                  {% endfor %}
-                {% else %}
-                  <div class="empty-state">
-                    <p>No staff users created yet.</p>
-                  </div>
-                {% endif %}
-              </div>
-            </div>
+          <div
+            class="dashboard-kpi-detail-actions"
+            id="kpiBreakdownDetailActions"
+            hidden
+          >
+            <a
+              class="dashboard-section-link"
+              id="kpiBreakdownDetailLink"
+              href="#"
+            >
+              View Details →
+            </a>
           </div>
         </div>
-      </section>
+      </div>
+
       <div class="event-modal-overlay" id="searchResultsModalOverlay">
         <div class="event-modal">
           <div class="event-modal-header">
@@ -440,6 +469,10 @@
 
     </main>
   </div>
+    <script id="dashboardKpiBreakdownData" type="application/json">
+      {{ kpi_breakdowns | tojson }}
+    </script>
+
     <script>
     const eventModalOverlay = document.getElementById("eventModalOverlay");
     const eventModalClose = document.getElementById("eventModalClose");
@@ -1927,68 +1960,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
       });
     }
 
-    const dashboardSearchItems = [
-      {
-        title: "Quiet Storm Live",
-        type: "Event",
-        description: "Upcoming event with ticket and revenue tracking.",
-        target: "#events"
-      },
-      {
-        title: "Juneteenth Celebration",
-        type: "Event",
-        description: "Upcoming event listed in event management.",
-        target: "#events"
-      },
-      {
-        title: "Monica Johnson",
-        type: "VIP / Guest",
-        description: "VIP Table with 6 guests included.",
-        target: "#vip"
-      },
-      {
-        title: "Terrance Brown",
-        type: "Guest",
-        description: "General Admission ticket holder.",
-        target: "#check-in"
-      },
-      {
-        title: "Danielle Carter",
-        type: "Message / VIP Email List",
-        description: "Interested in VIP membership options.",
-        target: "#messages-leads"
-      },
-      {
-        title: "Renee Thompson",
-        type: "Jukebox Circle Originals",
-        description: "Original member currently active.",
-        target: "#members"
-      },
-      {
-        title: "Nicole Harris",
-        type: "Jukebox Circle",
-        description: "General Jukebox Circle member.",
-        target: "#members"
-      },
-      {
-        title: "DJ Showtime",
-        type: "Talent Contact",
-        description: "DJ contact saved in the contact log.",
-        target: "#applications"
-      },
-      {
-        title: "Chef T’s Plates",
-        type: "Vendor Contact",
-        description: "Food vendor saved in the contact log.",
-        target: "#applications"
-      },
-      {
-        title: "Battle of the DJs",
-        type: "Past Event",
-        description: "Completed event in Past Events Revenue.",
-        target: "#past-events-revenue"
-      }
-    ];
+    const dashboardSearchItems = {{ dashboard_search_items | tojson }};
 
     function renderSearchResults(query) {
       const cleanQuery = query.trim().toLowerCase();
@@ -2693,7 +2665,232 @@ const addNewEventButton = document.getElementById("addNewEventButton");
       });
     });
   });
+
 </script>
+
+<script>
+(() => {
+  const cards = document.querySelectorAll(
+    ".dashboard-kpi-breakdown"
+  );
+
+  const overlay = document.getElementById(
+    "kpiBreakdownModalOverlay"
+  );
+
+  const closeButton = document.getElementById(
+    "kpiBreakdownClose"
+  );
+
+  const title = document.getElementById(
+    "kpiBreakdownTitle"
+  );
+
+  const subtitle = document.getElementById(
+    "kpiBreakdownSubtitle"
+  );
+
+  const total = document.getElementById(
+    "kpiBreakdownTotal"
+  );
+
+  const list = document.getElementById(
+    "kpiBreakdownList"
+  );
+
+  const dataNode = document.getElementById(
+    "dashboardKpiBreakdownData"
+  );
+
+  const detailActions = document.getElementById(
+    "kpiBreakdownDetailActions"
+  );
+
+  const detailLink = document.getElementById(
+    "kpiBreakdownDetailLink"
+  );
+
+  if (!cards.length) {
+    console.warn("KPI cards were not found.");
+    return;
+  }
+
+  if (!overlay) {
+    console.warn("KPI modal was not found.");
+    return;
+  }
+
+  let breakdowns = {};
+
+  try {
+    breakdowns = JSON.parse(
+      dataNode?.textContent || "{}"
+    );
+  } catch (error) {
+    console.error(
+      "Could not parse KPI breakdown data:",
+      error
+    );
+    return;
+  }
+
+  function formatValue(value, format) {
+    const numberValue = Number(value || 0);
+
+    if (format === "currency") {
+      return numberValue.toLocaleString(
+        "en-US",
+        {
+          style: "currency",
+          currency: "USD"
+        }
+      );
+    }
+
+    return numberValue.toLocaleString("en-US");
+  }
+
+  function openBreakdown(key) {
+    const breakdown = breakdowns[key];
+
+    if (!breakdown) {
+      console.warn(
+        "No KPI breakdown found for:",
+        key
+      );
+      return;
+    }
+
+    title.textContent =
+      breakdown.title || "KPI Breakdown";
+
+    subtitle.textContent =
+      breakdown.subtitle ||
+      "Review how this total is distributed.";
+
+    total.textContent = formatValue(
+      breakdown.total,
+      breakdown.format
+    );
+
+    list.innerHTML = "";
+
+    if (
+      breakdown.detail_url
+      && detailActions
+      && detailLink
+    ) {
+      detailLink.href = breakdown.detail_url;
+      detailLink.textContent =
+        `${breakdown.detail_label || "View Details"} →`;
+
+      detailActions.hidden = false;
+    } else if (detailActions) {
+      detailActions.hidden = true;
+    }
+
+    const rows = Array.isArray(breakdown.rows)
+      ? breakdown.rows
+      : [];
+
+    if (!rows.length) {
+      const empty = document.createElement("div");
+
+      empty.className = "dashboard-kpi-empty";
+
+      empty.innerHTML = `
+        <strong>No breakdown entries yet.</strong>
+        <span>
+          This total currently has no contributing records.
+        </span>
+      `;
+
+      list.appendChild(empty);
+    } else {
+      rows.forEach((row) => {
+        const item = document.createElement("div");
+        item.className =
+          "dashboard-kpi-breakdown-row";
+
+        const label = document.createElement("span");
+        label.textContent =
+          row.label || "Unknown";
+
+        const value = document.createElement("strong");
+        value.textContent = formatValue(
+          row.value,
+          breakdown.format
+        );
+
+        item.appendChild(label);
+        item.appendChild(value);
+        list.appendChild(item);
+      });
+    }
+
+    overlay.classList.add("active");
+  }
+
+  function closeBreakdown() {
+    overlay.classList.remove("active");
+  }
+
+  cards.forEach((card) => {
+    card.addEventListener("click", () => {
+      openBreakdown(
+        card.getAttribute("data-kpi")
+      );
+    });
+
+    card.addEventListener(
+      "keydown",
+      (event) => {
+        if (
+          event.key === "Enter"
+          || event.key === " "
+        ) {
+          event.preventDefault();
+
+          openBreakdown(
+            card.getAttribute("data-kpi")
+          );
+        }
+      }
+    );
+  });
+
+  closeButton?.addEventListener(
+    "click",
+    closeBreakdown
+  );
+
+  overlay.addEventListener(
+    "click",
+    (event) => {
+      if (event.target === overlay) {
+        closeBreakdown();
+      }
+    }
+  );
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key === "Escape"
+        && overlay.classList.contains("active")
+      ) {
+        closeBreakdown();
+      }
+    }
+  );
+
+  console.log(
+    `KPI breakdowns ready: ${cards.length} cards`
+  );
+})();
+</script>
+
 
 
 
