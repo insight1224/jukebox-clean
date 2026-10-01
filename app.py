@@ -784,9 +784,11 @@ def init_db():
         amount_cents INTEGER NOT NULL,
         notes TEXT,
         quantity INTEGER DEFAULT 0,
+        event_date TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    ensure_column("event_cash_revenue", "event_date", "TEXT")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS business_revenue (
@@ -13003,6 +13005,7 @@ def api_event_cash_revenue():
     data = request.get_json(silent=True) or request.form
 
     event_name = (data.get("event_name") or "").strip()
+    event_date = (data.get("event_date") or "").strip()
     category = (data.get("category") or "Door Cash").strip()
     notes = (data.get("notes") or "").strip()
 
@@ -13029,10 +13032,17 @@ def api_event_cash_revenue():
 
     cur.execute(
         """
-        INSERT INTO event_cash_revenue (event_name, category, amount_cents, notes, quantity)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO event_cash_revenue (
+            event_name,
+            category,
+            amount_cents,
+            notes,
+            quantity,
+            event_date
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (event_name, category, amount_cents, notes, quantity),
+        (event_name, category, amount_cents, notes, quantity, event_date or None),
     )
 
     conn.commit()
@@ -13089,10 +13099,11 @@ def api_event_cash_revenue():
                     checkin_url,
                     qr_url,
                     event_name,
+                    event_date,
                     checked_in,
                     checked_in_count
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     manual_customer_name,
@@ -13105,6 +13116,7 @@ def api_event_cash_revenue():
                     f"/checkin/{manual_ticket_id}",
                     f"/qr/{manual_ticket_id}",
                     event_name,
+                    event_date or None,
                     0,
                     0,
                 ),
@@ -13169,10 +13181,11 @@ def api_event_cash_revenue():
                     checkin_url,
                     qr_url,
                     event_name,
+                    event_date,
                     checked_in,
                     checked_in_count
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     comp_customer_name,
@@ -13185,6 +13198,7 @@ def api_event_cash_revenue():
                     f"/checkin/{comp_ticket_id}",
                     f"/qr/{comp_ticket_id}",
                     event_name,
+                    event_date or None,
                     0,
                     0,
                 ),
@@ -13198,6 +13212,7 @@ def api_event_cash_revenue():
         "cash_revenue": {
             "id": cash_id,
             "event_name": event_name,
+            "event_date": event_date or None,
             "category": category,
             "amount": amount_cents / 100.0,
             "quantity": quantity,
@@ -14775,9 +14790,10 @@ def admin_dashboard_events():
                COALESCE(refunded_amount_cents, 0) AS refunded_amount_cents,
                square_refund_id,
                refund_reason,
+               event_date,
                created_at
         FROM event_tickets
-        ORDER BY event_name, created_at DESC
+        ORDER BY event_name, event_date, created_at DESC
     """)
     ticket_rows = [dict(row) for row in cur.fetchall()]
 
@@ -14988,6 +15004,7 @@ def admin_dashboard_events():
             "email": raw_email if has_real_email else "",
             "phone": "",
             "ticket_type": ticket_type,
+            "event_date": (row.get("event_date") or "").strip(),
             "quantity": guests_per_ticket,
             "source": source,
             "checked_in": checked_in_count >= guests_per_ticket,
@@ -15411,10 +15428,56 @@ def admin_dashboard_events():
         },
     }
 
+    # Build a separate list for the Check-In Center.
+    # Normal events keep one check-in list per event.
+    # Friday Reset keeps a separate check-in list for each occurrence date.
+    checkin_events = []
+
+    for event in events:
+        event_name = event.get("name") or ""
+
+        if event_name != "The Friday Reset":
+            checkin_events.append({
+                "name": event_name,
+                "display_name": event_name,
+                "status_label": event.get("status_label"),
+                "badge_class": event.get("badge_class"),
+                "checkin_guests": event.get("checkin_guests", []),
+                "total_tickets_sold": event.get("total_tickets_sold", 0),
+                "event_index": events.index(event) + 1,
+                "event_date": "",
+            })
+            continue
+
+        for occurrence in get_available_friday_reset_occurrences():
+            occurrence_date = occurrence.get("date") or ""
+            occurrence_label = occurrence.get("label") or occurrence_date
+
+            occurrence_guests = [
+                guest
+                for guest in event.get("checkin_guests", [])
+                if (guest.get("event_date") or "") == occurrence_date
+            ]
+
+            checkin_events.append({
+                "name": event_name,
+                "display_name": f"{event_name} — {occurrence_label}",
+                "status_label": event.get("status_label"),
+                "badge_class": event.get("badge_class"),
+                "checkin_guests": occurrence_guests,
+                "total_tickets_sold": sum(
+                    int(guest.get("quantity") or 1)
+                    for guest in occurrence_guests
+                ),
+                "event_index": events.index(event) + 1,
+                "event_date": occurrence_date,
+            })
+
     return render_template(
         "events_dashboard.html",
         metrics=metrics,
         events=events,
+        checkin_events=checkin_events,
         vip_members=[],
         membership_log_members=[],
         vip_count=0,
@@ -15430,6 +15493,7 @@ def admin_dashboard_events():
         dashboard_preview_summary=dashboard_preview_summary,
         events_kpi_breakdowns=events_kpi_breakdowns,
         event_ticket_types=event_ticket_types,
+        friday_reset_occurrences=FRIDAY_RESET_OCCURRENCES,
     )
 
 

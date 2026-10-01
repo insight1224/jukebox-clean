@@ -229,13 +229,13 @@
         </div>
 
         <div class="checkin-event-grid">
-          {% set checkin_events = events | rejectattr("status_label", "equalto", "Completed") | list %}
+          {% set available_checkin_events = checkin_events | rejectattr("status_label", "equalto", "Completed") | list %}
 
-          {% if checkin_events %}
-            {% for event in checkin_events %}
+          {% if available_checkin_events %}
+            {% for event in available_checkin_events %}
             <div class="checkin-event-card">
               <div>
-                <h4>{{ event.name }}</h4>
+                <h4>{{ event.display_name }}</h4>
                 <p>
                   {{ event.total_tickets_sold }} guests/tickets currently listed
                   for this event.
@@ -250,8 +250,8 @@
                 <button
                   class="btn primary js-open-checkin"
                   type="button"
-                  data-checkin-target="checkin-modal-{{ loop.index }}"
-                  data-checkin-name="{{ event.name }}"
+                  data-checkin-target="checkin-center-modal-{{ loop.index }}"
+                  data-checkin-name="{{ event.display_name }}"
                 >
                   Open Check-In
                 </button>
@@ -296,6 +296,15 @@
             {% if event.status_label != "Completed" %}
             <option value="{{ event.name }}">{{ event.name }}</option>
             {% endif %}
+            {% endfor %}
+          </select>
+
+          <select id="ticketSaleEventDate" hidden disabled>
+            <option value="">Select Friday</option>
+            {% for occurrence in friday_reset_occurrences|default([]) %}
+            <option value="{{ occurrence.date }}">
+              {{ occurrence.label }}
+            </option>
             {% endfor %}
           </select>
 
@@ -676,6 +685,7 @@
             </div>
           </div>
 
+          {# Standard event check-in contents used by Event Details -> Check-In. #}
           {% for event in events %}
           <div class="checkin-modal-content" id="checkin-modal-{{ loop.index }}">
             <div class="checkin-preview">
@@ -705,6 +715,48 @@
               <div class="empty-state">
                 <h4>No synced guests yet</h4>
                 <p>Square and Eventbrite ticket buyers will show here once synced.</p>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          {% endfor %}
+
+          {# Date-aware Check-In Center contents. Friday Reset is separated by occurrence date. #}
+          {% set available_checkin_events = checkin_events | rejectattr("status_label", "equalto", "Completed") | list %}
+          {% for event in available_checkin_events %}
+          <div class="checkin-modal-content" id="checkin-center-modal-{{ loop.index }}">
+            <div class="checkin-preview">
+              <input type="text" placeholder="Search guest name, email, ticket type, or source..." />
+
+              {% for guest in event.checkin_guests %}
+              <div class="guest-card checkin-guest"
+                data-checked-in="{{ guest.checked_in_count or 0 }}"
+                data-total-guests="{{ guest.quantity or 1 }}"
+                data-ticket-ids="{{ guest.ticket_ids|default([guest.ticket_id])|join(',') }}"
+              >
+                <div>
+                  <h4>{{ guest.name }}</h4>
+                  <p>{{ guest.ticket_type }} — {{ guest.quantity }} {{ "ticket" if guest.quantity == 1 else "tickets" }} · {{ guest.source }}</p>
+                  {% if guest.email %}
+                  <small>{{ guest.email }}</small>
+                  {% endif %}
+                  <small>Checked in: <span class="checked-count">{{ guest.checked_in_count or 0 }}</span> of <span class="total-count">{{ guest.quantity or 1 }}</span></small>
+                </div>
+
+                <div class="row-actions">
+                  <button class="js-checkin-one" type="button">Check In 1</button>
+                  <button class="js-checkin-all" type="button">Check In All</button>
+                  <button class="js-checkin-undo" type="button">Undo</button>
+                </div>
+              </div>
+              {% else %}
+              <div class="empty-state">
+                <h4>No guests yet</h4>
+                {% if event.event_date %}
+                <p>Tickets for this Friday Reset date will appear here once purchased or added.</p>
+                {% else %}
+                <p>Square and Eventbrite ticket buyers will show here once synced.</p>
+                {% endif %}
               </div>
               {% endfor %}
             </div>
@@ -1570,6 +1622,7 @@
 
     const saveTicketSaleButton = document.getElementById("saveTicketSaleButton");
     const ticketSaleEvent = document.getElementById("ticketSaleEvent");
+    const ticketSaleEventDate = document.getElementById("ticketSaleEventDate");
     const ticketSaleCustomer = document.getElementById("ticketSaleCustomer");
     const ticketSaleType = document.getElementById("ticketSaleType");
     const ticketSaleQuantity = document.getElementById("ticketSaleQuantity");
@@ -1625,6 +1678,22 @@
       ticketSaleType.disabled = false;
     }
 
+    function updateTicketSaleEventDate() {
+      if (!ticketSaleEventDate) {
+        return;
+      }
+
+      const selectedEvent = (ticketSaleEvent?.value || "").trim();
+      const isFridayReset = selectedEvent === "The Friday Reset";
+
+      ticketSaleEventDate.hidden = !isFridayReset;
+      ticketSaleEventDate.disabled = !isFridayReset;
+
+      if (!isFridayReset) {
+        ticketSaleEventDate.value = "";
+      }
+    }
+
     function updateCompTicketFields() {
       const isComp =
         (ticketSaleSource?.value || "").trim().toLowerCase() === "comp";
@@ -1653,15 +1722,20 @@
       }
     }
 
-    ticketSaleEvent?.addEventListener("change", updateTicketSaleTypes);
+    ticketSaleEvent?.addEventListener("change", () => {
+      updateTicketSaleTypes();
+      updateTicketSaleEventDate();
+    });
     ticketSaleSource?.addEventListener("change", updateCompTicketFields);
 
     updateTicketSaleTypes();
+    updateTicketSaleEventDate();
     updateCompTicketFields();
 
     if (saveTicketSaleButton) {
       saveTicketSaleButton.addEventListener("click", async () => {
         const eventName = (ticketSaleEvent?.value || "").trim();
+        const eventDate = (ticketSaleEventDate?.value || "").trim();
         const customer = (ticketSaleCustomer?.value || "").trim();
         const ticketType = (ticketSaleType?.value || "").trim();
         const source = (ticketSaleSource?.value || "").trim();
@@ -1671,6 +1745,11 @@
 
         if (!eventName) {
           alert("Please select an event.");
+          return;
+        }
+
+        if (eventName === "The Friday Reset" && !eventDate) {
+          alert("Please select the Friday Reset date.");
           return;
         }
 
@@ -1724,6 +1803,7 @@
             },
             body: JSON.stringify({
               event_name: eventName,
+              event_date: eventDate,
               category: source,
               amount,
               quantity,
