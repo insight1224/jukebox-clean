@@ -3401,6 +3401,12 @@ def is_membership_payment(amount_cents, note_blob):
 
 
 def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email):
+    # Membership revenue represents money actually collected.
+    # Failed, pending, or canceled Square attempts must never create
+    # membership payment history or reactivate a membership.
+    if str(payment.get("status") or "").strip().upper() != "COMPLETED":
+        return False
+
     if not is_membership_payment_from_payment(payment, amount_cents, note_blob):
         return False
 
