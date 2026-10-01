@@ -887,6 +887,66 @@ def init_db():
     )
     """)
 
+    # Ensure current website events are available to the admin Events dashboard.
+    # These inserts only fill missing setup/rules; owner-managed settings are not overwritten.
+    admin_event_seeds = [
+        ("All-Women Battle of the DJs", "2026-10-25", "Upcoming"),
+        ("The Friday Reset", "2026-10-16", "Upcoming"),
+    ]
+
+    for event_name, event_date, event_status in admin_event_seeds:
+        cursor.execute(
+            """
+            INSERT INTO events (name, event_date, status)
+            SELECT ?, ?, ?
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM events
+                WHERE name = ?
+            )
+            """,
+            (event_name, event_date, event_status, event_name),
+        )
+
+    admin_ticket_rule_seeds = {
+        "All-Women Battle of the DJs": [
+            ("Early Bird", 1),
+            ("General Admission", 1),
+            ("Regular VIP Section", 6),
+            ("Premium VIP Section", 6),
+            ("DJ VIP Section", 6),
+        ],
+        "The Friday Reset": [
+            ("General Admission", 1),
+        ],
+    }
+
+    for event_name, ticket_rules in admin_ticket_rule_seeds.items():
+        for ticket_type, guests_per_ticket in ticket_rules:
+            cursor.execute(
+                """
+                INSERT INTO event_ticket_rules (
+                    event_name,
+                    ticket_type,
+                    guests_per_ticket
+                )
+                SELECT ?, ?, ?
+                WHERE NOT EXISTS (
+                    SELECT 1
+                    FROM event_ticket_rules
+                    WHERE event_name = ?
+                      AND ticket_type = ?
+                )
+                """,
+                (
+                    event_name,
+                    ticket_type,
+                    guests_per_ticket,
+                    event_name,
+                    ticket_type,
+                ),
+            )
+
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS event_square_mappings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
