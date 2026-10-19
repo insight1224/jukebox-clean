@@ -4933,8 +4933,8 @@ Scorpio season is lit as we also celebrate birthday weekend with two queens. Com
             "early": {"price": 15, "sold": 0, "size": 30},
             "ga": {"price": 18, "sold": 0, "size": 298},
             "vip": {"price": 200, "sold": 0, "size": 4},
-            "premium_vip": {"price": 250, "sold": 0, "size": 3},
-            "booth": {"price": 225, "sold": 0, "size": 6}
+            "premium_vip": {"price": 250, "sold": 0, "size": 1},
+            "booth": {"price": 225, "sold": 0, "size": 3}
         }
     },
 
@@ -7517,26 +7517,6 @@ def get_merch_catalog():
                     "slug": "black",
                     "image": "images/merch/bull-city-nights-black.png",
                 },
-                {
-                    "name": "White",
-                    "slug": "white",
-                    "image": "images/merch/bull-city-nights-white.png",
-                },
-                {
-                    "name": "Gold",
-                    "slug": "gold",
-                    "image": "images/merch/bull-city-nights-gold.png",
-                },
-                {
-                    "name": "Sand",
-                    "slug": "sand",
-                    "image": "images/merch/bull-city-nights-sand.png",
-                },
-                {
-                    "name": "Chocolate Brown",
-                    "slug": "chocolate-brown",
-                    "image": "images/merch/bull-city-nights-chocolate-brown.png",
-                },
             ],
             "sizes": [
                 {"name": "Small", "value": "S", "price": 30.00},
@@ -7569,19 +7549,14 @@ def get_merch_catalog():
             ),
             "colors": [
                 {
-                    "name": "Black",
-                    "slug": "black",
-                    "image": "images/merch/good-vibes-lounge-black.png",
-                },
-                {
-                    "name": "Sand",
-                    "slug": "sand",
-                    "image": "images/merch/good-vibes-lounge-sand.png",
-                },
-                {
                     "name": "White",
                     "slug": "white",
                     "image": "images/merch/good-vibes-lounge-white.png",
+                },
+                {
+                    "name": "Black",
+                    "slug": "black",
+                    "image": "images/merch/good-vibes-lounge-black.png",
                 },
             ],
             "sizes": [
@@ -7614,11 +7589,6 @@ def get_merch_catalog():
                 "behind The Jukebox Lounge NC."
             ),
             "colors": [
-                {
-                    "name": "Gold",
-                    "slug": "gold",
-                    "image": "images/merch/bull-city-legacy-gold.png",
-                },
                 {
                     "name": "Sand",
                     "slug": "sand",
@@ -7660,11 +7630,6 @@ def get_merch_catalog():
                 "good music, and The Jukebox Lounge NC experience."
             ),
             "colors": [
-                {
-                    "name": "Graphite Heather",
-                    "slug": "graphite-heather",
-                    "image": "images/merch/never-gets-old-graphite-heather.png",
-                },
                 {
                     "name": "Military Green",
                     "slug": "military-green",
@@ -7711,11 +7676,6 @@ def get_merch_catalog():
                     "image": "images/merch/bull-city-made-sand.png",
                 },
                 {
-                    "name": "Gold",
-                    "slug": "gold",
-                    "image": "images/merch/bull-city-made-gold.png",
-                },
-                {
                     "name": "White",
                     "slug": "white",
                     "image": "images/merch/bull-city-made-white.png",
@@ -7751,19 +7711,14 @@ def get_merch_catalog():
             ),
             "colors": [
                 {
-                    "name": "Heather Dark Grey",
-                    "slug": "heather-dark-grey",
-                    "image": "images/merch/after-dark-jukebox-heather-dark-grey.png",
-                },
-                {
                     "name": "Black",
                     "slug": "black",
                     "image": "images/merch/after-dark-jukebox-black.png",
                 },
                 {
-                    "name": "Maroon",
-                    "slug": "maroon",
-                    "image": "images/merch/after-dark-jukebox-maroon.png",
+                    "name": "Sand",
+                    "slug": "sand",
+                    "image": "images/merch/after-dark-jukebox-sand.png",
                 },
             ],
             "sizes": [
@@ -8011,10 +7966,6 @@ def merch_checkout():
             "name": "Bull City Nights",
             "colors": {
                 "Black",
-                "White",
-                "Gold",
-                "Sand",
-                "Chocolate Brown",
             },
             "sizes": {
                 "S": 3000,
@@ -8032,7 +7983,6 @@ def merch_checkout():
             "name": "Good Vibes Lounge",
             "colors": {
                 "Black",
-                "Sand",
                 "White",
             },
             "sizes": {
@@ -8050,7 +8000,6 @@ def merch_checkout():
         "bull-city-legacy": {
             "name": "Bull City Legacy",
             "colors": {
-                "Gold",
                 "Sand",
                 "White",
             },
@@ -8070,7 +8019,6 @@ def merch_checkout():
         "never-gets-old": {
             "name": "Never Gets Old",
             "colors": {
-                "Graphite Heather",
                 "Military Green",
                 "Black",
             },
@@ -8091,7 +8039,6 @@ def merch_checkout():
             "name": "Bull City Made",
             "colors": {
                 "Sand",
-                "Gold",
                 "White",
             },
             "sizes": {
@@ -8110,9 +8057,8 @@ def merch_checkout():
         "after-dark-jukebox": {
             "name": "After Dark Jukebox",
             "colors": {
-                "Heather Dark Grey",
                 "Black",
-                "Maroon",
+                "Sand",
             },
             "sizes": {
                 "S": 3500,
@@ -9610,7 +9556,10 @@ def build_event_ticket_catalog(event, event_date=None):
             remaining = max(0, capacity - sold)
 
             if (
-                event.get("name") == "Battle of the DJs Part Two"
+                event.get("name") in (
+                    "Battle of the DJs Part Two",
+                    "All-Women Battle of the DJs",
+                )
                 and ticket["name"] == "Early Bird"
             ):
                 remaining = 0
@@ -10401,7 +10350,10 @@ def event_detail(event_name):
 
         remaining = max(0, quantity - sold)
         if (
-            event["name"] == "Battle of the DJs Part Two"
+            event["name"] in (
+                "Battle of the DJs Part Two",
+                "All-Women Battle of the DJs",
+            )
             and ticket_name == "Early Bird"
         ):
             remaining = 0

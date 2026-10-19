@@ -205,6 +205,13 @@
                 {% if not event.tickets_coming_soon %}
                 <p>${{ "%.2f"|format(t.price) }}</p>
                 {% endif %}
+                {% if event.name == "All-Women Battle of the DJs"
+                      and t.name in ["Regular VIP Section", "Premium VIP Section", "DJ VIP Section"]
+                      and not t.sold_out %}
+                <p class="vip-remaining-count">
+                    Only {{ t.remaining }} Section{{ "s" if t.remaining != 1 else "" }} Remaining
+                </p>
+                {% endif %}
                 {% if event.name == "Battle of the DJs" %}
                 <span class="btn disabled">Online Sales Closed</span>
                 {% elif event.tickets_coming_soon %}
