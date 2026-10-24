@@ -894,6 +894,7 @@ def init_db():
     admin_event_seeds = [
         ("All-Women Battle of the DJs", "2026-10-25", "Upcoming"),
         ("The Friday Reset", "2026-10-16", "Upcoming"),
+        ("Quiet Storm Live — Neo Soul Meets R&B", "2026-11-28", "Upcoming"),
     ]
 
     for event_name, event_date, event_status in admin_event_seeds:
@@ -920,6 +921,10 @@ def init_db():
         ],
         "The Friday Reset": [
             ("General Admission", 1),
+        ],
+        "Quiet Storm Live — Neo Soul Meets R&B": [
+            ("General Admission", 1),
+            ("VIP Booth", 5),
         ],
     }
 
@@ -4974,6 +4979,41 @@ Ages 30+.""",
         ),
         "tickets": {
             "ga": {"price": 15, "sold": 0, "size": 150}
+        }
+    },
+
+
+    {
+        "id": 7,
+        "name": "Quiet Storm Live — Neo Soul Meets R&B",
+        "status": "upcoming",
+        "flyer": "/static/images/quiet-storm-november.png",
+        "description": """The Jukebox Lounge NC presents Quiet Storm Live at The Situation — an intimate, grown-and-sexy evening of live Neo Soul and R&B featuring Jenelle 4Real and Devin D.""",
+        "description_long": """Experience an intimate evening of soulful sounds, smooth R&B, and unforgettable live music.
+
+The Jukebox Lounge NC presents Quiet Storm Live, featuring Jenelle 4Real and Devin D at The Situation in Durham.
+
+Whether you're planning a date night, coming with friends, or simply looking to unwind, enjoy a grown-and-sexy atmosphere filled with live music and great vibes.
+
+General Admission Presale: $20.
+One exclusive VIP booth is available for $150, accommodating up to five guests.
+
+Limited availability. Secure your tickets early!""",
+        "ticket_link": "",
+        "event_datetime": "Saturday, November 28, 2026",
+        "location": "The Situation — 2102 Angier Ave, Durham, NC 27703",
+        "time": "7:00 PM - 9:00 PM",
+        "doors": "7:00 PM",
+        "ticket_label": "$20 Presale • $150 VIP Booth",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=2102+Angier+Ave+Durham+NC+27703",
+        "early_link": "",
+        "ga_link": "",
+        "vip_link": "",
+        "booth_link": "",
+        "tickets_coming_soon": False,
+        "tickets": {
+            "ga": {"price": 20, "sold": 0, "size": 75},
+            "vip": {"price": 150, "sold": 0, "size": 1}
         }
     },
 
@@ -9432,6 +9472,26 @@ def build_event_ticket_catalog(event, event_date=None):
         },
     ]
 
+    # Quiet Storm Live ticket configuration.
+    if event.get("name") == "Quiet Storm Live — Neo Soul Meets R&B":
+        canonical_tickets = [
+            {
+                "key": "ga",
+                "name": "General Admission",
+                "display_name": "General Admission Presale",
+                "description": "$20 presale admission.",
+            },
+            {
+                "key": "vip",
+                "name": "VIP Booth",
+                "display_name": "VIP Booth — Up to 5 Guests",
+                "description": (
+                    "$150 total for one reserved booth "
+                    "accommodating up to five guests."
+                ),
+            },
+        ]
+
     # The Friday Reset has one $15 advance admission option per date.
     if event.get("name") == "The Friday Reset":
         canonical_tickets = [
@@ -10296,7 +10356,12 @@ def event_detail(event_name):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    if event["name"] == "All-Women Battle of the DJs":
+    if event["name"] == "Quiet Storm Live — Neo Soul Meets R&B":
+        canonical = [
+            ("General Admission", "ga"),
+            ("VIP Booth", "vip"),
+        ]
+    elif event["name"] == "All-Women Battle of the DJs":
         canonical = [
             ("Early Bird", "early"),
             ("General Admission", "ga"),
