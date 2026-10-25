@@ -4938,7 +4938,7 @@ Scorpio season is lit as we also celebrate birthday weekend with two queens. Com
             "early": {"price": 15, "sold": 0, "size": 30},
             "ga": {"price": 18, "sold": 0, "size": 298},
             "vip": {"price": 200, "sold": 0, "size": 4},
-            "premium_vip": {"price": 250, "sold": 0, "size": 1},
+            "premium_vip": {"price": 250, "sold": 0, "size": 3},
             "booth": {"price": 225, "sold": 0, "size": 3}
         }
     },
