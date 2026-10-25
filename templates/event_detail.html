@@ -212,7 +212,10 @@
                     Only {{ t.remaining }} Section{{ "s" if t.remaining != 1 else "" }} Remaining
                 </p>
                 {% endif %}
-                {% if event.name == "Battle of the DJs" %}
+                {% if online_sales_closed %}
+                <span class="btn disabled">Online Sales Closed</span>
+                <p>Tickets Available at the Door</p>
+                {% elif event.name == "Battle of the DJs" %}
                 <span class="btn disabled">Online Sales Closed</span>
                 {% elif event.tickets_coming_soon %}
                 <span class="btn disabled">Coming Soon</span>

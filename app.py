@@ -9823,6 +9823,19 @@ def ticket_order_complete():
     )
 
 
+# Automatic online ticket sales cutoff for All-Women Battle.
+ALL_WOMEN_SALES_CUTOFF = datetime(
+    2026, 10, 25, 14, 0,
+    tzinfo=ZoneInfo("America/New_York")
+)
+
+def all_women_online_sales_closed(event):
+    return (
+        event.get("name") == "All-Women Battle of the DJs"
+        and datetime.now(ZoneInfo("America/New_York"))
+        >= ALL_WOMEN_SALES_CUTOFF
+    )
+
 @app.route("/tickets/checkout/<path:event_name>", methods=["POST"])
 def ticket_checkout_create(event_name):
     payload = request.get_json(silent=True) or {}
@@ -9848,6 +9861,12 @@ def ticket_checkout_create(event_name):
         return {
             "success": False,
             "error": "Online ticket sales are not available for this event.",
+        }, 400
+
+    if all_women_online_sales_closed(event):
+        return {
+            "success": False,
+            "error": "Online sales are closed. Tickets are available at the door.",
         }, 400
 
     if event.get("tickets_coming_soon"):
@@ -10286,6 +10305,11 @@ def ticket_checkout_page(event_name):
             url_for("event_detail", event_name=event["name"])
         )
 
+    if all_women_online_sales_closed(event):
+        return redirect(
+            url_for("event_detail", event_name=event["name"])
+        )
+
     selected_event_date = None
     selected_occurrence = None
 
@@ -10457,6 +10481,7 @@ def event_detail(event_name):
         is_quiet_storm=is_quiet_storm,
         hero_flyer_url=hero_flyer_url,
         friday_reset_occurrences=friday_reset_occurrences,
+        online_sales_closed=all_women_online_sales_closed(event),
     )
 
 
