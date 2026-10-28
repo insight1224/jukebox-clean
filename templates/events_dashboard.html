@@ -492,7 +492,7 @@
 
               <a
                 class="event-detail-transaction-link"
-                href="/dashboard/ticket-orders?event={{ event.name|urlencode }}"
+                href="/dashboard/ticket-orders?event={{ event.name|urlencode }}{% if event.name == 'The Friday Reset' and event.event_date %}&amp;event_date={{ event.event_date|urlencode }}{% endif %}"
               >
                 Ticket Transactions
               </a>

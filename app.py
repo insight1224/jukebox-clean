@@ -14899,6 +14899,7 @@ def admin_dashboard_events():
                COALESCE(quantity, 0) AS quantity,
                amount_cents,
                notes,
+              event_date,
                created_at
         FROM event_cash_revenue
         ORDER BY event_name, created_at
@@ -15360,6 +15361,173 @@ def admin_dashboard_events():
         event["not_checked_in_count"] = max(estimated_attendance - checked_in_count, 0)
         event["checkin_progress_label"] = f"{checked_in_count} of {estimated_attendance}"
 
+    # Split Friday Reset dashboard cards by occurrence date.
+    # Keep the shared Revenue dashboard's combined event totals unchanged.
+    friday_reset_name = "The Friday Reset"
+    friday_reset_parent = next(
+        (event for event in events if event.get("name") == friday_reset_name),
+        None,
+    )
+
+    if friday_reset_parent:
+        from collections import defaultdict
+        from datetime import date
+
+        dated_tickets = defaultdict(list)
+        dated_cash = defaultdict(list)
+
+        for ticket in ticket_rows:
+            if ticket.get("event_name") == friday_reset_name:
+                occurrence_date = str(ticket.get("event_date") or "").strip()
+                if occurrence_date:
+                    dated_tickets[occurrence_date].append(ticket)
+
+        for cash in cash_rows:
+            if cash.get("event_name") == friday_reset_name:
+                occurrence_date = str(cash.get("event_date") or "").strip()
+                if occurrence_date:
+                    dated_cash[occurrence_date].append(cash)
+
+        occurrence_dates = {
+            occurrence["date"]
+            for occurrence in get_available_friday_reset_occurrences()
+        }
+        occurrence_dates.update(dated_tickets)
+        occurrence_dates.update(dated_cash)
+
+        friday_events = []
+
+        for occurrence_date in sorted(occurrence_dates):
+            occurrence = dict(friday_reset_parent)
+            occurrence["event_date"] = occurrence_date
+            occurrence["date"] = format_event_date(occurrence_date)
+
+            occurrence["status_label"] = (
+                "Completed"
+                if occurrence_date < date.today().isoformat()
+                else "Upcoming"
+            )
+            occurrence["badge_class"] = badge_class_for_status(
+                occurrence["status_label"]
+            )
+
+            tickets_for_date = dated_tickets.get(occurrence_date, [])
+            cash_for_date = dated_cash.get(occurrence_date, [])
+
+            # Reuse the existing guest-row construction and grouping.
+            occurrence["guests"] = group_guest_rows([
+                guest
+                for guest in guests_by_event.get(friday_reset_name, [])
+                if guest.get("event_date") == occurrence_date
+            ])
+            occurrence["vip_guests"] = group_guest_rows([
+                guest
+                for guest in vip_by_event.get(friday_reset_name, [])
+                if guest.get("event_date") == occurrence_date
+            ])
+            occurrence["checkin_guests"] = group_guest_rows([
+                guest
+                for guest in checkin_by_event.get(friday_reset_name, [])
+                if guest.get("event_date") == occurrence_date
+            ])
+
+            ticket_summary = defaultdict(lambda: {"quantity": 0, "revenue": 0.0})
+            checked_in_count = 0
+
+            for ticket in tickets_for_date:
+                ticket_type = str(ticket.get("ticket_type") or "Ticket").strip()
+                ticket_summary[ticket_type]["quantity"] += 1
+                ticket_summary[ticket_type]["revenue"] += (
+                    int(ticket.get("amount_cents") or 0) / 100.0
+                )
+
+                checked_in_count += min(
+                    max(int(ticket.get("checked_in_count") or 0),
+                        int(ticket.get("checked_in") or 0)),
+                    int(ticket_rule_map.get(
+                        (friday_reset_name.lower(), ticket_type.lower()), 1
+                    ) or 1),
+                )
+
+            linked_manual_ids = set()
+            for ticket in tickets_for_date:
+                payment_id = str(ticket.get("payment_id") or "")
+                if payment_id.startswith("MANUAL_"):
+                    try:
+                        linked_manual_ids.add(
+                            int(payment_id.split(":", 1)[0].rsplit("_", 1)[1])
+                        )
+                    except (ValueError, IndexError):
+                        pass
+
+            extra_cash_tickets = 0
+            cash_revenue = 0.0
+
+            for cash in cash_for_date:
+                cash_revenue += int(cash.get("amount_cents") or 0) / 100.0
+                category = str(cash.get("category") or "").lower()
+                quantity = int(cash.get("quantity") or 0)
+
+                if (
+                    quantity > 0
+                    and category != "comp"
+                    and "vendor" not in category
+                    and "sponsor" not in category
+                    and int(cash.get("id") or 0) not in linked_manual_ids
+                ):
+                    extra_cash_tickets += quantity
+                    ticket_summary["Cash / Door Tickets"]["quantity"] += quantity
+
+            ticket_count = len(tickets_for_date) + extra_cash_tickets
+            ticket_revenue = sum(
+                int(ticket.get("amount_cents") or 0)
+                for ticket in tickets_for_date
+                if not str(ticket.get("payment_id") or "").startswith(
+                    ("MANUAL_", "COMP_")
+                )
+            ) / 100.0
+
+            occurrence["tickets"] = [
+                {"name": name, **values}
+                for name, values in sorted(ticket_summary.items())
+                if values["quantity"] > 0
+            ]
+            occurrence["total_tickets_sold"] = ticket_count
+            occurrence["online_ticket_count"] = sum(
+                1 for ticket in tickets_for_date
+                if not str(ticket.get("payment_id") or "").startswith(
+                    ("MANUAL_", "COMP_")
+                )
+            )
+            occurrence["estimated_attendance"] = ticket_count
+            occurrence["checked_in_count"] = checked_in_count
+            occurrence["not_checked_in_count"] = max(
+                ticket_count - checked_in_count, 0
+            )
+            occurrence["checkin_progress_label"] = (
+                f"{checked_in_count} of {ticket_count}"
+            )
+            occurrence["cash_revenue_total"] = cash_revenue
+            occurrence["cash_ticket_quantity"] = extra_cash_tickets
+            occurrence["total_revenue"] = ticket_revenue
+            occurrence["total_revenue_with_cash"] = (
+                ticket_revenue + cash_revenue
+            )
+            occurrence["net_profit"] = occurrence["total_revenue_with_cash"]
+            occurrence["comp_ticket_count"] = sum(
+                int(guest.get("quantity") or 1)
+                for guest in occurrence["guests"]
+                if str(guest.get("source") or "").lower() == "comp"
+            )
+            occurrence["guest_list_count"] = occurrence["comp_ticket_count"]
+
+            friday_events.append(occurrence)
+
+        events = [
+            event for event in events
+            if event.get("name") != friday_reset_name
+        ] + friday_events
+
     # ---------------------------------------------------------
     # EVENTS DASHBOARD KPI BREAKDOWNS
     # ---------------------------------------------------------
@@ -15470,50 +15638,43 @@ def admin_dashboard_events():
         },
     }
 
-    # Build a separate list for the Check-In Center.
-    # Normal events keep one check-in list per event.
-    # Friday Reset keeps a separate check-in list for each occurrence date.
+    # Each event card now owns its own Check-In Center entry.
+    # Friday Reset occurrences have already been separated by date.
     checkin_events = []
 
-    for event in events:
-        event_name = event.get("name") or ""
+    available_reset_dates = {
+        occurrence["date"]
+        for occurrence in get_available_friday_reset_occurrences()
+    }
 
-        if event_name != "The Friday Reset":
-            checkin_events.append({
-                "name": event_name,
-                "display_name": event_name,
-                "status_label": event.get("status_label"),
-                "badge_class": event.get("badge_class"),
-                "checkin_guests": event.get("checkin_guests", []),
-                "total_tickets_sold": event.get("total_tickets_sold", 0),
-                "event_index": events.index(event) + 1,
-                "event_date": "",
-            })
+    for event_index, event in enumerate(events, start=1):
+        event_name = event.get("name") or ""
+        occurrence_date = (
+            str(event.get("event_date") or "").strip()
+            if event_name == "The Friday Reset"
+            else ""
+        )
+
+        if (
+            event_name == "The Friday Reset"
+            and occurrence_date not in available_reset_dates
+        ):
             continue
 
-        for occurrence in get_available_friday_reset_occurrences():
-            occurrence_date = occurrence.get("date") or ""
-            occurrence_label = occurrence.get("label") or occurrence_date
-
-            occurrence_guests = [
-                guest
-                for guest in event.get("checkin_guests", [])
-                if (guest.get("event_date") or "") == occurrence_date
-            ]
-
-            checkin_events.append({
-                "name": event_name,
-                "display_name": f"{event_name} — {occurrence_label}",
-                "status_label": event.get("status_label"),
-                "badge_class": event.get("badge_class"),
-                "checkin_guests": occurrence_guests,
-                "total_tickets_sold": sum(
-                    int(guest.get("quantity") or 1)
-                    for guest in occurrence_guests
-                ),
-                "event_index": events.index(event) + 1,
-                "event_date": occurrence_date,
-            })
+        checkin_events.append({
+            "name": event_name,
+            "display_name": (
+                f"{event_name} — {event.get('date') or occurrence_date}"
+                if occurrence_date
+                else event_name
+            ),
+            "status_label": event.get("status_label"),
+            "badge_class": event.get("badge_class"),
+            "checkin_guests": event.get("checkin_guests", []),
+            "total_tickets_sold": event.get("total_tickets_sold", 0),
+            "event_index": event_index,
+            "event_date": occurrence_date,
+        })
 
     return render_template(
         "events_dashboard.html",
@@ -16327,16 +16488,31 @@ def dashboard_ticket_orders():
         )
 
         order["event_date"] = (
-            event_setup.get("event_date")
-            or ""
+            (order.get("event_date") or "").strip()
+            if event_name == "The Friday Reset"
+            else (event_setup.get("event_date") or "")
         )
 
         order["event_status"] = (
-            event_setup.get("status")
-            or ""
+            ""
+            if event_name == "The Friday Reset"
+            else (event_setup.get("status") or "")
         )
 
         orders.append(order)
+
+    selected_event = (request.args.get("event") or "").strip()
+    selected_event_date = (request.args.get("event_date") or "").strip()
+
+    if selected_event:
+        orders = [
+            order for order in orders
+            if str(order.get("event_name") or "").strip() == selected_event
+            and (
+                not selected_event_date
+                or str(order.get("event_date") or "").strip() == selected_event_date
+            )
+        ]
 
     event_groups_map = {}
 
@@ -16348,6 +16524,10 @@ def dashboard_ticket_orders():
         ).strip()
 
         if not event_name:
+            continue
+
+        if event_name == "The Friday Reset":
+            # Recurring dates are grouped individually below.
             continue
 
         event_groups_map[event_name] = {
@@ -16367,8 +16547,16 @@ def dashboard_ticket_orders():
             order.get("event_name") or "Unknown Event"
         ).strip() or "Unknown Event"
 
+        event_date = str(order.get("event_date") or "").strip()
+
+        group_key = (
+            (event_name, event_date)
+            if event_name == "The Friday Reset"
+            else event_name
+        )
+
         group = event_groups_map.setdefault(
-            event_name,
+            group_key,
             {
                 "name": event_name,
                 "event_date": order.get("event_date") or "",
