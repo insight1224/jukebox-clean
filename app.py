@@ -894,7 +894,7 @@ def init_db():
     admin_event_seeds = [
         ("All-Women Battle of the DJs", "2026-10-25", "Upcoming"),
         ("The Friday Reset", "2026-10-16", "Upcoming"),
-        ("Quiet Storm Live — Neo Soul Meets R&B", "2026-11-28", "Upcoming"),
+        ("Quiet Storm Live — Neo Soul Meets R&B", "2026-12-12", "Upcoming"),
     ]
 
     for event_name, event_date, event_status in admin_event_seeds:
@@ -5000,7 +5000,7 @@ One exclusive VIP booth is available for $150, accommodating up to five guests.
 
 Limited availability. Secure your tickets early!""",
         "ticket_link": "",
-        "event_datetime": "Saturday, November 28, 2026",
+        "event_datetime": "Saturday, December 12, 2026",
         "location": "The Situation — 2102 Angier Ave, Durham, NC 27703",
         "time": "7:00 PM - 9:00 PM",
         "doors": "7:00 PM",
