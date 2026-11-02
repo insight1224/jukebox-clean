@@ -4671,7 +4671,14 @@ FRIDAY_RESET_TIMEZONE = ZoneInfo("America/New_York")
 FRIDAY_RESET_START_DATE = date(2026, 10, 16)
 FRIDAY_RESET_CALENDAR_MONTHS = 12
 
+FRIDAY_RESET_ADDITIONAL_DATES = {
+    "2026-11-06",
+    "2026-11-20",
+}
+
 FRIDAY_RESET_EXCLUDED_DATES = {
+    "2026-11-13",
+    "2026-11-27",
     "2026-12-25",
 }
 
@@ -4706,6 +4713,16 @@ def build_friday_reset_occurrences():
 
         occurrence_date += timedelta(days=14)
 
+    for extra_date in sorted(FRIDAY_RESET_ADDITIONAL_DATES):
+        extra = date.fromisoformat(extra_date)
+
+        if calendar_start <= extra <= calendar_end:
+            occurrences.append({
+                "date": extra_date,
+                "label": f"{extra.strftime('%A, %B')} {extra.day}, {extra.year}",
+            })
+
+    occurrences.sort(key=lambda item: item["date"])
     return occurrences
 
 
