@@ -749,6 +749,48 @@ def init_db():
 
     ensure_column("ticket_orders", "event_date", "TEXT")
 
+    # Inventory reservations for Battle of the DJs Part 4.
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS part4_ticket_reservations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_number TEXT NOT NULL,
+        ticket_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL CHECK(quantity > 0),
+        status TEXT NOT NULL DEFAULT 'Held',
+        square_payment_link_id TEXT,
+        expires_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(order_number, ticket_type)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_part4_reservations_status
+    ON part4_ticket_reservations(status, expires_at)
+    """)
+
+    # Saturday Spin inventory reservations.
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS saturday_spin_reservations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_number TEXT NOT NULL,
+        ticket_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL CHECK(quantity > 0),
+        status TEXT NOT NULL DEFAULT 'Held',
+        square_payment_link_id TEXT,
+        expires_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(order_number, ticket_type)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_saturday_spin_reservations_status
+    ON saturday_spin_reservations(status, expires_at)
+    """)
+
     cursor.execute("""
     CREATE INDEX IF NOT EXISTS idx_ticket_orders_event
     ON ticket_orders(event_name)
@@ -895,6 +937,7 @@ def init_db():
         ("All-Women Battle of the DJs", "2026-10-25", "Upcoming"),
         ("The Friday Reset", "2026-10-16", "Upcoming"),
         ("Quiet Storm Live — Neo Soul Meets R&B", "2026-12-12", "Upcoming"),
+        ("Battle of the DJs Part 4", "2026-11-29", "Upcoming"),
     ]
 
     for event_name, event_date, event_status in admin_event_seeds:
@@ -922,8 +965,14 @@ def init_db():
         "The Friday Reset": [
             ("General Admission", 1),
         ],
+        "Battle of the DJs Part 4": [
+            ("Early Bird", 1),
+            ("General Admission", 1),
+            ("VIP Booth", 6),
+        ],
         "Quiet Storm Live — Neo Soul Meets R&B": [
             ("General Admission", 1),
+            ("Couch Seating", 3),
             ("VIP Booth", 5),
         ],
     }
@@ -1154,6 +1203,9 @@ def init_db():
 
     # SEED TICKETS
     tickets = [
+        ("Battle of the DJs Part 4", "Early Bird", 15, 30),
+        ("Battle of the DJs Part 4", "General Admission", 18, 340),
+        ("Battle of the DJs Part 4", "VIP Booth", 250, 3),
         ("Battle of the DJs", "Early Bird", 13, 30),
         ("Battle of the DJs", "General Admission", 18, 366),
         ("Battle of the DJs", "VIP Section", 175, 6),
@@ -4929,7 +4981,7 @@ This is an exclusive 30+ event. Valid government-issued ID is required for entry
     {
         "id": 5,
         "name": "All-Women Battle of the DJs",
-        "status": "upcoming",
+        "status": "past",
         "flyer": "/static/images/battlep3.png",
         "description": """The ladies are taking the stage for an all-women edition of Battle of the DJs. Four talented women will go head-to-head, bringing real skill, real passion, and real representation to the Jukebox Lounge stage.
 
@@ -5004,24 +5056,26 @@ Ages 30+.""",
         "id": 7,
         "name": "Quiet Storm Live — Neo Soul Meets R&B",
         "status": "upcoming",
-        "flyer": "/static/images/quiet-storm-november.png",
-        "description": """The Jukebox Lounge NC presents Quiet Storm Live at The Situation — an intimate, grown-and-sexy evening of live Neo Soul and R&B featuring Jenelle 4Real and Devin D.""",
+        "flyer": "/static/images/quiet-storm-new.png",
+        "description": """The Jukebox Lounge NC presents Quiet Storm Live at The Situation — an intimate, grown-and-sexy evening of live Neo Soul and R&B featuring Jenelle 4Real and Devin D, with live music by Vibe Band Muzik.""",
         "description_long": """Experience an intimate evening of soulful sounds, smooth R&B, and unforgettable live music.
 
-The Jukebox Lounge NC presents Quiet Storm Live, featuring Jenelle 4Real and Devin D at The Situation in Durham.
+The Jukebox Lounge NC presents Quiet Storm Live, featuring Jenelle 4Real and Devin D, backed by Vibe Band Muzik, at The Situation in Durham.
 
 Whether you're planning a date night, coming with friends, or simply looking to unwind, enjoy a grown-and-sexy atmosphere filled with live music and great vibes.
 
 General Admission Presale: $20.
+Two couch seating sections are available for $125 each, accommodating up to three guests per section.
+
 One exclusive VIP booth is available for $150, accommodating up to five guests.
 
 Limited availability. Secure your tickets early!""",
         "ticket_link": "",
         "event_datetime": "Saturday, December 12, 2026",
         "location": "The Situation — 2102 Angier Ave, Durham, NC 27703",
-        "time": "7:00 PM - 9:00 PM",
+        "time": "Doors 7:00 PM • Show 8:00 PM",
         "doors": "7:00 PM",
-        "ticket_label": "$20 Presale • $150 VIP Booth",
+        "ticket_label": "$20 Presale • $125 Couch Seating • $150 VIP Booth",
         "map_link": "https://www.google.com/maps/search/?api=1&query=2102+Angier+Ave+Durham+NC+27703",
         "early_link": "",
         "ga_link": "",
@@ -5030,7 +5084,84 @@ Limited availability. Secure your tickets early!""",
         "tickets_coming_soon": False,
         "tickets": {
             "ga": {"price": 20, "sold": 0, "size": 75},
-            "vip": {"price": 150, "sold": 0, "size": 1}
+            "vip": {"price": 150, "sold": 0, "size": 1},
+            "couch": {"price": 125, "sold": 0, "size": 2}
+        }
+    },
+
+
+    {
+        "id": 8,
+        "name": "Battle of the DJs Part 4",
+        "status": "upcoming",
+        "flyer": "/static/images/battle-part4.png",
+        "description": (
+            "Jukebox Lounge NC presents Battle of the DJs Part 4 — "
+            "All-Women Edition! Get ready for an exciting DJ showdown "
+            "celebrating talented women behind the decks."
+        ),
+        "description_long": (
+            "Battle of the DJs returns for Part 4 — All-Women Edition! "
+            "Join Jukebox Lounge NC for an unforgettable celebration "
+            "of music, talent, and competition at The Pickleback "
+            "in Durham, North Carolina.\n\n"
+            "Early Bird: $15 | General Admission: $18 | "
+            "VIP Booths: $250 | Admission at the door: $20."
+        ),
+        "ticket_link": "",
+        "event_datetime": "Sunday, November 29, 2026",
+        "location": "The Pickleback — Durham, NC",
+        "time": "3:00 PM",
+        "doors": "3:00 PM",
+        "ticket_label": "$15 Early Bird • $18 GA • $250 VIP Booth",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=The+Pickleback+Durham+NC",
+        "early_link": "",
+        "ga_link": "",
+        "vip_link": "",
+        "booth_link": "",
+        "tickets_coming_soon": False,
+        "ticket_capacity": 388,
+        "tickets": {
+            "early": {"price": 15, "sold": 0, "size": 30},
+            "ga": {"price": 18, "sold": 0, "size": 340},
+            "vip": {"price": 250, "sold": 0, "size": 3}
+        }
+    },
+
+
+    {
+        "id": 9,
+        "name": "The Saturday Spin — The Jukebox Takeover",
+        "status": "upcoming",
+        "flyer": "/static/images/saturday-spin.png",
+        "description": (
+            "Jukebox Lounge NC presents The Saturday Spin — "
+            "The Jukebox Takeover! Join us at Kore Durham "
+            "for a night of music and grown-folks vibes. Ages 30+."
+        ),
+        "description_long": (
+            "The Saturday Spin — The Jukebox Takeover is taking over "
+            "Kore Durham on Saturday, November 21!\n\n"
+            "General Admission: $10. Limited to 60 paid tickets.\n\n"
+            "Jukebox members enjoy free admission all night. "
+            "Complimentary Yeyo Tequila until 10 PM, as advertised. "
+            "Ages 30 and up."
+        ),
+        "ticket_link": "",
+        "event_datetime": "Saturday, November 21, 2026",
+        "location": "Kore Durham — Durham, NC",
+        "time": "9:00 PM",
+        "doors": "9:00 PM",
+        "ticket_label": "$10 General Admission",
+        "map_link": "https://www.google.com/maps/search/?api=1&query=Kore+Durham+NC",
+        "early_link": "",
+        "ga_link": "",
+        "vip_link": "",
+        "booth_link": "",
+        "tickets_coming_soon": False,
+        "ticket_capacity": 60,
+        "tickets": {
+            "ga": {"price": 10, "sold": 0, "size": 60}
         }
     },
 
@@ -8375,6 +8506,15 @@ def merch_checkout():
             """,
             (order_number,),
         )
+        if event["name"] == "The Saturday Spin — The Jukebox Takeover":
+            cursor.execute("""
+                UPDATE saturday_spin_reservations
+                SET status = 'Released',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE order_number = ?
+                  AND status = 'Held'
+            """, (order_number,))
+
         conn.commit()
         conn.close()
         traceback.print_exc()
@@ -8398,6 +8538,15 @@ def merch_checkout():
             """,
             (order_number,),
         )
+        if event["name"] == "The Saturday Spin — The Jukebox Takeover":
+            cursor.execute("""
+                UPDATE saturday_spin_reservations
+                SET status = 'Released',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE order_number = ?
+                  AND status = 'Held'
+            """, (order_number,))
+
         conn.commit()
         conn.close()
 
@@ -9489,6 +9638,40 @@ def build_event_ticket_catalog(event, event_date=None):
         },
     ]
 
+    # Battle of the DJs Part 4 — All-Women Edition.
+    if event.get("name") == "Battle of the DJs Part 4":
+        canonical_tickets = [
+            {
+                "key": "early",
+                "name": "Early Bird",
+                "display_name": "Early Bird",
+                "description": "$15 advance admission.",
+            },
+            {
+                "key": "ga",
+                "name": "General Admission",
+                "display_name": "General Admission",
+                "description": "$18 general admission. $20 at the door.",
+            },
+            {
+                "key": "vip",
+                "name": "VIP Booth",
+                "display_name": "VIP Booth",
+                "description": "$250 total per VIP booth, located inside, with seating for up to six guests.",
+            },
+        ]
+
+    # Saturday Spin — General Admission only.
+    if event.get("name") == "The Saturday Spin — The Jukebox Takeover":
+        canonical_tickets = [
+            {
+                "key": "ga",
+                "name": "General Admission",
+                "display_name": "General Admission",
+                "description": "Admission for one guest. Ages 30+.",
+            },
+        ]
+
     # Quiet Storm Live ticket configuration.
     if event.get("name") == "Quiet Storm Live — Neo Soul Meets R&B":
         canonical_tickets = [
@@ -9497,6 +9680,18 @@ def build_event_ticket_catalog(event, event_date=None):
                 "name": "General Admission",
                 "display_name": "General Admission Presale",
                 "description": "$20 presale admission.",
+            },
+            {
+                "key": "couch",
+                "name": "Couch Seating",
+                "display_name": "Couch Seating — Up to 3 Guests",
+                "description": (
+                    "Elevate your Quiet Storm experience with reserved couch seating "
+                    "for you and your crew! Enjoy an intimate, comfortable atmosphere "
+                    "while soaking in the smooth sounds of live Neo Soul and R&B. "
+                    "Each section accommodates up to 3 guests for $125 total, "
+                    "with only 2 exclusive sections available."
+                ),
             },
             {
                 "key": "vip",
@@ -9630,7 +9825,28 @@ def build_event_ticket_catalog(event, event_date=None):
                 )
             sold = int(cursor.fetchone()[0] or 0)
 
-            remaining = max(0, capacity - sold)
+            active_reservations = 0
+            if event.get("name") in (
+                "Battle of the DJs Part 4",
+                "The Saturday Spin — The Jukebox Takeover",
+            ):
+                reservation_table = (
+                    "part4_ticket_reservations"
+                    if event["name"] == "Battle of the DJs Part 4"
+                    else "saturday_spin_reservations"
+                )
+                cursor.execute(
+                    f"""
+                    SELECT COALESCE(SUM(quantity), 0)
+                    FROM {reservation_table}
+                    WHERE ticket_type = ?
+                      AND status = 'Held'
+                    """,
+                    (ticket["key"],),
+                )
+                active_reservations = int(cursor.fetchone()[0] or 0)
+
+            remaining = max(0, capacity - sold - active_reservations)
 
             if (
                 event.get("name") in (
@@ -9753,6 +9969,28 @@ def ticket_order_complete():
                                 payment,
                             )
                         )
+
+                        # Part 4: convert held inventory to paid inventory
+                        # in the same transaction as ticket creation.
+                        if ticket_order.get("event_name") in (
+                            "Battle of the DJs Part 4",
+                            "The Saturday Spin — The Jukebox Takeover",
+                        ):
+                            reservation_table = (
+                                "part4_ticket_reservations"
+                                if ticket_order["event_name"] == "Battle of the DJs Part 4"
+                                else "saturday_spin_reservations"
+                            )
+                            cursor.execute(
+                                f"""
+                                UPDATE {reservation_table}
+                                SET status = 'Paid',
+                                    updated_at = CURRENT_TIMESTAMP
+                                WHERE order_number = ?
+                                  AND status = 'Held'
+                                """,
+                                (order_number,),
+                            )
 
                         cursor.execute(
                             """
@@ -9968,6 +10206,30 @@ def ticket_checkout_create(event_name):
     subtotal_cents = 0
     total_ticket_quantity = 0
 
+    # Part 4: reject duplicate ticket types before processing checkout.
+    if event["name"] == "Battle of the DJs Part 4":
+        seen_ticket_keys = set()
+
+        for requested in requested_tickets:
+            if not isinstance(requested, dict):
+                continue
+
+            ticket_key = str(requested.get("key") or "").strip()
+
+            if not ticket_key:
+                continue
+
+            if ticket_key in seen_ticket_keys:
+                return {
+                    "success": False,
+                    "error": (
+                        "Each ticket type may only appear once "
+                        "in your order."
+                    ),
+                }, 400
+
+            seen_ticket_keys.add(ticket_key)
+
     for requested in requested_tickets:
         if not isinstance(requested, dict):
             continue
@@ -10053,6 +10315,80 @@ def ticket_checkout_create(event_name):
     cursor = conn.cursor()
 
     try:
+        if event["name"] in (
+            "Battle of the DJs Part 4",
+            "The Saturday Spin — The Jukebox Takeover",
+        ):
+            reservation_table = (
+                "part4_ticket_reservations"
+                if event["name"] == "Battle of the DJs Part 4"
+                else "saturday_spin_reservations"
+            )
+            cursor.execute("BEGIN IMMEDIATE")
+
+            for ticket in validated_tickets:
+                cursor.execute(
+                    """
+                    SELECT COALESCE(max_quantity, 0)
+                    FROM ticket_types
+                    WHERE event_name = ?
+                      AND ticket_name = ?
+                    LIMIT 1
+                    """,
+                    (event["name"], ticket["name"]),
+                )
+                capacity_row = cursor.fetchone()
+
+                if capacity_row is None:
+                    raise ValueError("Ticket inventory is unavailable.")
+
+                capacity = int(capacity_row[0])
+
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE event_name = ?
+                      AND ticket_type = ?
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                    """,
+                    (event["name"], ticket["name"]),
+                )
+                sold = int(cursor.fetchone()[0] or 0)
+
+                cursor.execute(
+                    f"""
+                    SELECT COALESCE(SUM(quantity), 0)
+                    FROM {reservation_table}
+                    WHERE ticket_type = ?
+                      AND status = 'Held'
+                    """,
+                    (ticket["key"],),
+                )
+                held = int(cursor.fetchone()[0] or 0)
+
+                remaining = max(0, capacity - sold - held)
+
+                if ticket["quantity"] > remaining:
+                    raise ValueError(
+                        f'Only {remaining} {ticket["display_name"]} ticket(s) remain.'
+                    )
+
+                cursor.execute(
+                    f"""
+                    INSERT INTO {reservation_table} (
+                        order_number, ticket_type, quantity, status
+                    )
+                    VALUES (?, ?, ?, 'Held')
+                    """,
+                    (
+                        order_number,
+                        ticket["key"],
+                        ticket["quantity"],
+                    ),
+                )
+
         cursor.execute(
             """
             INSERT INTO ticket_orders (
@@ -10089,6 +10425,14 @@ def ticket_checkout_create(event_name):
             ),
         )
         conn.commit()
+    except ValueError as exc:
+        conn.rollback()
+        conn.close()
+        return {
+            "success": False,
+            "error": str(exc),
+        }, 409
+
     except Exception:
         conn.rollback()
         conn.close()
@@ -10277,6 +10621,26 @@ def ticket_checkout_create(event_name):
             order_number,
         ),
     )
+    if event["name"] in (
+        "Battle of the DJs Part 4",
+        "The Saturday Spin — The Jukebox Takeover",
+    ):
+        reservation_table = (
+            "part4_ticket_reservations"
+            if event["name"] == "Battle of the DJs Part 4"
+            else "saturday_spin_reservations"
+        )
+        cursor.execute(
+            f"""
+            UPDATE {reservation_table}
+            SET square_payment_link_id = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE order_number = ?
+              AND status = 'Held'
+            """,
+            (square_payment_link_id, order_number),
+        )
+
     conn.commit()
     conn.close()
 
@@ -10397,8 +10761,19 @@ def event_detail(event_name):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    if event["name"] == "Quiet Storm Live — Neo Soul Meets R&B":
+    if event["name"] == "The Saturday Spin — The Jukebox Takeover":
         canonical = [
+            ("General Admission", "ga"),
+        ]
+    elif event["name"] == "Quiet Storm Live — Neo Soul Meets R&B":
+        canonical = [
+            ("General Admission", "ga"),
+            ("Couch Seating", "couch"),
+            ("VIP Booth", "vip"),
+        ]
+    elif event["name"] == "Battle of the DJs Part 4":
+        canonical = [
+            ("Early Bird", "early"),
             ("General Admission", "ga"),
             ("VIP Booth", "vip"),
         ]

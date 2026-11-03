@@ -186,10 +186,19 @@
                     {% endif %}
                 </h3>
                 <p>
-                    {% if t.name == "Early Bird" %}
+                    {% if event.name == "Battle of the DJs Part 4" and t.name in ["Early Bird", "General Admission"] %}
+                    {% elif t.name == "Early Bird" %}
                     Enjoy access to the event with standing room on the lawn. This ticket is perfect for guests who want a casual, open-air experience.
+                    {% elif event.name == "Quiet Storm Live — Neo Soul Meets R&B" and t.name == "Couch Seating" %}
+                    Elevate your Quiet Storm experience with reserved couch seating for you and your crew! Enjoy an intimate, comfortable atmosphere while soaking in the smooth sounds of live Neo Soul and R&amp;B. Each section accommodates up to 3 guests for $125 total, with only 2 exclusive sections available.
+                    {% elif event.name == "Quiet Storm Live — Neo Soul Meets R&B" and t.name == "VIP Booth" %}
+                    Enjoy your own exclusive reserved VIP booth for up to 5 guests. One flat price of $150 covers the entire booth.
+                    {% elif event.name == "Quiet Storm Live — Neo Soul Meets R&B" and t.name == "General Admission" %}
                     {% elif t.name == "General Admission" %}
                     Enjoy access to the event with standing room on the lawn and full freedom to move around and enjoy the vibe.
+                    {% elif event.name == "Battle of the DJs Part 4" and t.name == "VIP Booth" %}
+                    Enjoy your own reserved VIP Booth with event admission included for up to 6 guests. One flat price of $250 covers the entire booth — no separate admission tickets required. Only 3 VIP Booths available!
+                    {% elif event.name == "Battle of the DJs Part 4" and t.name in ["Early Bird", "General Admission"] %}
                     {% elif t.name == "VIP Section" %}
                     Upgrade your experience with a reserved VIP booth in a shaded area for up to six guests.
                     {% elif t.name == "Regular VIP Section" %}
