@@ -5024,7 +5024,7 @@ Join us every other Friday from 8:00 PM–1:00 AM with music by Legendary DJ Eas
 
 Legendary DJ Ease brings the music every event. The Friday Reset happens every other Friday from 8:00 PM–1:00 AM at The Situation in Durham.
 
-Advance tickets are $15 online. Admission at the door is $20. The first 30 qualifying admissions for each event receive a complimentary shot.
+Advance tickets are $10 online. Admission at the door is $10. The first 30 qualifying admissions for each event receive a complimentary shot.
 
 Ages 30+.""",
         "ticket_link": "",
@@ -5032,7 +5032,7 @@ Ages 30+.""",
         "location": "The Situation — 2102 Angier Ave, Durham, NC 27703",
         "time": "8:00 PM–1:00 AM",
         "doors": "8:00 PM",
-        "ticket_label": "$15 Advance • $20 Door",
+        "ticket_label": "$10 Advance • $10 Door",
         "map_link": "https://www.google.com/maps/search/?api=1&query=2102+Angier+Ave+Durham+NC+27703",
         "early_link": "",
         "ga_link": "",
@@ -5047,7 +5047,7 @@ Ages 30+.""",
             FRIDAY_RESET_EXCLUDED_DATES
         ),
         "tickets": {
-            "ga": {"price": 15, "sold": 0, "size": 150}
+            "ga": {"price": 10, "sold": 0, "size": 150}
         }
     },
 
@@ -9704,7 +9704,7 @@ def build_event_ticket_catalog(event, event_date=None):
             },
         ]
 
-    # The Friday Reset has one $15 advance admission option per date.
+    # The Friday Reset has one $10 advance admission option per date.
     if event.get("name") == "The Friday Reset":
         canonical_tickets = [
             {
@@ -9712,8 +9712,8 @@ def build_event_ticket_catalog(event, event_date=None):
                 "name": "General Admission",
                 "display_name": "Advance Admission",
                 "description": (
-                    "$15 advance admission for your selected Friday. "
-                    "Admission at the door is $20."
+                    "$10 advance admission for your selected Friday. "
+                    "Admission at the door is $10."
                 ),
             },
         ]
@@ -9787,7 +9787,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 capacity = int(inventory_row[0] or capacity or 0)
 
                 database_price = float(inventory_row[1] or 0)
-                if database_price > 0:
+                if database_price > 0 and event.get("name") != "The Friday Reset":
                     price_cents = int(round(database_price * 100))
 
             if event.get("name") == "The Friday Reset":
