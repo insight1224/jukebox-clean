@@ -173,11 +173,18 @@
             {% else %}
             {% for t in ticket_data %}
             <div class="ticket-box
+                {% if event.name == 'Battle of the DJs Part 4' and t.name == 'Flash Sale General Admission' %}flash-sale-ticket{% endif %}
                 {% if t.name == 'Early Bird' %}highlight{% endif %}
                 {% if t.name in ['VIP Section', 'Regular VIP Section'] %}vip{% endif %}
                 {% if t.name == 'Premium VIP Section' %}premium-vip{% endif %}
                 {% if t.name == 'DJ VIP Section' %}ultra{% endif %}
             ">
+                {% if event.name == "Battle of the DJs Part 4" and t.name == "Flash Sale General Admission" %}
+                <div class="flash-sale-banner">
+                    🔥 FLASH SALE — ONLY 25 TICKETS!
+                </div>
+                {% endif %}
+
                 <h3>
                     {% if event.name == "All-Women Battle of the DJs" and t.name == "DJ VIP Section" %}
                     DJ VIP Section
@@ -212,7 +219,15 @@
                     {% endif %}
                 </p>
                 {% if not event.tickets_coming_soon %}
+                {% if event.name == "Battle of the DJs Part 4" and t.name == "Flash Sale General Admission" %}
+                <p class="flash-sale-price">
+                    <span class="flash-sale-original">$18.00</span>
+                    <strong>${{ "%.2f"|format(t.price) }}</strong>
+                </p>
+                <p class="flash-sale-savings">SAVE $8 PER TICKET!</p>
+                {% else %}
                 <p>${{ "%.2f"|format(t.price) }}</p>
+                {% endif %}
                 {% endif %}
                 {% if event.name == "All-Women Battle of the DJs"
                       and t.name in ["Regular VIP Section", "Premium VIP Section", "DJ VIP Section"]
@@ -242,7 +257,11 @@
                         event_name=event.name
                     ) }}"
                 >
+                    {% if event.name == "Battle of the DJs Part 4" and t.name == "Flash Sale General Admission" %}
+                    GRAB YOUR $10 TICKET
+                    {% else %}
                     Select Tickets
+                    {% endif %}
                 </a>
                 {% endif %}
             </div>

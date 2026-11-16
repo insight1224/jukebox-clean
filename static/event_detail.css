@@ -1206,3 +1206,89 @@ font-size: 13px;
         border-radius: 12px;
     }
 }
+
+/* Battle of the DJs Part 4 — Flash Sale */
+.ticket-box.flash-sale-ticket {
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #f4b942;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #241010 0%, #111111 70%);
+    box-shadow: 0 0 16px rgba(220, 38, 38, 0.4),
+                0 0 28px rgba(244, 185, 66, 0.18);
+    transform: translateY(-4px);
+}
+
+.flash-sale-ticket .flash-sale-banner {
+    margin: -2px -2px 18px;
+    padding: 12px 10px;
+    background: linear-gradient(90deg, #a50000, #ed3030, #a50000);
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 900;
+    letter-spacing: 1px;
+    text-align: center;
+    border-radius: 12px 12px 0 0;
+}
+
+.flash-sale-ticket h3 {
+    color: #ffd166;
+    font-weight: 900;
+}
+
+.flash-sale-ticket .flash-sale-price {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 14px;
+    margin: 18px 0 6px;
+}
+
+.flash-sale-ticket .flash-sale-original {
+    color: #c5b8b8;
+    font-size: 1.2rem;
+    text-decoration: line-through;
+}
+
+.flash-sale-ticket .flash-sale-price strong {
+    color: #ffd166;
+    font-size: 2.5rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.flash-sale-ticket .flash-sale-savings {
+    color: #ff7777;
+    font-size: 0.9rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.flash-sale-ticket .btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #dc2626, #a50000);
+    color: #ffffff;
+    border: 1px solid #ffb347;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 14px rgba(220, 38, 38, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.flash-sale-ticket .btn:hover {
+    background: linear-gradient(135deg, #f43f3f, #bd1111);
+    color: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
+}
+
+@media (max-width: 600px) {
+    .ticket-box.flash-sale-ticket {
+        transform: none;
+    }
+
+    .flash-sale-ticket .flash-sale-price strong {
+        font-size: 2.1rem;
+    }
+}

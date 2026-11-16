@@ -1203,8 +1203,9 @@ def init_db():
 
     # SEED TICKETS
     tickets = [
+        ("Battle of the DJs Part 4", "Flash Sale General Admission", 10, 25),
         ("Battle of the DJs Part 4", "Early Bird", 15, 30),
-        ("Battle of the DJs Part 4", "General Admission", 18, 340),
+        ("Battle of the DJs Part 4", "General Admission", 18, 315),
         ("Battle of the DJs Part 4", "VIP Booth", 250, 3),
         ("Battle of the DJs", "Early Bird", 13, 30),
         ("Battle of the DJs", "General Admission", 18, 366),
@@ -1225,6 +1226,19 @@ def init_db():
             WHERE event_name = ? AND ticket_name = ?
         )
         """, (event, name, price, max_q, event, name))
+
+    # Reserve 25 existing Part 4 GA tickets for the $10 flash sale.
+    # Only adjust the original 340-ticket allocation.
+    cursor.execute(
+        """
+        UPDATE ticket_types
+        SET max_quantity = 315
+        WHERE event_name = ?
+          AND ticket_name = ?
+          AND max_quantity = 340
+        """,
+        ("Battle of the DJs Part 4", "General Admission"),
+    )
 
     seed_vip_signups_from_csv(cursor)
 
@@ -5105,6 +5119,7 @@ Limited availability. Secure your tickets early!""",
             "Join Jukebox Lounge NC for an unforgettable celebration "
             "of music, talent, and competition at The Pickleback "
             "in Durham, North Carolina.\n\n"
+            "Flash Sale GA: $10 (first 25 tickets) | "
             "Early Bird: $15 | General Admission: $18 | "
             "VIP Booths: $250 | Admission at the door: $20."
         ),
@@ -5113,7 +5128,7 @@ Limited availability. Secure your tickets early!""",
         "location": "The Pickleback — Durham, NC",
         "time": "3:00 PM – 8:00 PM",
         "doors": "3:00 PM",
-        "ticket_label": "$15 Early Bird • $18 GA • $250 VIP Booth",
+        "ticket_label": "$10 Flash Sale • $15 Early Bird • $18 GA • $250 VIP Booth",
         "map_link": "https://www.google.com/maps/search/?api=1&query=The+Pickleback+Durham+NC",
         "early_link": "",
         "ga_link": "",
@@ -5123,7 +5138,8 @@ Limited availability. Secure your tickets early!""",
         "ticket_capacity": 388,
         "tickets": {
             "early": {"price": 15, "sold": 0, "size": 30},
-            "ga": {"price": 18, "sold": 0, "size": 340},
+            "flash_ga": {"price": 10, "sold": 0, "size": 25},
+            "ga": {"price": 18, "sold": 0, "size": 315},
             "vip": {"price": 250, "sold": 0, "size": 3}
         }
     },
@@ -9642,6 +9658,12 @@ def build_event_ticket_catalog(event, event_date=None):
     if event.get("name") == "Battle of the DJs Part 4":
         canonical_tickets = [
             {
+                "key": "flash_ga",
+                "name": "Flash Sale General Admission",
+                "display_name": "Flash Sale GA — $10",
+                "description": "Limited to 25 discounted admission tickets.",
+            },
+            {
                 "key": "early",
                 "name": "Early Bird",
                 "display_name": "Early Bird",
@@ -10773,6 +10795,7 @@ def event_detail(event_name):
         ]
     elif event["name"] == "Battle of the DJs Part 4":
         canonical = [
+            ("Flash Sale General Admission", "flash_ga"),
             ("Early Bird", "early"),
             ("General Admission", "ga"),
             ("VIP Booth", "vip"),
