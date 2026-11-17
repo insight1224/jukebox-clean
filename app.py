@@ -9763,8 +9763,7 @@ FLASH_SALE_CUTOFF = datetime(
 
 def flash_sale_active():
     now = datetime.now(ZoneInfo("America/New_York"))
-    start = datetime(2026, 11, 17, 0, 0, tzinfo=ZoneInfo("America/New_York"))
-    return start <= now < FLASH_SALE_CUTOFF
+    return now < FLASH_SALE_CUTOFF
 
 
 def build_event_ticket_catalog(event, event_date=None):
