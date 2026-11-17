@@ -791,6 +791,28 @@ def init_db():
     ON saturday_spin_reservations(status, expires_at)
     """)
 
+    # Friday Reset reservations are tracked separately for each event date.
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS friday_reset_reservations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_number TEXT NOT NULL,
+        event_date TEXT NOT NULL,
+        ticket_type TEXT NOT NULL,
+        quantity INTEGER NOT NULL CHECK(quantity > 0),
+        status TEXT NOT NULL DEFAULT 'Held',
+        square_payment_link_id TEXT,
+        expires_at TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(order_number, ticket_type)
+    )
+    """)
+
+    cursor.execute("""
+    CREATE INDEX IF NOT EXISTS idx_friday_reset_reservations_inventory
+    ON friday_reset_reservations(event_date, status, expires_at)
+    """)
+
     cursor.execute("""
     CREATE INDEX IF NOT EXISTS idx_ticket_orders_event
     ON ticket_orders(event_name)
@@ -968,7 +990,9 @@ def init_db():
         "Battle of the DJs Part 4": [
             ("Early Bird", 1),
             ("General Admission", 1),
+            ("Flash Sale General Admission", 1),
             ("VIP Booth", 6),
+            ("Flash Sale VIP Booth", 6),
         ],
         "Quiet Storm Live — Neo Soul Meets R&B": [
             ("General Admission", 1),
@@ -1203,9 +1227,9 @@ def init_db():
 
     # SEED TICKETS
     tickets = [
-        ("Battle of the DJs Part 4", "Flash Sale General Admission", 10, 25),
+        ("Battle of the DJs Part 4", "Flash Sale General Admission", 10, 340),
         ("Battle of the DJs Part 4", "Early Bird", 15, 30),
-        ("Battle of the DJs Part 4", "General Admission", 18, 315),
+        ("Battle of the DJs Part 4", "General Admission", 18, 340),
         ("Battle of the DJs Part 4", "VIP Booth", 250, 3),
         ("Battle of the DJs", "Early Bird", 13, 30),
         ("Battle of the DJs", "General Admission", 18, 366),
@@ -1232,10 +1256,10 @@ def init_db():
     cursor.execute(
         """
         UPDATE ticket_types
-        SET max_quantity = 315
+        SET max_quantity = 340
         WHERE event_name = ?
           AND ticket_name = ?
-          AND max_quantity = 340
+          AND max_quantity = 315
         """,
         ("Battle of the DJs Part 4", "General Admission"),
     )
@@ -2984,19 +3008,20 @@ def create_lead_record(lead_type, name, email, details, status=None):
 
 
 def verify_square_signature(req):
-    # Dev mode: always allow webhook delivery so ticket flow can be tested end-to-end.
-    if SQUARE_SKIP_WEBHOOK_SIGNATURE or not STRICT_WEBHOOK_SIGNATURE:
+    # Signature bypass is permitted only for explicitly configured local tests.
+    if (
+        SQUARE_SKIP_WEBHOOK_SIGNATURE
+        and not IS_PRODUCTION
+        and not os.getenv("RENDER")
+        and os.getenv("FLASK_DEBUG", "0") == "1"
+    ):
         return True
-    signature = req.headers.get("x-square-hmacsha256-signature", "")
-    body = req.get_data(as_text=True)
 
-    if not signature:
+    signature = req.headers.get("x-square-hmacsha256-signature", "")
+    if not signature or not SQUARE_SIGNATURE_KEY or not SQUARE_WEBHOOK_URL:
         return False
 
-    if not SQUARE_SIGNATURE_KEY or not SQUARE_WEBHOOK_URL:
-        # Keep local dev usable; enforce env-driven signature checks in production.
-        return not (IS_PRODUCTION or STRICT_WEBHOOK_SIGNATURE)
-
+    body = req.get_data(as_text=True)
     payload = f"{SQUARE_WEBHOOK_URL}{body}".encode("utf-8")
     digest = hmac.new(
         SQUARE_SIGNATURE_KEY.encode("utf-8"),
@@ -5128,7 +5153,7 @@ Limited availability. Secure your tickets early!""",
         "location": "The Pickleback — Durham, NC",
         "time": "3:00 PM – 8:00 PM",
         "doors": "3:00 PM",
-        "ticket_label": "$10 Flash Sale • $15 Early Bird • $18 GA • $250 VIP Booth",
+        "ticket_label": "$10 GA Flash Sale • $175 VIP Flash Sale • $15 Early Bird • $18 GA • $250 VIP Booth",
         "map_link": "https://www.google.com/maps/search/?api=1&query=The+Pickleback+Durham+NC",
         "early_link": "",
         "ga_link": "",
@@ -5138,8 +5163,9 @@ Limited availability. Secure your tickets early!""",
         "ticket_capacity": 388,
         "tickets": {
             "early": {"price": 15, "sold": 0, "size": 30},
-            "flash_ga": {"price": 10, "sold": 0, "size": 25},
-            "ga": {"price": 18, "sold": 0, "size": 315},
+            "flash_ga": {"price": 10, "sold": 0, "size": 340},
+            "ga": {"price": 18, "sold": 0, "size": 340},
+            "flash_vip": {"price": 175, "sold": 0, "size": 3},
             "vip": {"price": 250, "sold": 0, "size": 3}
         }
     },
@@ -5168,7 +5194,7 @@ Limited availability. Secure your tickets early!""",
         "location": "Kore Durham — Durham, NC",
         "time": "9:00 PM",
         "doors": "9:00 PM",
-        "ticket_label": "$10 General Admission",
+        "ticket_label": "$5 Flash Sale • $10 General Admission",
         "map_link": "https://www.google.com/maps/search/?api=1&query=Kore+Durham+NC",
         "early_link": "",
         "ga_link": "",
@@ -5177,6 +5203,7 @@ Limited availability. Secure your tickets early!""",
         "tickets_coming_soon": False,
         "ticket_capacity": 60,
         "tickets": {
+            "flash_ga": {"price": 5, "sold": 0, "size": 60},
             "ga": {"price": 10, "sold": 0, "size": 60}
         }
     },
@@ -6439,7 +6466,24 @@ def events():
     # -------------------------
     # EVENTS (USE PYTHON DATA ONLY)
     # -------------------------
-    events_list = events_data
+    # Feature upcoming events in the requested order.
+    featured_names = [
+        "The Friday Reset",
+        "The Saturday Spin — The Jukebox Takeover",
+        "Battle of the DJs Part 4",
+        "Quiet Storm Live — Neo Soul Meets R&B",
+    ]
+    featured = [
+        event
+        for name in featured_names
+        for event in events_data
+        if event.get("name") == name
+    ]
+    events_list = featured + [
+        event
+        for event in events_data
+        if event.get("name") not in featured_names
+    ]
 
     return render_template(
         "events.html",
@@ -9011,7 +9055,8 @@ def square_webhook():
     print("EVENT TYPE:", event_type)
 
     if not verify_square_signature(request):
-        print("⚠️ signature invalid — bypassed (dev mode)")
+        print("[square-webhook] Rejected invalid or missing signature")
+        return "invalid signature", 403
 
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -9200,6 +9245,107 @@ def square_webhook():
         """,
         ("square", event_id, event_type, f"status={status} payment_id={payment_id}"),
     )
+
+    # Website checkout orders must use their saved ticket selections and
+    # event date, rather than the legacy Square line-item ticket mapper.
+    if (
+        payment_id
+        and status == "COMPLETED"
+        and event_type in ("payment.updated", "payment.created")
+    ):
+        square_order_id = str(payment.get("order_id") or "").strip()
+        if square_order_id:
+            cursor.execute(
+                """
+                SELECT *
+                FROM ticket_orders
+                WHERE square_order_id = ?
+                LIMIT 1
+                """,
+                (square_order_id,),
+            )
+            website_row = cursor.fetchone()
+            if website_row:
+                website_order = dict(website_row)
+                order_number = website_order["order_number"]
+                reservation_tables = {
+                    "Battle of the DJs Part 4": "part4_ticket_reservations",
+                    "The Saturday Spin — The Jukebox Takeover": "saturday_spin_reservations",
+                    "The Friday Reset": "friday_reset_reservations",
+                }
+                try:
+                    created_ids = create_tickets_from_ticket_order(
+                        cursor, website_order, payment
+                    )
+                    cursor.execute(
+                        """
+                        UPDATE ticket_orders
+                        SET square_payment_id = ?,
+                            payment_status = 'Paid',
+                            order_status = 'Confirmed',
+                            paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP),
+                            tickets_created_at = COALESCE(
+                                tickets_created_at, CURRENT_TIMESTAMP
+                            )
+                        WHERE order_number = ?
+                        """,
+                        (payment_id, order_number),
+                    )
+                    reservation_table = reservation_tables.get(
+                        website_order["event_name"]
+                    )
+                    if reservation_table:
+                        cursor.execute(
+                            f"""
+                            UPDATE {reservation_table}
+                            SET status = 'Paid',
+                                updated_at = CURRENT_TIMESTAMP
+                            WHERE order_number = ?
+                              AND status = 'Held'
+                            """,
+                            (order_number,),
+                        )
+                    conn.commit()
+                except Exception:
+                    conn.rollback()
+                    conn.close()
+                    traceback.print_exc()
+                    return "website ticket fulfillment failed", 500
+
+                if not website_order.get("confirmation_email_sent_at"):
+                    try:
+                        email_sent = send_tickets_email_bundle(
+                            cursor,
+                            payment_id,
+                            website_order["customer_email"],
+                            website_order["event_name"],
+                            website_order.get("event_date"),
+                        )
+                        if email_sent:
+                            cursor.execute(
+                                """
+                                UPDATE ticket_orders
+                                SET confirmation_email_sent_at =
+                                    COALESCE(
+                                        confirmation_email_sent_at,
+                                        CURRENT_TIMESTAMP
+                                    )
+                                WHERE order_number = ?
+                                """,
+                                (order_number,),
+                            )
+                            conn.commit()
+                    except Exception:
+                        traceback.print_exc()
+
+                conn.close()
+                print(
+                    "[square-webhook] Website order fulfilled:",
+                    order_number,
+                    "new tickets:",
+                    len(created_ids),
+                )
+                return "ok", 200
 
     ticket_ids = []
     print("REACHED TICKET LOGIC")
@@ -9608,6 +9754,19 @@ def buy_ticket():
 
 from urllib.parse import unquote
 
+# Shared deadline for Jukebox November Flash Sales.
+# Sale remains active through November 17, 2026, 11:59 PM EST.
+FLASH_SALE_CUTOFF = datetime(
+    2026, 11, 18, 0, 0,
+    tzinfo=ZoneInfo("America/New_York"),
+)
+
+def flash_sale_active():
+    now = datetime.now(ZoneInfo("America/New_York"))
+    start = datetime(2026, 11, 17, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+    return start <= now < FLASH_SALE_CUTOFF
+
+
 def build_event_ticket_catalog(event, event_date=None):
     """
     Build the server-authoritative ticket catalog for an event.
@@ -9661,7 +9820,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "key": "flash_ga",
                 "name": "Flash Sale General Admission",
                 "display_name": "Flash Sale GA — $10",
-                "description": "Limited to 25 discounted admission tickets.",
+                "description": "Special $10 admission through November 17 at 11:59 PM EST.",
             },
             {
                 "key": "early",
@@ -9676,6 +9835,16 @@ def build_event_ticket_catalog(event, event_date=None):
                 "description": "$18 general admission. $20 at the door.",
             },
             {
+                "key": "flash_vip",
+                "name": "Flash Sale VIP Booth",
+                "display_name": "Flash Sale VIP Booth — $175",
+                "flash_price": 175.00,
+                "description": (
+                    "One reserved VIP booth for up to six guests. "
+                    "Save $75 through November 17 at 11:59 PM Eastern."
+                ),
+            },
+            {
                 "key": "vip",
                 "name": "VIP Booth",
                 "display_name": "VIP Booth",
@@ -9683,16 +9852,36 @@ def build_event_ticket_catalog(event, event_date=None):
             },
         ]
 
-    # Saturday Spin — General Admission only.
+    # Automatically remove expired Part 4 Flash Sale tickets.
+    if event.get("name") == "Battle of the DJs Part 4":
+        if not flash_sale_active():
+            canonical_tickets = [
+                ticket for ticket in canonical_tickets
+                if ticket["key"] not in ("flash_ga", "flash_vip")
+            ]
+
+    # Saturday Spin — $5 Flash Sale and regular $10 admission.
     if event.get("name") == "The Saturday Spin — The Jukebox Takeover":
-        canonical_tickets = [
-            {
-                "key": "ga",
-                "name": "General Admission",
-                "display_name": "General Admission",
-                "description": "Admission for one guest. Ages 30+.",
-            },
-        ]
+        canonical_tickets = []
+
+        if flash_sale_active():
+            canonical_tickets.append({
+                "key": "flash_ga",
+                "name": "Flash Sale General Admission",
+                "display_name": "Flash Sale GA — $5",
+                "flash_price": 5.00,
+                "description": (
+                    "Special $5 admission for Saturday, November 21. "
+                    "Offer ends November 17 at 11:59 PM EST."
+                ),
+            })
+
+        canonical_tickets.append({
+            "key": "ga",
+            "name": "General Admission",
+            "display_name": "General Admission",
+            "description": "$10 admission for one guest. Ages 30+.",
+        })
 
     # Quiet Storm Live ticket configuration.
     if event.get("name") == "Quiet Storm Live — Neo Soul Meets R&B":
@@ -9726,19 +9915,33 @@ def build_event_ticket_catalog(event, event_date=None):
             },
         ]
 
-    # The Friday Reset has one $10 advance admission option per date.
+    # Friday Reset $5 Flash Sale — November 20 only.
     if event.get("name") == "The Friday Reset":
-        canonical_tickets = [
-            {
-                "key": "ga",
-                "name": "General Admission",
-                "display_name": "Advance Admission",
-                "description": (
-                    "$10 advance admission for your selected Friday. "
-                    "Admission at the door is $10."
-                ),
-            },
-        ]
+        if flash_sale_active() and event_date == "2026-11-20":
+            canonical_tickets = [
+                {
+                    "key": "flash_ga",
+                    "name": "Flash Sale General Admission",
+                    "display_name": "Flash Sale GA — $5",
+                    "flash_price": 5.00,
+                    "description": (
+                        "Special $5 admission for Friday, November 20. "
+                        "Offer ends November 17 at 11:59 PM EST."
+                    ),
+                },
+            ]
+
+    # Friday Reset regular admission remains available on every date.
+    if event.get("name") == "The Friday Reset":
+        canonical_tickets.append({
+            "key": "ga",
+            "name": "General Admission",
+            "display_name": "Advance Admission",
+            "description": (
+                "$10 advance admission for your selected Friday. "
+                "Admission at the door is $10."
+            ),
+        })
 
     # The All-Women Battle uses three distinct VIP section levels.
     if event.get("name") == "All-Women Battle of the DJs":
@@ -9786,7 +9989,13 @@ def build_event_ticket_catalog(event, event_date=None):
             )
 
             price_cents = int(
-                round(float(config.get("price", 0) or 0) * 100)
+                round(
+                    float(
+                        ticket.get("flash_price")
+                        if ticket.get("flash_price") is not None
+                        else config.get("price", 0) or 0
+                    ) * 100
+                )
             )
             capacity = int(config.get("size", 0) or 0)
             sold = 0
@@ -9867,6 +10076,127 @@ def build_event_ticket_catalog(event, event_date=None):
                     (ticket["key"],),
                 )
                 active_reservations = int(cursor.fetchone()[0] or 0)
+
+            if event.get("name") == "The Friday Reset":
+                # Both ticket prices share the same capacity per date.
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE event_name = ?
+                      AND event_date = ?
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                    """,
+                    (event["name"], str(event_date or "").strip()),
+                )
+                sold = int(cursor.fetchone()[0] or 0)
+
+                cursor.execute(
+                    """
+                    SELECT COALESCE(SUM(quantity), 0)
+                    FROM friday_reset_reservations
+                    WHERE event_date = ?
+                      AND status = 'Held'
+                    """,
+                    (str(event_date or "").strip(),),
+                )
+                active_reservations = int(cursor.fetchone()[0] or 0)
+                capacity = int(event["ticket_capacity_per_date"])
+
+            if event.get("name") == "The Saturday Spin — The Jukebox Takeover":
+                # Flash Sale and regular GA share the same 60 admissions.
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE event_name = ?
+                      AND ticket_type IN (
+                          'General Admission',
+                          'Flash Sale General Admission'
+                      )
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                    """,
+                    (event["name"],),
+                )
+                sold = int(cursor.fetchone()[0] or 0)
+
+                cursor.execute(
+                    """
+                    SELECT COALESCE(SUM(quantity), 0)
+                    FROM saturday_spin_reservations
+                    WHERE ticket_type IN ('ga', 'flash_ga')
+                      AND status = 'Held'
+                    """
+                )
+                active_reservations = int(cursor.fetchone()[0] or 0)
+                capacity = int(event["ticket_capacity"])
+
+            if (
+                event.get("name") == "Battle of the DJs Part 4"
+                and ticket["key"] in ("flash_ga", "ga")
+            ):
+                # Both GA prices share one pool of 340 admissions.
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE event_name = ?
+                      AND ticket_type IN (
+                          'General Admission',
+                          'Flash Sale General Admission'
+                      )
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                    """,
+                    (event["name"],),
+                )
+                sold = int(cursor.fetchone()[0] or 0)
+
+                cursor.execute(
+                    """
+                    SELECT COALESCE(SUM(quantity), 0)
+                    FROM part4_ticket_reservations
+                    WHERE ticket_type IN ('ga', 'flash_ga')
+                      AND status = 'Held'
+                    """
+                )
+                active_reservations = int(cursor.fetchone()[0] or 0)
+                capacity = 340
+
+            if (
+                event.get("name") == "Battle of the DJs Part 4"
+                and ticket["key"] in ("flash_vip", "vip")
+            ):
+                # Both VIP prices share the same three physical booths.
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE event_name = ?
+                      AND ticket_type IN (
+                          'VIP Booth',
+                          'Flash Sale VIP Booth'
+                      )
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                    """,
+                    (event["name"],),
+                )
+                sold = int(cursor.fetchone()[0] or 0)
+
+                cursor.execute(
+                    """
+                    SELECT COALESCE(SUM(quantity), 0)
+                    FROM part4_ticket_reservations
+                    WHERE ticket_type IN ('vip', 'flash_vip')
+                      AND status = 'Held'
+                    """
+                )
+                active_reservations = int(cursor.fetchone()[0] or 0)
+
+                capacity = 3
 
             remaining = max(0, capacity - sold - active_reservations)
 
@@ -9997,12 +10327,13 @@ def ticket_order_complete():
                         if ticket_order.get("event_name") in (
                             "Battle of the DJs Part 4",
                             "The Saturday Spin — The Jukebox Takeover",
+                            "The Friday Reset",
                         ):
-                            reservation_table = (
-                                "part4_ticket_reservations"
-                                if ticket_order["event_name"] == "Battle of the DJs Part 4"
-                                else "saturday_spin_reservations"
-                            )
+                            reservation_table = {
+                                "Battle of the DJs Part 4": "part4_ticket_reservations",
+                                "The Saturday Spin — The Jukebox Takeover": "saturday_spin_reservations",
+                                "The Friday Reset": "friday_reset_reservations",
+                            }[ticket_order["event_name"]]
                             cursor.execute(
                                 f"""
                                 UPDATE {reservation_table}
@@ -10340,76 +10671,307 @@ def ticket_checkout_create(event_name):
         if event["name"] in (
             "Battle of the DJs Part 4",
             "The Saturday Spin — The Jukebox Takeover",
+            "The Friday Reset",
         ):
-            reservation_table = (
-                "part4_ticket_reservations"
-                if event["name"] == "Battle of the DJs Part 4"
-                else "saturday_spin_reservations"
-            )
+            reservation_table = {
+                "Battle of the DJs Part 4": "part4_ticket_reservations",
+                "The Saturday Spin — The Jukebox Takeover": "saturday_spin_reservations",
+                "The Friday Reset": "friday_reset_reservations",
+            }[event["name"]]
             cursor.execute("BEGIN IMMEDIATE")
 
-            for ticket in validated_tickets:
-                cursor.execute(
-                    """
-                    SELECT COALESCE(max_quantity, 0)
-                    FROM ticket_types
-                    WHERE event_name = ?
-                      AND ticket_name = ?
-                    LIMIT 1
-                    """,
-                    (event["name"], ticket["name"]),
-                )
-                capacity_row = cursor.fetchone()
 
-                if capacity_row is None:
-                    raise ValueError("Ticket inventory is unavailable.")
+            if event["name"] == "The Friday Reset":
+                if not selected_event_date:
+                    raise ValueError("Please select a Friday Reset date.")
 
-                capacity = int(capacity_row[0])
+                if any(
+                    ticket["key"] == "flash_ga"
+                    for ticket in validated_tickets
+                ) and (
+                    selected_event_date != "2026-11-20"
+                    or not flash_sale_active()
+                ):
+                    raise ValueError("The Friday Reset Flash Sale has ended.")
 
                 cursor.execute(
                     """
                     SELECT COUNT(*)
                     FROM event_tickets
                     WHERE event_name = ?
-                      AND ticket_type = ?
+                      AND event_date = ?
                       AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
                       AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
                     """,
-                    (event["name"], ticket["name"]),
+                    (event["name"], selected_event_date),
                 )
                 sold = int(cursor.fetchone()[0] or 0)
 
                 cursor.execute(
-                    f"""
+                    """
                     SELECT COALESCE(SUM(quantity), 0)
-                    FROM {reservation_table}
-                    WHERE ticket_type = ?
+                    FROM friday_reset_reservations
+                    WHERE event_date = ?
                       AND status = 'Held'
                     """,
-                    (ticket["key"],),
+                    (selected_event_date,),
                 )
                 held = int(cursor.fetchone()[0] or 0)
 
+                capacity = int(event["ticket_capacity_per_date"])
                 remaining = max(0, capacity - sold - held)
 
-                if ticket["quantity"] > remaining:
+                if total_ticket_quantity > remaining:
                     raise ValueError(
-                        f'Only {remaining} {ticket["display_name"]} ticket(s) remain.'
+                        f"Only {remaining} Friday Reset admission(s) remain "
+                        "for this date."
                     )
 
-                cursor.execute(
-                    f"""
-                    INSERT INTO {reservation_table} (
-                        order_number, ticket_type, quantity, status
+                for ticket in validated_tickets:
+                    cursor.execute(
+                        """
+                        INSERT INTO friday_reset_reservations (
+                            order_number, event_date, ticket_type,
+                            quantity, status
+                        )
+                        VALUES (?, ?, ?, ?, 'Held')
+                        """,
+                        (
+                            order_number,
+                            selected_event_date,
+                            ticket["key"],
+                            ticket["quantity"],
+                        ),
                     )
-                    VALUES (?, ?, ?, 'Held')
+            elif event["name"] == "The Saturday Spin — The Jukebox Takeover":
+                if any(
+                    ticket["key"] == "flash_ga"
+                    for ticket in validated_tickets
+                ) and not flash_sale_active():
+                    raise ValueError("The Saturday Spin Flash Sale has ended.")
+
+                cursor.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM event_tickets
+                    WHERE event_name = ?
+                      AND ticket_type IN (
+                          'General Admission',
+                          'Flash Sale General Admission'
+                      )
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                      AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
                     """,
-                    (
-                        order_number,
-                        ticket["key"],
-                        ticket["quantity"],
-                    ),
+                    (event["name"],),
                 )
+                sold = int(cursor.fetchone()[0] or 0)
+
+                cursor.execute(
+                    """
+                    SELECT COALESCE(SUM(quantity), 0)
+                    FROM saturday_spin_reservations
+                    WHERE ticket_type IN ('ga', 'flash_ga')
+                      AND status = 'Held'
+                    """
+                )
+                held = int(cursor.fetchone()[0] or 0)
+
+                remaining = max(0, int(event["ticket_capacity"]) - sold - held)
+
+                if total_ticket_quantity > remaining:
+                    raise ValueError(
+                        f"Only {remaining} Saturday Spin admission(s) remain."
+                    )
+
+                for ticket in validated_tickets:
+                    cursor.execute(
+                        """
+                        INSERT INTO saturday_spin_reservations (
+                            order_number, ticket_type, quantity, status
+                        )
+                        VALUES (?, ?, ?, 'Held')
+                        """,
+                        (
+                            order_number,
+                            ticket["key"],
+                            ticket["quantity"],
+                        ),
+                    )
+            else:
+                # Part 4: Flash Sale and regular GA share 340 tickets.
+                ga_tickets = [
+                    ticket for ticket in validated_tickets
+                    if ticket["key"] in ("flash_ga", "ga")
+                ]
+
+                if ga_tickets:
+                    if any(
+                        ticket["key"] == "flash_ga"
+                        for ticket in ga_tickets
+                    ) and not flash_sale_active():
+                        raise ValueError("The Part 4 Flash Sale has ended.")
+
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM event_tickets
+                        WHERE event_name = ?
+                          AND ticket_type IN (
+                              'General Admission',
+                              'Flash Sale General Admission'
+                          )
+                          AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                          AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                        """,
+                        (event["name"],),
+                    )
+                    ga_sold = int(cursor.fetchone()[0] or 0)
+
+                    cursor.execute(
+                        """
+                        SELECT COALESCE(SUM(quantity), 0)
+                        FROM part4_ticket_reservations
+                        WHERE ticket_type IN ('ga', 'flash_ga')
+                          AND status = 'Held'
+                        """
+                    )
+                    ga_held = int(cursor.fetchone()[0] or 0)
+
+                    ga_remaining = max(0, 340 - ga_sold - ga_held)
+                    ga_requested = sum(
+                        ticket["quantity"] for ticket in ga_tickets
+                    )
+
+                    if ga_requested > ga_remaining:
+                        raise ValueError(
+                            f"Only {ga_remaining} Part 4 GA ticket(s) remain."
+                        )
+
+                # Both VIP prices share the same three physical booths.
+                vip_tickets = [
+                    ticket for ticket in validated_tickets
+                    if ticket["key"] in ("flash_vip", "vip")
+                ]
+                if vip_tickets:
+                    if any(
+                        ticket["key"] == "flash_vip"
+                        for ticket in vip_tickets
+                    ) and not flash_sale_active():
+                        raise ValueError("The VIP Booth Flash Sale has ended.")
+
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM event_tickets
+                        WHERE event_name = ?
+                          AND ticket_type IN (
+                              'VIP Booth', 'Flash Sale VIP Booth'
+                          )
+                          AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                          AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                        """,
+                        (event["name"],),
+                    )
+                    vip_sold = int(cursor.fetchone()[0] or 0)
+
+                    cursor.execute(
+                        """
+                        SELECT COALESCE(SUM(quantity), 0)
+                        FROM part4_ticket_reservations
+                        WHERE ticket_type IN ('vip', 'flash_vip')
+                          AND status = 'Held'
+                        """
+                    )
+                    vip_held = int(cursor.fetchone()[0] or 0)
+
+                    vip_requested = sum(
+                        ticket["quantity"] for ticket in vip_tickets
+                    )
+                    vip_remaining = max(0, 3 - vip_sold - vip_held)
+
+                    if vip_requested > vip_remaining:
+                        raise ValueError(
+                            f"Only {vip_remaining} Part 4 VIP booth(s) remain."
+                        )
+
+                for ticket in validated_tickets:
+                    if ticket["key"] in ("flash_ga", "ga", "flash_vip", "vip"):
+                        cursor.execute(
+                            """
+                            INSERT INTO part4_ticket_reservations (
+                                order_number, ticket_type, quantity, status
+                            )
+                            VALUES (?, ?, ?, 'Held')
+                            """,
+                            (
+                                order_number,
+                                ticket["key"],
+                                ticket["quantity"],
+                            ),
+                        )
+                        continue
+
+                    cursor.execute(
+                        """
+                        SELECT COALESCE(max_quantity, 0)
+                        FROM ticket_types
+                        WHERE event_name = ?
+                          AND ticket_name = ?
+                        LIMIT 1
+                        """,
+                        (event["name"], ticket["name"]),
+                    )
+                    capacity_row = cursor.fetchone()
+
+                    if capacity_row is None:
+                        raise ValueError("Ticket inventory is unavailable.")
+
+                    capacity = int(capacity_row[0])
+
+                    cursor.execute(
+                        """
+                        SELECT COUNT(*)
+                        FROM event_tickets
+                        WHERE event_name = ?
+                          AND ticket_type = ?
+                          AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'FREE_TEST_%'
+                          AND UPPER(COALESCE(payment_id, '')) NOT LIKE 'TEST_%'
+                        """,
+                        (event["name"], ticket["name"]),
+                    )
+                    sold = int(cursor.fetchone()[0] or 0)
+
+                    cursor.execute(
+                        f"""
+                        SELECT COALESCE(SUM(quantity), 0)
+                        FROM {reservation_table}
+                        WHERE ticket_type = ?
+                          AND status = 'Held'
+                        """,
+                        (ticket["key"],),
+                    )
+                    held = int(cursor.fetchone()[0] or 0)
+
+                    remaining = max(0, capacity - sold - held)
+
+                    if ticket["quantity"] > remaining:
+                        raise ValueError(
+                            f'Only {remaining} {ticket["display_name"]} ticket(s) remain.'
+                        )
+
+                    cursor.execute(
+                        f"""
+                        INSERT INTO {reservation_table} (
+                            order_number, ticket_type, quantity, status
+                        )
+                        VALUES (?, ?, ?, 'Held')
+                        """,
+                        (
+                            order_number,
+                            ticket["key"],
+                            ticket["quantity"],
+                        ),
+                    )
 
         cursor.execute(
             """
@@ -10646,12 +11208,13 @@ def ticket_checkout_create(event_name):
     if event["name"] in (
         "Battle of the DJs Part 4",
         "The Saturday Spin — The Jukebox Takeover",
+        "The Friday Reset",
     ):
-        reservation_table = (
-            "part4_ticket_reservations"
-            if event["name"] == "Battle of the DJs Part 4"
-            else "saturday_spin_reservations"
-        )
+        reservation_table = {
+            "Battle of the DJs Part 4": "part4_ticket_reservations",
+            "The Saturday Spin — The Jukebox Takeover": "saturday_spin_reservations",
+            "The Friday Reset": "friday_reset_reservations",
+        }[event["name"]]
         cursor.execute(
             f"""
             UPDATE {reservation_table}
@@ -10785,6 +11348,7 @@ def event_detail(event_name):
 
     if event["name"] == "The Saturday Spin — The Jukebox Takeover":
         canonical = [
+            ("Flash Sale General Admission", "flash_ga"),
             ("General Admission", "ga"),
         ]
     elif event["name"] == "Quiet Storm Live — Neo Soul Meets R&B":
@@ -10798,6 +11362,7 @@ def event_detail(event_name):
             ("Flash Sale General Admission", "flash_ga"),
             ("Early Bird", "early"),
             ("General Admission", "ga"),
+            ("Flash Sale VIP Booth", "flash_vip"),
             ("VIP Booth", "vip"),
         ]
     elif event["name"] == "All-Women Battle of the DJs":
@@ -10817,7 +11382,24 @@ def event_detail(event_name):
         ]
 
     ticket_data = []
+    # Share pricing, inventory and expiration with checkout.
+    shared_catalog = {}
+    if event["name"] in (
+        "Battle of the DJs Part 4",
+        "The Saturday Spin — The Jukebox Takeover",
+    ):
+        shared_catalog = {
+            ticket["key"]: ticket
+            for ticket in build_event_ticket_catalog(event)
+        }
+
     for ticket_name, key in canonical:
+        if event["name"] in (
+            "Battle of the DJs Part 4",
+            "The Saturday Spin — The Jukebox Takeover",
+        ) and key not in shared_catalog:
+            continue
+
         cfg = (event.get("tickets", {}) or {}).get(key, {}) or {}
         price = float(cfg.get("price", 0) or 0)
         quantity = int(cfg.get("size", 0) or 0)
@@ -10865,6 +11447,13 @@ def event_detail(event_name):
             remaining = 0
         if event["name"] == "Battle of the DJs" and ticket_name == "VIP Section":
             remaining = 0
+        if key in shared_catalog:
+            catalog_ticket = shared_catalog[key]
+            price = float(catalog_ticket["price"])
+            quantity = int(catalog_ticket["capacity"])
+            sold = int(catalog_ticket["sold"])
+            remaining = int(catalog_ticket["remaining"])
+
         ticket_data.append({
             "name": ticket_name,
             "price": round(price, 2),

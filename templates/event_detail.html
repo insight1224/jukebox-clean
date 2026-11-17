@@ -128,7 +128,10 @@
 
             {% if friday_reset_occurrences %}
                 {% for occurrence in friday_reset_occurrences %}
-                <div class="ticket-box">
+                <div class="ticket-box {% if occurrence.date|string == '2026-11-20' %}flash-sale-ticket{% endif %}">
+                    {% if occurrence.date|string == '2026-11-20' %}
+                    <div class="flash-sale-banner">🔥 FLASH SALE — ENDS NOV 17 AT 11:59 PM!</div>
+                    {% endif %}
                     <h3>{{ occurrence.label }}</h3>
 
                     <p>
@@ -139,7 +142,16 @@
                         Music by Legendary DJ Ease • Ages 30+
                     </p>
 
+                    {% if occurrence.date|string == '2026-11-20' %}
+                    <p class="flash-sale-price">
+                        <span class="flash-sale-original">$10.00</span>
+                        <strong>$5.00</strong>
+                    </p>
+                    <p class="flash-sale-savings">SAVE $5 PER TICKET!</p>
+                    <p>Regular advance admission: $10.00</p>
+                    {% else %}
                     <p>$10.00 Advance</p>
+                    {% endif %}
 
                     <a
                         class="btn"
@@ -149,9 +161,30 @@
                             event_date=occurrence.date
                         ) }}"
                     >
+                        {% if occurrence.date|string == '2026-11-20' %}
+                        GRAB YOUR $5 TICKET
+                        {% else %}
                         Select This Friday
+                        {% endif %}
                     </a>
                 </div>
+
+                {% if occurrence.date|string == '2026-11-20' %}
+                <div class="ticket-box">
+                    <h3>General Admission</h3>
+                    <p>{{ occurrence.label }}</p>
+                    <p>8:00 PM–1:00 AM at The Situation</p>
+                    <p>Music by Legendary DJ Ease • Ages 30+</p>
+                    <p>$10.00</p>
+                    <a class="btn" href="{{ url_for(
+                        'ticket_checkout_page',
+                        event_name=event.name,
+                        event_date=occurrence.date
+                    ) }}">
+                        Select Tickets
+                    </a>
+                </div>
+                {% endif %}
                 {% endfor %}
             {% else %}
                 <div class="ticket-box">
@@ -173,15 +206,15 @@
             {% else %}
             {% for t in ticket_data %}
             <div class="ticket-box
-                {% if event.name == 'Battle of the DJs Part 4' and t.name == 'Flash Sale General Admission' %}flash-sale-ticket{% endif %}
+                {% if t.name in ['Flash Sale General Admission', 'Flash Sale VIP Booth'] %}flash-sale-ticket{% endif %}
                 {% if t.name == 'Early Bird' %}highlight{% endif %}
                 {% if t.name in ['VIP Section', 'Regular VIP Section'] %}vip{% endif %}
                 {% if t.name == 'Premium VIP Section' %}premium-vip{% endif %}
                 {% if t.name == 'DJ VIP Section' %}ultra{% endif %}
             ">
-                {% if event.name == "Battle of the DJs Part 4" and t.name == "Flash Sale General Admission" %}
+                {% if t.name in ["Flash Sale General Admission", "Flash Sale VIP Booth"] %}
                 <div class="flash-sale-banner">
-                    🔥 FLASH SALE — ONLY 25 TICKETS!
+                    🔥 FLASH SALE — ENDS NOV 17 AT 11:59 PM!
                 </div>
                 {% endif %}
 
@@ -203,6 +236,8 @@
                     {% elif event.name in ["Quiet Storm Live — Neo Soul Meets R&B", "The Saturday Spin — The Jukebox Takeover"] and t.name == "General Admission" %}
                     {% elif t.name == "General Admission" %}
                     Enjoy access to the event with standing room on the lawn and full freedom to move around and enjoy the vibe.
+                    {% elif event.name == "Battle of the DJs Part 4" and t.name == "Flash Sale VIP Booth" %}
+                    FLASH SALE! Reserve your own VIP Booth for up to 6 guests, with admission included. Just $175 for the entire booth instead of $250. Save $75! Limited to 3 VIP Booths total across both ticket options.
                     {% elif event.name == "Battle of the DJs Part 4" and t.name == "VIP Booth" %}
                     Enjoy your own reserved VIP Booth with event admission included for up to 6 guests. One flat price of $250 covers the entire booth — no separate admission tickets required. Only 3 VIP Booths available!
                     {% elif event.name == "Battle of the DJs Part 4" and t.name in ["Early Bird", "General Admission"] %}
@@ -219,12 +254,12 @@
                     {% endif %}
                 </p>
                 {% if not event.tickets_coming_soon %}
-                {% if event.name == "Battle of the DJs Part 4" and t.name == "Flash Sale General Admission" %}
+                {% if t.name in ["Flash Sale General Admission", "Flash Sale VIP Booth"] %}
                 <p class="flash-sale-price">
-                    <span class="flash-sale-original">$18.00</span>
+                    <span class="flash-sale-original">${{ "%.2f"|format(250 if t.name == "Flash Sale VIP Booth" else (18 if event.name == "Battle of the DJs Part 4" else 10)) }}</span>
                     <strong>${{ "%.2f"|format(t.price) }}</strong>
                 </p>
-                <p class="flash-sale-savings">SAVE $8 PER TICKET!</p>
+                <p class="flash-sale-savings">SAVE ${{ "%.0f"|format((250 if t.name == "Flash Sale VIP Booth" else (18 if event.name == "Battle of the DJs Part 4" else 10)) - t.price) }} PER TICKET!</p>
                 {% else %}
                 <p>${{ "%.2f"|format(t.price) }}</p>
                 {% endif %}
@@ -257,8 +292,8 @@
                         event_name=event.name
                     ) }}"
                 >
-                    {% if event.name == "Battle of the DJs Part 4" and t.name == "Flash Sale General Admission" %}
-                    GRAB YOUR $10 TICKET
+                    {% if t.name in ["Flash Sale General Admission", "Flash Sale VIP Booth"] %}
+                    GRAB YOUR ${{ "%.0f"|format(t.price) }} {{ "VIP BOOTH" if t.name == "Flash Sale VIP Booth" else "TICKET" }}
                     {% else %}
                     Select Tickets
                     {% endif %}
