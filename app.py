@@ -9917,6 +9917,7 @@ def build_event_ticket_catalog(event, event_date=None):
 
     # Friday Reset $5 Flash Sale — November 20 only.
     if event.get("name") == "The Friday Reset":
+        canonical_tickets = []
         if flash_sale_active() and event_date == "2026-11-20":
             canonical_tickets = [
                 {
