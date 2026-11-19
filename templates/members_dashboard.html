@@ -23,7 +23,7 @@
         <div>
           <p class="eyebrow">Members Dashboard</p>
           <h2>Member List Overview</h2>
-          <p class="subtext">View, add, delete, copy, and export membership lists.</p>
+          <p class="subtext">View, add, delete, copy, and export membership lists. A paid member becomes Inactive if no payment arrives for about 37 days, and Active again when a payment comes in.</p>
         </div>
 
         <div class="topbar-actions">
@@ -314,7 +314,7 @@
       },
       circle: {
         title: "Jukebox Circle Members",
-        subtitle: "New paid Jukebox Circle members going forward.",
+        subtitle: "Paid Jukebox Circle members. Inactive means no payment for the current month plus about 7 days.",
         fileName: "jukebox-circle-members.csv",
         rows: [
           {% for member in circle_members %}

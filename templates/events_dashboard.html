@@ -136,7 +136,7 @@
           {% if event.status_label != "Completed" %}
           <div class="table-row">
             <span>
-              {{ event.name }}
+              {{ event.display_name or event.name }}
               {% if event.website_schedule and (event.date or '') not in event.website_schedule and event.website_schedule not in (event.date or '') %}
               <small class="event-website-schedule">On the website: {{ event.website_schedule }}</small>
               {% endif %}
@@ -181,7 +181,7 @@
           {% for event in events %}
           {% if event.status_label == "Completed" %}
           <div class="table-row past-event-row completed-history-row">
-            <span>{{ event.name }}</span>
+            <span>{{ event.display_name or event.name }}</span>
             <span>{{ event.date }}</span>
             <span>{{ event.total_tickets_sold }} sold</span>
             <span>

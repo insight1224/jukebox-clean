@@ -72,6 +72,70 @@
         </div>
       </header>
 
+      {% if revenue_breakdown %}
+      <section class="section-panel" id="revenue-breakdown">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">{{ revenue_breakdown.label }}</p>
+            <h3>Money in by source</h3>
+            <p class="subtext">Ticket refunds are listed on their own. The source totals are after refunds.</p>
+          </div>
+          <a class="btn secondary" href="/dashboard/expenses/report">Full tax-year report</a>
+        </div>
+        <table class="tax-expense-table">
+          <thead>
+            <tr><th>Source</th><th>Amount</th><th>Share</th></tr>
+          </thead>
+          <tbody>
+            {% for row in revenue_breakdown.source_rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>${{ "%.2f"|format(row.amount) }}</td>
+              <td>{{ "%.1f"|format(row.percent) }}%</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3">No income recorded yet this year.</td></tr>
+            {% endfor %}
+            {% if revenue_breakdown.income.refunds %}
+            <tr>
+              <td>Ticket refunds, already taken out of ticket sales</td>
+              <td>${{ "%.2f"|format(revenue_breakdown.income.refunds) }}</td>
+              <td></td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+        {% if revenue_breakdown.revenue_month_rows %}
+        <table class="tax-expense-table" style="margin-top:16px;">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Tickets</th>
+              <th>Memberships</th>
+              <th>Merch</th>
+              <th>Other</th>
+              <th>Refunds</th>
+              <th>Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in revenue_breakdown.revenue_month_rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>${{ "%.2f"|format(row.tickets) }}</td>
+              <td>${{ "%.2f"|format(row.memberships) }}</td>
+              <td>${{ "%.2f"|format(row.merchandise) }}</td>
+              <td>${{ "%.2f"|format(row.other) }}</td>
+              <td>${{ "%.2f"|format(row.refunds) }}</td>
+              <td>${{ "%.2f"|format(row.amount) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+      </section>
+      {% endif %}
+
       <section class="section-panel event-ticket-summary-section" id="event-ticket-summary">
         <div class="section-heading">
           <div>

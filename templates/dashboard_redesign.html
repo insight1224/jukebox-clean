@@ -263,7 +263,7 @@
             <article class="dashboard-upcoming-event">
               <div class="dashboard-upcoming-main">
                 <div>
-                  <h4>{{ event.name }}</h4>
+                  <h4>{{ event.display_name or event.name }}</h4>
                   <p>
                     {% set pretty_date = event.date|event_date_label %}
                     {% set shown_date = pretty_date or event.date or "Date not set" %}

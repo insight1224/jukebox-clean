@@ -29,6 +29,22 @@
 
     <p class="sidebar-group">Website</p>
     <a href="/dashboard/gallery" class="{{ 'active' if request.path.startswith('/dashboard/gallery') else '' }}">Photo Gallery</a>
+
+    {% if auth_role == 'admin' %}
+    <p class="sidebar-group">Admin</p>
+    <a href="/dashboard#staff-logins">Staff Logins</a>
+    <a href="/admin/leads" class="{{ 'active' if request.path.startswith('/admin/leads') else '' }}">Form Entries</a>
+    <a href="/checkin">Door Check-In List</a>
+    <a href="/tickets/admin">Ticket Admin</a>
+    <a href="/scan">Scan Tickets</a>
+    <a href="/admin/import-vip">Import VIP List</a>
+    <a href="/admin/export-vip-signups">Export VIP List</a>
+    <a href="/admin/system-health">System Health</a>
+    <a href="/admin/storage-status">Storage Status</a>
+    <a href="/admin/backfill">Square Backfill</a>
+    <a href="/admin/rebuild-ticket-data">Rebuild Ticket Data</a>
+    <a href="/admin/resend-all-tickets">Resend All Tickets</a>
+    {% endif %}
   </nav>
 
   <div class="sidebar-logout">

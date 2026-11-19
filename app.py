@@ -9,6 +9,7 @@ import threading
 import time
 import secrets
 import sqlite3
+import zipfile
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 import smtplib
@@ -1825,7 +1826,16 @@ def send_via_gmail_api(mime_msg):
         return False
 
 
-def send_html_email(subject, to_email, plain_body, html_body):
+def merch_bcc_address():
+    return (
+        os.getenv("MERCH_BCC_EMAIL", "").strip()
+        or os.getenv("ADMIN_NOTIFICATION_EMAIL", "").strip()
+        or os.getenv("ADMIN_EMAIL", "").strip()
+        or "thejukeboxloungenc@gmail.com"
+    )
+
+
+def send_html_email(subject, to_email, plain_body, html_body, bcc_email=None):
     email_address = (
         os.getenv("EMAIL_ADDRESS", "").strip()
         or os.getenv("SMTP_EMAIL_ADDRESS", "").strip()
@@ -1843,6 +1853,8 @@ def send_html_email(subject, to_email, plain_body, html_body):
         msg["Subject"] = subject
         msg["From"] = email_address
         msg["To"] = to_email
+        if bcc_email and bcc_email.lower() != (to_email or "").strip().lower():
+            msg["Bcc"] = bcc_email
         msg.attach(MIMEText(plain_body, "plain"))
         msg.attach(MIMEText(html_body, "html"))
 
@@ -2122,6 +2134,7 @@ def send_merch_order_confirmation_email(order, items):
         recipient,
         plain_body,
         html_body,
+        bcc_email=merch_bcc_address(),
     )
 
 
@@ -5254,6 +5267,7 @@ def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, 
             square_log(f"refund {refund.get('id')} failed: {exc}")
 
     if not dry_run:
+        refresh_membership_statuses(cursor)
         conn.commit()
     conn.close()
 
@@ -5775,6 +5789,7 @@ def inject_square_sync_status():
         "square_connected": bool(SQUARE_ACCESS_TOKEN),
         "square_env_label": "live account" if SQUARE_ENV == "production" else "sandbox test account",
         "square_sync": read_square_sync_state(),
+        "auth_role": (session.get("auth_role") or "").strip().lower(),
     }
 
 
@@ -6239,6 +6254,31 @@ def get_live_dashboard_data(include_past=False):
             if next_date:
                 event_record["date"] = next_date
 
+    for event_record in events_map.values():
+        event_name = event_record.get("name") or ""
+        event_record["display_name"] = event_name
+        if event_name.lower() == "the friday reset":
+            if event_record.get("date"):
+                event_record["display_name"] = f"The Friday Reset — {event_record['date']}"
+            continue
+        public_event = public_event_record(event_name)
+        if not public_event and event_name.lower() == "battle of the djs part 2":
+            public_event = public_event_record("Battle of the DJs Part Two")
+        if not public_event:
+            continue
+        has_future_date = False
+        event_day = coerce_record_date(event_record.get("date"))
+        if event_day and event_day >= date.today():
+            has_future_date = True
+        if (public_event.get("status") or "").lower() == "past" and not has_future_date:
+            event_record["status_label"] = "Completed"
+            event_record["badge_class"] = event_badge_class("Completed")
+            event_record["is_past"] = True
+            event_record["public_url"] = url_for(
+                "event_detail",
+                event_name=public_event["name"],
+            )
+
     events = [
         event
         for event in events_map.values()
@@ -6317,10 +6357,24 @@ def eventbrite_get(path):
 def normalize_eventbrite_event_name(name):
     raw = (name or "").strip().lower()
 
+    # Match the specific event before the generic Battle of the DJs name.
+    # "battle of the djs" is also inside "Battle of the DJs Part 4".
+    if "friday reset" in raw:
+        return "The Friday Reset"
+    if "saturday spin" in raw or "jukebox takeover" in raw:
+        return "The Saturday Spin — The Jukebox Takeover"
+    if "part 4" in raw or "part four" in raw:
+        return "Battle of the DJs Part 4"
+    if "part two" in raw or "part 2" in raw:
+        return "Battle of the DJs Part Two"
+    if "all-women" in raw or "all women" in raw:
+        return "All-Women Battle of the DJs"
     if "battle of the djs" in raw:
         return "Battle of the DJs"
+    if "quiet storm" in raw and "neo soul" in raw:
+        return "Quiet Storm Live — Neo Soul Meets R&B"
     if "quiet storm" in raw:
-        return "Quiet Storm"
+        return "The Quiet Storm Live"
     if "juneteenth" in raw:
         return "Juneteenth Celebration"
 
@@ -11891,6 +11945,8 @@ def event_detail(event_name):
             ("Premium VIP Section", "premium_vip"),
             ("DJ VIP Section", "booth"),
         ]
+    elif event["name"] == "The Friday Reset":
+        canonical = [("General Admission", "ga")]
     else:
         canonical = [
             ("Early Bird", "early"),
@@ -13067,7 +13123,7 @@ def tickets_admin():
 
 
 @app.route("/admin/backfill")
-@requires_auth
+@requires_roles("admin")
 def run_backfill():
     """
     Temporary admin route to backfill completed Square payments into event_tickets
@@ -13157,7 +13213,7 @@ def run_backfill():
 
 
 @app.route("/admin/rebuild-ticket-data", methods=["GET", "POST"])
-@requires_auth
+@requires_roles("admin")
 def rebuild_ticket_data():
     """
     One-click cleanup + resync for ticket/membership metrics.
@@ -13317,7 +13373,7 @@ def tickets_by_email(email):
 
 
 @app.route("/admin/resend-all-tickets")
-@requires_auth
+@requires_roles("admin")
 def resend_all_tickets():
     force = (request.args.get("force") or "0").strip() in ("1", "true", "yes")
     conn = sqlite3.connect(DB_PATH)
@@ -14999,8 +15055,25 @@ def load_period_income(start_date, end_date):
         "merchandise": 0.0,
         "donations": 0.0,
         "tips_and_other": 0.0,
+        "tickets_gross": 0.0,
+        "refunds": 0.0,
+        "months": {},
     }
     income_by_event = {}
+
+    def add_income_month(day, source, amount):
+        if not day or not amount:
+            return
+        key = day.strftime("%Y-%m")
+        bucket = income["months"].setdefault(key, {
+            "label": f"{day.strftime('%B')} {day.year}",
+            "tickets": 0.0,
+            "memberships": 0.0,
+            "merchandise": 0.0,
+            "other": 0.0,
+            "refunds": 0.0,
+        })
+        bucket[source] = round(bucket.get(source, 0.0) + amount, 2)
 
     def add_event_income(event_name, amount):
         label = (event_name or "").strip() or "Not tied to one event"
@@ -15008,14 +15081,21 @@ def load_period_income(start_date, end_date):
         bucket["income"] = round(bucket["income"] + amount, 2)
 
     for row in ticket_rows:
-        net_cents = max(int(row["amount_cents"] or 0) - int(row["refunded_amount_cents"] or 0), 0)
-        if net_cents <= 0:
+        gross = money_from_cents(row.get("amount_cents"))
+        refunded = min(money_from_cents(row.get("refunded_amount_cents")), gross)
+        net = round(gross - refunded, 2)
+        if gross <= 0 and refunded <= 0:
             continue
-        parsed = _dated_amount(row.get("created_at"), money_from_cents(net_cents))
+        parsed = _dated_amount(row.get("created_at"), net if net else gross)
         if not parsed or not in_period(parsed[0]):
             continue
-        income["tickets"] = round(income["tickets"] + parsed[1], 2)
-        add_event_income(row.get("event_name"), parsed[1])
+        income["tickets_gross"] = round(income["tickets_gross"] + gross, 2)
+        income["refunds"] = round(income["refunds"] + refunded, 2)
+        income["tickets"] = round(income["tickets"] + net, 2)
+        add_income_month(parsed[0], "tickets", net)
+        add_income_month(parsed[0], "refunds", refunded)
+        if net:
+            add_event_income(row.get("event_name"), net)
 
     for row in cash_rows:
         category = (row.get("category") or "").strip().lower()
@@ -15052,11 +15132,14 @@ def load_period_income(start_date, end_date):
 
         if is_donation:
             income["donations"] = round(income["donations"] + parsed[1], 2)
+            add_income_month(parsed[0], "other", parsed[1])
         elif is_ticket:
             income["door_and_cash"] = round(income["door_and_cash"] + parsed[1], 2)
+            add_income_month(parsed[0], "tickets", parsed[1])
             add_event_income(row.get("event_name"), parsed[1])
         else:
             income["tips_and_other"] = round(income["tips_and_other"] + parsed[1], 2)
+            add_income_month(parsed[0], "other", parsed[1])
             add_event_income(row.get("event_name"), parsed[1])
 
     for row in membership_rows:
@@ -15068,6 +15151,7 @@ def load_period_income(start_date, end_date):
         if not parsed or not in_period(parsed[0]) or parsed[1] <= 0:
             continue
         income["memberships"] = round(income["memberships"] + parsed[1], 2)
+        add_income_month(parsed[0], "memberships", parsed[1])
 
     for row in merch_rows:
         if (row.get("payment_status") or "").strip().lower() != "paid":
@@ -15079,14 +15163,24 @@ def load_period_income(start_date, end_date):
         if not parsed or not in_period(parsed[0]) or parsed[1] <= 0:
             continue
         income["merchandise"] = round(income["merchandise"] + parsed[1], 2)
+        add_income_month(parsed[0], "merchandise", parsed[1])
 
     for row in tip_rows:
         parsed = _dated_amount(row.get("created_at"), money_from_cents(row.get("tip_cents")))
         if not parsed or not in_period(parsed[0]) or parsed[1] <= 0:
             continue
         income["tips_and_other"] = round(income["tips_and_other"] + parsed[1], 2)
+        add_income_month(parsed[0], "other", parsed[1])
 
-    income["total"] = round(sum(income.values()), 2)
+    income["total"] = round(
+        income["tickets"]
+        + income["door_and_cash"]
+        + income["memberships"]
+        + income["merchandise"]
+        + income["donations"]
+        + income["tips_and_other"],
+        2,
+    )
     return income, income_by_event
 
 
@@ -15184,14 +15278,65 @@ def build_tax_report(start_date, end_date, period_label):
             "count": count,
         })
 
+    def with_share(rows, total, amount_key="amount"):
+        for row in rows:
+            amount = float(row.get(amount_key) or 0)
+            row["percent"] = round((amount / total) * 100, 1) if total else 0.0
+        return rows
+
+    vendor_map = {}
+    for item in expenses:
+        vendor_name = item["vendor"] or "Not recorded"
+        bucket = vendor_map.setdefault(vendor_name, {
+            "label": vendor_name,
+            "amount": 0.0,
+            "count": 0,
+        })
+        bucket["amount"] = round(bucket["amount"] + item["amount"], 2)
+        bucket["count"] += 1
+    vendor_rows = sorted(vendor_map.values(), key=lambda row: (-row["amount"], row["label"].lower()))
+
+    source_rows = [
+        {"label": "Tickets", "amount": round(income["tickets"] + income["door_and_cash"], 2)},
+        {"label": "Memberships and subscriptions", "amount": income["memberships"]},
+        {"label": "Merch", "amount": income["merchandise"]},
+        {"label": "Other income", "amount": round(income["donations"] + income["tips_and_other"], 2)},
+    ]
+    source_rows = [row for row in source_rows if row["amount"]]
+
+    revenue_month_rows = []
+    for key in sorted(income.get("months") or {}):
+        bucket = income["months"][key]
+        net_amount = round(
+            bucket["tickets"] + bucket["memberships"] + bucket["merchandise"] + bucket["other"],
+            2,
+        )
+        revenue_month_rows.append({
+            "label": bucket["label"],
+            "tickets": bucket["tickets"],
+            "memberships": bucket["memberships"],
+            "merchandise": bucket["merchandise"],
+            "other": bucket["other"],
+            "refunds": bucket["refunds"],
+            "amount": net_amount,
+        })
+
     income_lines = [
-        {"label": "Ticket sales recorded on the website", "amount": income["tickets"]},
+        {"label": "Ticket sales before refunds", "amount": income["tickets_gross"]},
+        {"label": "Ticket refunds", "amount": income["refunds"]},
+        {"label": "Ticket sales after refunds", "amount": income["tickets"]},
         {"label": "Door, cash, and other ticket money", "amount": income["door_and_cash"]},
         {"label": "Membership payments", "amount": income["memberships"]},
         {"label": "Shirt and merch sales", "amount": income["merchandise"]},
         {"label": "Donations", "amount": income["donations"]},
         {"label": "Tips and other income", "amount": income["tips_and_other"]},
     ]
+
+    with_share(category_rows, expense_total)
+    with_share(month_rows, expense_total)
+    with_share(vendor_rows, expense_total)
+    with_share(source_rows, income["total"])
+    with_share(revenue_month_rows, income["total"])
 
     return {
         "start": start_date,
@@ -15205,6 +15350,9 @@ def build_tax_report(start_date, end_date, period_label):
         "net": net,
         "category_rows": category_rows,
         "month_rows": month_rows,
+        "vendor_rows": vendor_rows,
+        "source_rows": source_rows,
+        "revenue_month_rows": revenue_month_rows,
         "event_rows": event_rows,
         "undated_count": 0,
     }
@@ -15616,6 +15764,30 @@ def dashboard_expense_report_csv():
     for row in report["category_rows"]:
         writer.writerow([row["label"], row["line"], f"{row['amount']:.2f}", row["count"]])
     writer.writerow([])
+    writer.writerow(["Expenses by vendor"])
+    writer.writerow(["Who you paid", "Amount", "Number of expenses", "Percent of expenses"])
+    for row in report["vendor_rows"]:
+        writer.writerow([row["label"], f"{row['amount']:.2f}", row["count"], row["percent"]])
+    writer.writerow([])
+    writer.writerow(["Income by source"])
+    writer.writerow(["Source", "Net amount", "Percent of income"])
+    for row in report["source_rows"]:
+        writer.writerow([row["label"], f"{row['amount']:.2f}", row["percent"]])
+    writer.writerow(["Refunds removed from ticket sales", f"{report['income']['refunds']:.2f}"])
+    writer.writerow([])
+    writer.writerow(["Income by month"])
+    writer.writerow(["Month", "Tickets", "Memberships", "Merch", "Other", "Refunds", "Net"])
+    for row in report["revenue_month_rows"]:
+        writer.writerow([
+            row["label"],
+            f"{row['tickets']:.2f}",
+            f"{row['memberships']:.2f}",
+            f"{row['merchandise']:.2f}",
+            f"{row['other']:.2f}",
+            f"{row['refunds']:.2f}",
+            f"{row['amount']:.2f}",
+        ])
+    writer.writerow([])
     writer.writerow([
         "Date",
         "Who you paid",
@@ -15647,6 +15819,74 @@ def dashboard_expense_report_csv():
     return Response(
         payload,
         mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+def simple_xlsx_bytes(rows):
+    def column_name(index):
+        name = ""
+        number = index + 1
+        while number:
+            number, remainder = divmod(number - 1, 26)
+            name = chr(65 + remainder) + name
+        return name
+
+    sheet_rows = []
+    for row_index, row in enumerate(rows, start=1):
+        cells = []
+        for column_index, value in enumerate(row):
+            text = (
+                str(value)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            )
+            ref = f"{column_name(column_index)}{row_index}"
+            cells.append(f'<c r="{ref}" t="inlineStr"><is><t>{text}</t></is></c>')
+        sheet_rows.append(f'<row r="{row_index}">{"".join(cells)}</row>')
+
+    sheet = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f'<sheetData>{"".join(sheet_rows)}</sheetData></worksheet>'
+    )
+    package = io.BytesIO()
+    with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", """<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>""")
+        archive.writestr("_rels/.rels", """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>""")
+        archive.writestr("xl/workbook.xml", """<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Report" sheetId="1" r:id="rId1"/></sheets>
+</workbook>""")
+        archive.writestr("xl/_rels/workbook.xml.rels", """<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>""")
+        archive.writestr("xl/worksheets/sheet1.xml", sheet)
+    return package.getvalue()
+
+
+@app.route("/dashboard/expenses/report.xlsx")
+@requires_auth
+def dashboard_expense_report_xlsx():
+    csv_response = dashboard_expense_report_csv()
+    text = csv_response.get_data(as_text=True).lstrip("\ufeff")
+    rows = list(csv.reader(io.StringIO(text)))
+    start_date, end_date, _label = tax_period_from_request()
+    filename = f"jukebox-expenses-{start_date.isoformat()}-to-{end_date.isoformat()}.xlsx"
+    return Response(
+        simple_xlsx_bytes(rows),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
@@ -17466,9 +17706,17 @@ def admin_dashboard_revenue():
             ),
         ])
 
+    year_start = date(date.today().year, 1, 1)
+    revenue_breakdown = build_tax_report(
+        year_start,
+        date.today(),
+        f"{date.today().year} so far",
+    )
+
     return render_template(
         "revenue_dashboard.html",
         metrics=metrics,
+        revenue_breakdown=revenue_breakdown,
         member_stats=member_stats,
         expenses_by_event=expenses_by_event,
         cash_by_event=cash_by_event,
@@ -17979,6 +18227,13 @@ def admin_dashboard_events():
 
         # Preserve exceptional manual statuses. Otherwise, determine the
         # display status automatically from the event date.
+        public_event = public_event_record(event.get("name") or "")
+        if (
+            not public_event
+            and (event.get("name") or "").strip().lower() == "battle of the djs part 2"
+        ):
+            public_event = public_event_record("Battle of the DJs Part Two")
+
         if stored_status_lower in ("cancelled", "canceled", "postponed"):
             status_label = stored_status
         else:
@@ -17988,8 +18243,26 @@ def admin_dashboard_events():
                 event.get("name") or "",
             )
             status_label = "Completed" if automatic_status == "Past" else automatic_status
+            # Ticket-only history for a finished public event has no setup date,
+            # so it used to fall back to Upcoming and sit beside Friday Reset.
+            if (
+                status_label != "Completed"
+                and public_event
+                and (public_event.get("status") or "").lower() == "past"
+                and (event.get("name") or "").strip().lower() not in RECURRING_DASHBOARD_EVENTS
+            ):
+                setup_day = parse_event_date_value(setup.get("event_date"))
+                if not setup_day or setup_day < date.today():
+                    status_label = "Completed"
 
         event["date"] = format_event_date(setup.get("event_date"))
+        if (
+            public_event
+            and public_event.get("event_datetime")
+            and (not setup.get("event_date") or event["date"] in {"", "Upcoming"})
+            and (event.get("name") or "").strip().lower() not in RECURRING_DASHBOARD_EVENTS
+        ):
+            event["date"] = public_event.get("event_datetime")
         event["status_label"] = status_label
         event["badge_class"] = badge_class_for_status(status_label)
         event["guests"] = group_guest_rows(guests_by_event.get(event.get("name"), []))
@@ -18105,6 +18378,13 @@ def admin_dashboard_events():
             occurrence = dict(friday_reset_parent)
             occurrence["event_date"] = occurrence_date
             occurrence["date"] = format_event_date(occurrence_date)
+            occurrence["display_name"] = (
+                f"The Friday Reset — {occurrence['date']}"
+            )
+            occurrence["tickets"] = []
+            occurrence["guests"] = []
+            occurrence["vip_guests"] = []
+            occurrence["checkin_guests"] = []
 
             occurrence["status_label"] = (
                 "Completed"
@@ -19599,6 +19879,40 @@ def dashboard_merch_orders():
         ),
     }
 
+    start = coerce_record_date(request.args.get("start")) or date(date.today().year, 1, 1)
+    end = coerce_record_date(request.args.get("end")) or date.today()
+    if end < start:
+        start, end = end, start
+    breakdown = {}
+    for order in orders:
+        if str(order.get("payment_status") or "").strip().lower() != "paid":
+            continue
+        if str(order.get("order_status") or "").strip().lower() == "cancelled":
+            continue
+        sold_on = coerce_record_date(order.get("paid_at") or order.get("created_at"))
+        if not sold_on or not (start <= sold_on <= end):
+            continue
+        for item in order.get("cart_items") or []:
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name") or "Item").strip() or "Item"
+            size = str(item.get("size") or "One size").strip() or "One size"
+            try:
+                qty = int(item.get("quantity") or 0)
+            except (TypeError, ValueError):
+                qty = 0
+            if qty <= 0:
+                continue
+            if item.get("unit_price_cents") is not None:
+                line_cents = int(item.get("unit_price_cents") or 0) * qty
+            else:
+                line_cents = int(item.get("price_cents") or 0)
+            key = (name, size)
+            bucket = breakdown.setdefault(key, {"name": name, "size": size, "units": 0, "revenue_cents": 0})
+            bucket["units"] += qty
+            bucket["revenue_cents"] += line_cents
+    merch_breakdown = sorted(breakdown.values(), key=lambda row: (-row["units"], row["name"], row["size"]))
+
     conn.close()
 
     return render_template(
@@ -19607,6 +19921,9 @@ def dashboard_merch_orders():
         stats=stats,
         merch_catalog=get_merch_catalog(),
         payment_breakdown=payment_breakdown,
+        merch_breakdown=merch_breakdown,
+        breakdown_start=start.isoformat(),
+        breakdown_end=end.isoformat(),
         message=(request.args.get("msg") or "").strip(),
     )
 
@@ -19889,6 +20206,28 @@ def create_manual_merch_order():
         "/dashboard/merch-orders"
         "?msg=Manual+order+created"
     )
+
+
+@app.route("/dashboard/merch-orders/<int:order_id>/delete", methods=["POST"])
+@requires_auth
+def delete_cancelled_merch_order(order_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT order_status FROM merch_orders WHERE id = ?",
+        (order_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return redirect("/dashboard/merch-orders?msg=Order+not+found")
+    if str(row[0] or "").strip().lower() != "cancelled":
+        conn.close()
+        return redirect("/dashboard/merch-orders?msg=Only+cancelled+orders+can+be+deleted")
+    cursor.execute("DELETE FROM merch_orders WHERE id = ?", (order_id,))
+    conn.commit()
+    conn.close()
+    return redirect("/dashboard/merch-orders?msg=Cancelled+order+deleted")
 
 
 @app.route("/dashboard/merch-orders/<int:order_id>/status", methods=["POST"])
@@ -20336,6 +20675,53 @@ def api_delete_member():
 
 
 
+def refresh_membership_statuses(cursor):
+    """Mark a paid member Inactive when the current month plus 7 days has passed with no payment."""
+    grace_days = 7
+    billing_days = 30
+    today = date.today()
+    try:
+        cursor.execute(
+            """
+            SELECT id, status, last_payment_at, started_at
+            FROM memberships
+            """
+        )
+        rows = cursor.fetchall()
+    except sqlite3.Error:
+        return
+
+    for row in rows:
+        try:
+            member_id = row["id"]
+            status = (row["status"] or "").strip().lower()
+            paid_on = coerce_record_date(row["last_payment_at"] or row["started_at"])
+        except (TypeError, IndexError, KeyError):
+            member_id = row[0]
+            status = str(row[1] or "").strip().lower()
+            paid_on = coerce_record_date(row[2] or row[3])
+
+        if not paid_on or status in {"", "payment issue"}:
+            if status == "payment issue" and paid_on and (today - paid_on).days <= billing_days + grace_days:
+                cursor.execute(
+                    "UPDATE memberships SET status = 'Active' WHERE id = ?",
+                    (member_id,),
+                )
+            continue
+
+        overdue = (today - paid_on).days > billing_days + grace_days
+        if overdue and status == "active":
+            cursor.execute(
+                "UPDATE memberships SET status = 'Inactive' WHERE id = ?",
+                (member_id,),
+            )
+        elif not overdue and status == "inactive":
+            cursor.execute(
+                "UPDATE memberships SET status = 'Active' WHERE id = ?",
+                (member_id,),
+            )
+
+
 @app.route("/dashboard/members")
 @app.route("/admin/dashboard-redesign/members")
 @requires_auth
@@ -20345,6 +20731,8 @@ def admin_dashboard_members():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+    refresh_membership_statuses(cursor)
+    conn.commit()
 
     cursor.execute(
         """
@@ -20389,7 +20777,7 @@ def admin_dashboard_members():
                source,
                COALESCE(membership_group, 'Circle') AS membership_group
         FROM memberships
-        WHERE LOWER(COALESCE(status, '')) = 'active'
+        WHERE LOWER(COALESCE(status, '')) IN ('active', 'inactive')
           AND COALESCE(amount, 0) > 0
         ORDER BY id
         """
@@ -20435,8 +20823,14 @@ def admin_dashboard_members():
         if (member.get("membership_group") or "").strip().lower() != "original"
     ]
 
-    originals_count = len(original_members)
-    regular_count = len(circle_members)
+    originals_count = sum(
+        1 for member in original_members
+        if (member.get("status") or "").strip().lower() == "active"
+    )
+    regular_count = sum(
+        1 for member in circle_members
+        if (member.get("status") or "").strip().lower() == "active"
+    )
 
     # Expected monthly subscription revenue is based on active paid members,
     # not total payment history. Actual collected revenue is tracked separately
@@ -20459,7 +20853,11 @@ def admin_dashboard_members():
     }
 
     vip_recipients = []
-    membership_recipients = [m.get("email") for m in paid_members if m.get("email")]
+    membership_recipients = [
+        member.get("email")
+        for member in paid_members
+        if member.get("email") and (member.get("status") or "").strip().lower() == "active"
+    ]
 
     conn.close()
 
