@@ -1272,8 +1272,8 @@ def init_db():
         )
         """, (event, name, price, max_q, event, name))
 
-    # Reserve 25 existing Part 4 GA tickets for the $10 flash sale.
-    # Only adjust the original 340-ticket allocation.
+    # Older databases had split admissions out of this pool.
+    # Put them back on the shared 340 general-admission tickets. There is no separate flash-sale cap.
     cursor.execute(
         """
         UPDATE ticket_types
@@ -5165,7 +5165,7 @@ Limited availability. Secure your tickets early!""",
             "Join Jukebox Lounge NC for an unforgettable celebration "
             "of music, talent, and competition at The Pickleback "
             "in Durham, North Carolina.\n\n"
-            "Flash Sale GA: $10 (first 25 tickets) | "
+            "Flash Sale GA: $10 | "
             "Early Bird: $15 | General Admission: $18 | "
             "VIP Booths: $250 | Admission at the door: $20."
         ),
@@ -9728,9 +9728,9 @@ def buy_ticket():
 from urllib.parse import unquote
 
 # Shared deadline for Jukebox November Flash Sales.
-# Sale remains active through November 17, 2026, 11:59 PM EST.
+# Sale remains active through November 19, 2026, 11:59 PM Eastern.
 FLASH_SALE_CUTOFF = datetime(
-    2026, 11, 18, 0, 0,
+    2026, 11, 20, 0, 0,
     tzinfo=ZoneInfo("America/New_York"),
 )
 
@@ -9792,7 +9792,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "key": "flash_ga",
                 "name": "Flash Sale General Admission",
                 "display_name": "Flash Sale GA — $10",
-                "description": "Special $10 admission through November 17 at 11:59 PM EST.",
+                "description": "Special $10 admission through tonight, November 19, at 11:59 PM Eastern.",
             },
             {
                 "key": "early",
@@ -9813,7 +9813,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "flash_price": 175.00,
                 "description": (
                     "One reserved VIP booth for up to six guests. "
-                    "Save $75 through November 17 at 11:59 PM Eastern."
+                    "Save $75 through tonight, November 19, at 11:59 PM Eastern."
                 ),
             },
             {
@@ -9824,36 +9824,27 @@ def build_event_ticket_catalog(event, event_date=None):
             },
         ]
 
-    # Automatically remove expired Part 4 Flash Sale tickets.
-    if event.get("name") == "Battle of the DJs Part 4":
-        if not flash_sale_active():
-            canonical_tickets = [
-                ticket for ticket in canonical_tickets
-                if ticket["key"] not in ("flash_ga", "flash_vip")
-            ]
-
     # Saturday Spin — $5 Flash Sale and regular $10 admission.
+    # The $5 ticket stays on the page after the deadline so guests can see it ended.
     if event.get("name") == "The Saturday Spin — The Jukebox Takeover":
-        canonical_tickets = []
-
-        if flash_sale_active():
-            canonical_tickets.append({
+        canonical_tickets = [
+            {
                 "key": "flash_ga",
                 "name": "Flash Sale General Admission",
                 "display_name": "Flash Sale GA — $5",
                 "flash_price": 5.00,
                 "description": (
                     "Special $5 admission for Saturday, November 21. "
-                    "Offer ends November 17 at 11:59 PM EST."
+                    "Offer ends tonight, November 19, at 11:59 PM Eastern."
                 ),
-            })
-
-        canonical_tickets.append({
-            "key": "ga",
-            "name": "General Admission",
-            "display_name": "General Admission",
-            "description": "$10 admission for one guest. Ages 30+.",
-        })
+            },
+            {
+                "key": "ga",
+                "name": "General Admission",
+                "display_name": "General Admission",
+                "description": "$10 admission for one guest. Ages 30+.",
+            },
+        ]
 
     # Quiet Storm Live ticket configuration.
     if event.get("name") == "Quiet Storm Live — Neo Soul Meets R&B":
@@ -9888,9 +9879,10 @@ def build_event_ticket_catalog(event, event_date=None):
         ]
 
     # Friday Reset $5 Flash Sale — November 20 only.
+    # Kept visible after the deadline, but checkout will not sell it.
     if event.get("name") == "The Friday Reset":
         canonical_tickets = []
-        if flash_sale_active() and event_date == "2026-11-20":
+        if event_date == "2026-11-20":
             canonical_tickets = [
                 {
                     "key": "flash_ga",
@@ -9899,7 +9891,7 @@ def build_event_ticket_catalog(event, event_date=None):
                     "flash_price": 5.00,
                     "description": (
                         "Special $5 admission for Friday, November 20. "
-                        "Offer ends November 17 at 11:59 PM EST."
+                        "Offer ends tonight, November 19, at 11:59 PM Eastern."
                     ),
                 },
             ]
@@ -10182,6 +10174,10 @@ def build_event_ticket_catalog(event, event_date=None):
             ):
                 remaining = 0
 
+            sale_ended = (
+                ticket.get("key") in ("flash_ga", "flash_vip")
+                and not flash_sale_active()
+            )
             catalog.append({
                 **ticket,
                 "price_cents": price_cents,
@@ -10192,6 +10188,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "sold_out": capacity > 0 and remaining <= 0,
                 "almost_gone": 0 < remaining <= 5,
                 "max_per_order": min(10, remaining) if remaining else 0,
+                "sale_ended": sale_ended,
             })
     finally:
         conn.close()
@@ -10576,6 +10573,12 @@ def ticket_checkout_create(event_name):
             return {
                 "success": False,
                 "error": "One of the selected ticket types is unavailable.",
+            }, 400
+
+        if ticket.get("sale_ended"):
+            return {
+                "success": False,
+                "error": "The flash sale has ended.",
             }, 400
 
         if ticket["sold_out"] or ticket["remaining"] < quantity:
@@ -11434,7 +11437,10 @@ def event_detail(event_name):
             "quantity": quantity,
             "remaining": remaining,
             "sold_out": remaining <= 0 and quantity > 0,
-            "almost_gone": 0 < remaining <= 5
+            "almost_gone": 0 < remaining <= 5,
+            "sale_ended": bool(
+                shared_catalog.get(key, {}).get("sale_ended")
+            ),
         })
 
     conn.close()
@@ -11458,6 +11464,7 @@ def event_detail(event_name):
         is_quiet_storm=is_quiet_storm,
         hero_flyer_url=hero_flyer_url,
         friday_reset_occurrences=friday_reset_occurrences,
+        flash_sale_active=flash_sale_active(),
         online_sales_closed=all_women_online_sales_closed(event),
     )
 

@@ -128,9 +128,13 @@
 
             {% if friday_reset_occurrences %}
                 {% for occurrence in friday_reset_occurrences %}
-                <div class="ticket-box {% if occurrence.date|string == '2026-11-20' %}flash-sale-ticket{% endif %}">
-                    {% if occurrence.date|string == '2026-11-20' %}
-                    <div class="flash-sale-banner">🔥 FLASH SALE — ENDS NOV 17 AT 11:59 PM!</div>
+                {% set nov20 = occurrence.date|string == '2026-11-20' %}
+                {% if nov20 %}
+                <div class="ticket-box flash-sale-ticket {% if not flash_sale_active %}flash-sale-ended{% endif %}">
+                    {% if flash_sale_active %}
+                    <div class="flash-sale-banner">🔥 FLASH SALE — ENDS TONIGHT (NOV 19) AT 11:59 PM!</div>
+                    {% else %}
+                    <div class="flash-sale-banner">FLASH SALE ENDED</div>
                     {% endif %}
                     <h3>{{ occurrence.label }}</h3>
 
@@ -142,17 +146,14 @@
                         Music by Legendary DJ Ease • Ages 30+
                     </p>
 
-                    {% if occurrence.date|string == '2026-11-20' %}
                     <p class="flash-sale-price">
                         <span class="flash-sale-original">$10.00</span>
                         <strong>$5.00</strong>
                     </p>
                     <p class="flash-sale-savings">SAVE $5 PER TICKET!</p>
                     <p>Regular advance admission: $10.00</p>
-                    {% else %}
-                    <p>$10.00 Advance</p>
-                    {% endif %}
 
+                    {% if flash_sale_active %}
                     <a
                         class="btn"
                         href="{{ url_for(
@@ -161,16 +162,31 @@
                             event_date=occurrence.date
                         ) }}"
                     >
-                        {% if occurrence.date|string == '2026-11-20' %}
                         GRAB YOUR $5 TICKET
-                        {% else %}
-                        Select This Friday
-                        {% endif %}
                     </a>
+                    {% else %}
+                    <span class="btn disabled">SALE ENDED</span>
+                    {% endif %}
                 </div>
+                {% endif %}
 
-                {% if occurrence.date|string == '2026-11-20' %}
                 <div class="ticket-box">
+                    {% if not nov20 %}
+                    <h3>{{ occurrence.label }}</h3>
+                    <p>8:00 PM–1:00 AM at The Situation</p>
+                    <p>Music by Legendary DJ Ease • Ages 30+</p>
+                    <p>$10.00 Advance</p>
+                    <a
+                        class="btn"
+                        href="{{ url_for(
+                            'ticket_checkout_page',
+                            event_name=event.name,
+                            event_date=occurrence.date
+                        ) }}"
+                    >
+                        Select This Friday
+                    </a>
+                    {% else %}
                     <h3>General Admission</h3>
                     <p>{{ occurrence.label }}</p>
                     <p>8:00 PM–1:00 AM at The Situation</p>
@@ -183,8 +199,8 @@
                     ) }}">
                         Select Tickets
                     </a>
+                    {% endif %}
                 </div>
-                {% endif %}
                 {% endfor %}
             {% else %}
                 <div class="ticket-box">
@@ -207,6 +223,7 @@
             {% for t in ticket_data %}
             <div class="ticket-box
                 {% if t.name in ['Flash Sale General Admission', 'Flash Sale VIP Booth'] %}flash-sale-ticket{% endif %}
+                {% if t.sale_ended %}flash-sale-ended{% endif %}
                 {% if t.name == 'Early Bird' %}highlight{% endif %}
                 {% if t.name in ['VIP Section', 'Regular VIP Section'] %}vip{% endif %}
                 {% if t.name == 'Premium VIP Section' %}premium-vip{% endif %}
@@ -214,7 +231,11 @@
             ">
                 {% if t.name in ["Flash Sale General Admission", "Flash Sale VIP Booth"] %}
                 <div class="flash-sale-banner">
-                    🔥 FLASH SALE — ENDS NOV 17 AT 11:59 PM!
+                    {% if t.sale_ended %}
+                    FLASH SALE ENDED
+                    {% else %}
+                    🔥 FLASH SALE — ENDS TONIGHT (NOV 19) AT 11:59 PM!
+                    {% endif %}
                 </div>
                 {% endif %}
 
@@ -271,7 +292,9 @@
                     Only {{ t.remaining }} Section{{ "s" if t.remaining != 1 else "" }} Remaining
                 </p>
                 {% endif %}
-                {% if online_sales_closed %}
+                {% if t.sale_ended %}
+                <span class="btn disabled">SALE ENDED</span>
+                {% elif online_sales_closed %}
                 <span class="btn disabled">Online Sales Closed</span>
                 <p>Tickets Available at the Door</p>
                 {% elif event.name == "Battle of the DJs" %}

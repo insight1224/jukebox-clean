@@ -359,7 +359,9 @@
               {% endif %}
             </div>
 
-            {% if ticket.sold_out or ticket.max_per_order < 1 %}
+            {% if ticket.sale_ended %}
+            <span class="ticket-sold-out">SALE ENDED</span>
+            {% elif ticket.sold_out or ticket.max_per_order < 1 %}
             <span class="ticket-sold-out">Sold Out</span>
             {% else %}
             <div class="ticket-quantity-control">
