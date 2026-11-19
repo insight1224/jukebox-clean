@@ -107,10 +107,26 @@ def parse_event_date_value(value):
     return None
 
 
-def automatic_event_status(event_date_value, fallback_status="Upcoming"):
+RECURRING_DASHBOARD_EVENTS = {
+    "the friday reset",
+}
+
+
+def automatic_event_status(event_date_value, fallback_status="Upcoming", event_name=""):
+    stored = (fallback_status or "Upcoming").strip() or "Upcoming"
+
+    # Recurring nights keep going after the first saved date.
+    # A manual Completed / Past status is still honored.
+    if (event_name or "").strip().lower() in RECURRING_DASHBOARD_EVENTS:
+        if stored.lower() in {"completed", "past"}:
+            return "Past"
+        if stored.lower() == "live":
+            return "Live"
+        return "Upcoming"
+
     event_day = parse_event_date_value(event_date_value)
     if not event_day:
-        return (fallback_status or "Upcoming").strip() or "Upcoming"
+        return stored
 
     today = date.today()
 
@@ -119,18 +135,6 @@ def automatic_event_status(event_date_value, fallback_status="Upcoming"):
     if event_day == today:
         return "Live"
     return "Past"
-
-
-def normalize_dashboard_event_name(event_name):
-    clean_name = (event_name or "").strip()
-
-    if clean_name.lower() in {
-        "battle of the djs part two",
-        "battle of the djs part 2",
-    }:
-        return "Battle of the DJs Part 2"
-
-    return clean_name
 
 
 def normalize_dashboard_event_name(event_name):
@@ -318,6 +322,9 @@ def requires_roles(*allowed_roles):
                 )
 
             if allowed_roles and role not in allowed_roles:
+                # Door staff use the check-in list, not the admin dashboard.
+                if role == "door" and request.path.startswith("/dashboard"):
+                    return redirect("/checkin")
                 return Response("Access denied", 403)
 
             request.auth_role = role
@@ -327,8 +334,8 @@ def requires_roles(*allowed_roles):
 
 
 def requires_auth(f):
-    # Full dashboard access. Door Staff is intentionally excluded here.
-    return requires_roles("admin", "manager")(f)
+    # Full dashboard access. Door staff are sent to the check-in list instead.
+    return requires_roles("admin", "manager", "bookkeeper")(f)
 
 def render_thank_you_safe(title, message):
     try:
@@ -942,6 +949,7 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    ensure_column("events", "notes", "TEXT")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS event_ticket_rules (
@@ -959,7 +967,8 @@ def init_db():
         ("All-Women Battle of the DJs", "2026-10-25", "Upcoming"),
         ("The Friday Reset", "2026-10-16", "Upcoming"),
         ("Quiet Storm Live — Neo Soul Meets R&B", "2026-12-12", "Upcoming"),
-        ("Battle of the DJs Part 4", "2026-11-29", "Upcoming"),
+        ("Battle of the DJs Part 4", "2026-11-22", "Upcoming"),
+        ("The Saturday Spin — The Jukebox Takeover", "2026-11-21", "Upcoming"),
     ]
 
     for event_name, event_date, event_status in admin_event_seeds:
@@ -998,6 +1007,10 @@ def init_db():
             ("General Admission", 1),
             ("Couch Seating", 3),
             ("VIP Booth", 5),
+        ],
+        "The Saturday Spin — The Jukebox Takeover": [
+            ("Flash Sale General Admission", 1),
+            ("General Admission", 1),
         ],
     }
 
@@ -5218,6 +5231,35 @@ def dashboard():
     return admin_dashboard_redesign()
 
 
+def public_event_record(event_name):
+    target = (event_name or "").strip().lower()
+    if not target:
+        return None
+
+    for event in events_data:
+        if (event.get("name") or "").strip().lower() == target:
+            return event
+
+    return None
+
+
+def next_friday_reset_date():
+    today_value = date.today().isoformat()
+
+    for occurrence in FRIDAY_RESET_OCCURRENCES:
+        occurrence_date = (occurrence.get("date") or "").strip()
+
+        if not occurrence_date or occurrence_date < today_value:
+            continue
+
+        if occurrence_date in FRIDAY_RESET_EXCLUDED_DATES:
+            continue
+
+        return occurrence_date
+
+    return ""
+
+
 def get_live_dashboard_data(include_past=False):
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -5270,6 +5312,13 @@ def get_live_dashboard_data(include_past=False):
         SELECT COUNT(*)
         FROM leads
         WHERE type = 'DJ Application'
+          AND COALESCE(archived, 0) = 0
+    """))
+
+    event_suggestions = int(one("""
+        SELECT COUNT(*)
+        FROM leads
+        WHERE type = 'Event Suggestion'
           AND COALESCE(archived, 0) = 0
     """))
 
@@ -5598,7 +5647,11 @@ def get_live_dashboard_data(include_past=False):
 
         setup_status = (setup_event.get("status") or "Upcoming").strip()
         setup_date = (setup_event.get("event_date") or "").strip()
-        automatic_status = automatic_event_status(setup_date, setup_status)
+        automatic_status = automatic_event_status(
+            setup_date,
+            setup_status,
+            setup_name,
+        )
 
         event_record = events_map.setdefault(setup_name, {
             "name": setup_name,
@@ -5612,6 +5665,25 @@ def get_live_dashboard_data(include_past=False):
         event_record["status_label"] = automatic_status
         event_record["badge_class"] = event_badge_class(automatic_status)
         event_record["is_past"] = automatic_status.lower() == "past"
+
+        public_event = public_event_record(setup_name)
+        if public_event:
+            event_record["website_schedule"] = public_event.get("event_datetime") or ""
+            event_record["public_url"] = url_for(
+                "event_detail",
+                event_name=public_event["name"],
+            )
+        else:
+            event_record["website_schedule"] = ""
+            event_record["public_url"] = ""
+
+        if (
+            setup_name.lower() == "the friday reset"
+            and automatic_status == "Upcoming"
+        ):
+            next_date = next_friday_reset_date()
+            if next_date:
+                event_record["date"] = next_date
 
     events = [
         event
@@ -5640,6 +5712,7 @@ def get_live_dashboard_data(include_past=False):
         "square_logged_revenue": square_logged_revenue,
         "vip_signups": vip_signups,
         "contact_messages": contact_messages,
+        "event_suggestions": event_suggestions,
         "vendor_applications": vendor_applications,
         "dj_applications": dj_applications,
     }
@@ -6177,7 +6250,7 @@ def admin_unmapped_square():
           </section>
         """
 
-    return f"""
+    page = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -6233,37 +6306,13 @@ def admin_unmapped_square():
 </head>
 <body>
   <div class="dashboard-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-logo-wrap">
-          <img src="{logo_url}" alt="Jukebox Lounge logo" class="brand-logo">
-        </div>
-        <div>
-          <h1>Jukebox Lounge</h1>
-          <p>Admin Preview</p>
-        </div>
-      </div>
-
-      <nav class="sidebar-nav">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/dashboard/events">Events</a>
-        <a href="/dashboard/revenue">Revenue</a>
-        <a href="/dashboard/messages">Messages</a>
-        <a href="/dashboard/members">Members</a>
-        <a href="/dashboard/ticket-orders">Ticket Orders</a>
-        <a href="/dashboard/merch-orders">Merch Orders</a>
-        <a href="/dashboard/email-campaigns">Email Campaigns</a>
-        <a href="/dashboard/gallery">Gallery Manager</a>
-        <a href="/dashboard/contacts">Contact Log</a>
-        <a href="/admin/unmapped-square" class="active">Unmapped Tickets</a>
-      </nav>
-    </aside>
+    __DASHBOARD_SIDEBAR__
 
     <main class="main-content" id="top">
       <header class="topbar">
         <div>
           <p class="eyebrow">Square Mapping Queue</p>
-          <h2>Unmapped Tickets</h2>
+          <h2>Unmatched Tickets</h2>
           <p class="subtext">Review Square payments that did not clearly match an event before they become tickets.</p>
         </div>
 
@@ -6299,6 +6348,8 @@ def admin_unmapped_square():
 </body>
 </html>
 """
+    sidebar_html = render_template("partials/dashboard_sidebar.html")
+    return page.replace("__DASHBOARD_SIDEBAR__", sidebar_html)
 
 
 
@@ -6339,104 +6390,9 @@ def dashboard_old():
 @app.route("/bookkeeping")
 @requires_auth
 def bookkeeping():
-    door_sales = [
-        {
-            "date": "2026-05-17",
-            "event_name": "Battle of the DJs",
-            "ticket_type": "General Admission",
-            "quantity": 5,
-            "payment_method": "Cash",
-            "amount": 100.00,
-            "staff_member": "Ashley",
-            "notes": "Front door walk-ups",
-        },
-        {
-            "date": "2026-05-17",
-            "event_name": "Battle of the DJs",
-            "ticket_type": "General Admission",
-            "quantity": 2,
-            "payment_method": "Cash App",
-            "amount": 40.00,
-            "staff_member": "Keeva",
-            "notes": "Late arrivals",
-        },
-    ]
-
-    door_sales_revenue = round(sum(item["amount"] for item in door_sales), 2)
-    ticket_revenue = round(1769.75 + door_sales_revenue, 2)
-    membership_revenue = 200.00
-    total_revenue = round(ticket_revenue + membership_revenue, 2)
-    total_expenses = 642.90
-    net_profit = round(total_revenue - total_expenses, 2)
-
-    summary = {
-        "total_revenue": total_revenue,
-        "total_expenses": total_expenses,
-        "net_profit": net_profit,
-        "ticket_revenue": ticket_revenue,
-        "membership_revenue": membership_revenue,
-        "door_sales_revenue": door_sales_revenue,
-    }
-
-    transactions = [
-        {
-            "date": "2026-05-17",
-            "type": "Income",
-            "category": "Ticket Sales",
-            "description": "Battle of the DJs online + door ticket sales",
-            "amount": 1769.75,
-            "payment_method": "Square / Cash",
-            "related_event": "Battle of the DJs",
-            "notes": "Includes Early Bird, GA, VIP.",
-        },
-        {
-            "date": "2026-05-17",
-            "type": "Expense",
-            "category": "Talent",
-            "description": "DJ performance payout",
-            "amount": 350.00,
-            "payment_method": "Zelle",
-            "related_event": "Battle of the DJs",
-            "notes": "Main set payment.",
-        },
-        {
-            "date": "2026-05-17",
-            "type": "Expense",
-            "category": "Venue",
-            "description": "Venue usage fee",
-            "amount": 180.00,
-            "payment_method": "Card",
-            "related_event": "Battle of the DJs",
-            "notes": "Night-of event fee.",
-        },
-        {
-            "date": "2026-05-17",
-            "type": "Expense",
-            "category": "Marketing",
-            "description": "Flyer + ad spend",
-            "amount": 112.90,
-            "payment_method": "Card",
-            "related_event": "Battle of the DJs",
-            "notes": "Social promotion and print.",
-        },
-        {
-            "date": "2026-05-16",
-            "type": "Income",
-            "category": "Membership",
-            "description": "Jukebox Circle monthly membership",
-            "amount": 10.00,
-            "payment_method": "Square",
-            "related_event": "N/A",
-            "notes": "Recurring member payment.",
-        },
-    ]
-
-    return render_template(
-        "bookkeeping.html",
-        summary=summary,
-        transactions=transactions,
-        door_sales=door_sales,
-    )
+    # The old bookkeeping page used sample numbers and its template is gone.
+    # Send people to the live revenue page instead of showing an error.
+    return redirect("/dashboard/revenue")
 
 
 # -------------------------
@@ -7172,6 +7128,14 @@ GALLERY_EVENT_OPTIONS = {
     "scrapbook": "The Jukebox Scrapbook",
 }
 
+GALLERY_PUBLIC_PATHS = {
+    "battle-of-the-djs": "/gallery/battle-of-the-djs",
+    "battle-of-the-djs-part-two": "/gallery/battle-of-the-djs-part-two",
+    "quiet-storm": "/gallery/quiet-storm",
+    "juneteenth-celebration": "/gallery/juneteenth-celebration",
+    "scrapbook": "/scrapbook",
+}
+
 
 def gallery_image_extension_allowed(filename):
     filename = (filename or "").strip()
@@ -7404,6 +7368,7 @@ def dashboard_gallery_manager():
     return render_template(
         "gallery_manager.html",
         event_options=GALLERY_EVENT_OPTIONS,
+        gallery_public_paths=GALLERY_PUBLIC_PATHS,
         uploads=uploads,
         message=message,
         error=error,
@@ -12926,7 +12891,8 @@ def admin_dashboard_redesign_redirect():
 def admin_dashboard_redesign():
     metrics, events, dashboard_preview_summary = get_live_dashboard_data()
 
-    # Main dashboard KPI corrections: count all event records and distinct active VIP emails.
+    # VIP email count is distinct active addresses. The event count stays
+    # aligned with the upcoming lineup rendered on this page.
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
@@ -12948,8 +12914,8 @@ def admin_dashboard_redesign():
 
     conn.close()
 
-    dashboard_preview_summary["upcoming_events_count"] = int(total_events_count)
     dashboard_preview_summary["total_events_count"] = int(total_events_count)
+    dashboard_preview_summary["upcoming_events_count"] = len(events)
 
     metrics["vip_email_count"] = int(vip_email_count)
     metrics["vip_count"] = int(vip_email_count)
@@ -13029,6 +12995,7 @@ def admin_dashboard_redesign():
 
     dashboard_overview = {
         "active_messages": int(metrics.get("contact_messages", 0) or 0)
+            + int(metrics.get("event_suggestions", 0) or 0)
             + int(metrics.get("vendor_applications", 0) or 0)
             + int(metrics.get("dj_applications", 0) or 0),
         "talent_contacts": int(contact_log_counts[0] or 0),
@@ -13740,6 +13707,7 @@ def admin_dashboard_redesign():
         square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
         staff_users=staff_users,
+        auth_role=(session.get("auth_role") or "").strip().lower(),
     )
 
 
@@ -15044,6 +15012,45 @@ def api_events_setup():
     }, 200
 
 
+@app.route("/api/events/notes", methods=["POST"])
+@requires_auth
+def api_save_event_notes():
+    data = request.get_json(silent=True) or {}
+    event_name = (data.get("name") or "").strip()
+    notes = data.get("notes")
+    if notes is None:
+        notes = ""
+    notes = str(notes).strip()
+
+    if not event_name:
+        return {"ok": False, "error": "Event name is required."}, 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT id FROM events WHERE name = ?", (event_name,))
+    existing = cur.fetchone()
+
+    if not existing:
+        conn.close()
+        return {
+            "ok": False,
+            "error": "Save the event with Edit Setup before adding a note.",
+        }, 400
+
+    cur.execute(
+        """
+        UPDATE events
+        SET notes = ?
+        WHERE name = ?
+        """,
+        (notes, event_name),
+    )
+    conn.commit()
+    conn.close()
+
+    return {"ok": True, "notes": notes}, 200
+
+
 
 @app.route("/dashboard/income-summary")
 @app.route("/admin/dashboard-redesign/income-summary")
@@ -15703,6 +15710,7 @@ def admin_dashboard_revenue():
         automatic_status = automatic_event_status(
             row.get("event_date"),
             stored_status,
+            event_name,
         )
 
         if stored_status_lower == "completed" or automatic_status == "Past":
@@ -15733,17 +15741,37 @@ def admin_dashboard_revenue():
     )
     metrics["net_profit"] = metrics["gross_revenue_with_cash"] - metrics["total_expenses"]
 
-    originals_count = int(metrics.get("active_memberships", 0) or 0)
-    regular_count = 0
-    monthly_revenue = float(metrics.get("membership_revenue", 0) or 0)
+    cursor.execute(
+        """
+        SELECT
+            SUM(
+                CASE
+                    WHEN LOWER(COALESCE(membership_group, 'circle')) = 'original'
+                    THEN 1 ELSE 0
+                END
+            ),
+            SUM(
+                CASE
+                    WHEN LOWER(COALESCE(membership_group, 'circle')) = 'original'
+                    THEN 0 ELSE 1
+                END
+            )
+        FROM memberships
+        WHERE LOWER(COALESCE(status, '')) = 'active'
+          AND COALESCE(amount, 0) > 0
+        """
+    )
+    membership_split = cursor.fetchone() or (0, 0)
+    originals_count = int(membership_split[0] or 0)
+    regular_count = int(membership_split[1] or 0)
     member_stats = {
         "total_members": originals_count + regular_count,
         "originals_count": originals_count,
         "regular_count": regular_count,
         "vip_email_count": len(vip_recipients),
-        "monthly_revenue": monthly_revenue,
-        "annual_projection": monthly_revenue * 12,
-        "originals_revenue": monthly_revenue,
+        "monthly_revenue": 0.0,
+        "annual_projection": 0.0,
+        "originals_revenue": 0.0,
         "regular_revenue": 0.0,
     }
 
@@ -15767,6 +15795,37 @@ def admin_dashboard_revenue():
     member_stats["originals_revenue"] = float(member_stats.get("originals_count", 0) or 0) * monthly_membership_rate
     member_stats["regular_revenue"] = float(member_stats.get("regular_count", 0) or 0) * monthly_membership_rate
     member_stats["annual_projection"] = member_stats["monthly_revenue"] * 12
+
+    def export_money(value):
+        return f"{float(value or 0):.2f}"
+
+    revenue_export_rows = [
+        ["Section", "Label", "Value", "Notes"],
+        ["Summary", "Ticket Revenue", export_money(metrics.get("ticket_revenue")), "Paid ticket sales"],
+        ["Summary", "Membership Revenue Collected", export_money(metrics.get("membership_revenue")), "Membership payments received"],
+        ["Summary", "Merch Revenue", export_money(metrics.get("merch_revenue")), "Paid shirt orders"],
+        ["Summary", "Donations", export_money(metrics.get("donation_revenue")), "Donations received"],
+        ["Summary", "Tips / Other", export_money(metrics.get("tips_other_revenue")), "Tips and other revenue"],
+        ["Summary", "Total Collected", export_money(metrics.get("gross_revenue_with_cash")), "All tracked revenue"],
+        ["Summary", "Expenses", export_money(metrics.get("total_expenses")), "Event and business expenses"],
+        ["Summary", "Net", export_money(metrics.get("net_profit")), "Total collected minus expenses"],
+        ["Summary", "Door / Cash Tracked", export_money(metrics.get("cash_revenue")), "Manual cash and door entries"],
+        ["Members", "Original Members", str(member_stats.get("originals_count") or 0), "Active Jukebox Circle Originals"],
+        ["Members", "Jukebox Circle", str(member_stats.get("regular_count") or 0), "Active Jukebox Circle members"],
+        ["Members", "Expected Monthly", export_money(member_stats.get("monthly_revenue")), "Active members times $10"],
+    ]
+
+    for event in list(upcoming_events) + list(past_events):
+        revenue_export_rows.append([
+            "Event",
+            event.get("name") or "Event",
+            export_money(event.get("total_revenue_with_cash", event.get("total_revenue"))),
+            (
+                f"{event.get('status_label') or 'Upcoming'}"
+                f" | tickets {int(event.get('total_tickets_sold') or 0)}"
+                f" | expenses {export_money(event.get('expense_total'))}"
+            ),
+        ])
 
     return render_template(
         "revenue_dashboard.html",
@@ -15796,6 +15855,7 @@ def admin_dashboard_revenue():
         membership_recipients=membership_recipients,
         square_connected=True,
         dashboard_preview_summary=dashboard_preview_summary,
+        revenue_export_rows=revenue_export_rows,
     )
 
 
@@ -16286,6 +16346,7 @@ def admin_dashboard_events():
             automatic_status = automatic_event_status(
                 setup.get("event_date"),
                 stored_status,
+                event.get("name") or "",
             )
             status_label = "Completed" if automatic_status == "Past" else automatic_status
 
@@ -16679,6 +16740,31 @@ def admin_dashboard_events():
             "event_index": event_index,
             "event_date": occurrence_date,
         })
+
+    note_conn = sqlite3.connect(DB_PATH)
+    note_conn.row_factory = sqlite3.Row
+    note_rows = note_conn.execute(
+        """
+        SELECT name, COALESCE(notes, '') AS notes
+        FROM events
+        """
+    ).fetchall()
+    note_conn.close()
+    notes_by_name = {
+        (row["name"] or "").strip(): row["notes"] or ""
+        for row in note_rows
+    }
+
+    for event in events:
+        event["notes"] = notes_by_name.get(event.get("name") or "", "")
+        if not event.get("public_url"):
+            public_event = public_event_record(event.get("name"))
+            if public_event:
+                event["public_url"] = url_for(
+                    "event_detail",
+                    event_name=public_event["name"],
+                )
+                event["website_schedule"] = public_event.get("event_datetime") or ""
 
     return render_template(
         "events_dashboard.html",
@@ -18638,7 +18724,15 @@ def admin_dashboard_members():
         ORDER BY datetime(COALESCE(created_at, '1900-01-01')) DESC, id DESC
         """
     )
-    vip_email_members = [dict(row) for row in cursor.fetchall()]
+    vip_email_rows = [dict(row) for row in cursor.fetchall()]
+    seen_vip_emails = set()
+    vip_email_members = []
+    for member in vip_email_rows:
+        email_key = (member.get("email") or "").strip().lower()
+        if not email_key or email_key in seen_vip_emails:
+            continue
+        seen_vip_emails.add(email_key)
+        vip_email_members.append(member)
     vip_email_count = len({
         (member.get("email") or "").strip().lower()
         for member in vip_email_members
@@ -18721,8 +18815,8 @@ def admin_dashboard_members():
         "vip_email_count": vip_email_count,
         "monthly_revenue": monthly_revenue,
         "annual_projection": annual_projection,
-        "originals_revenue": monthly_revenue,
-        "regular_revenue": 0.0,
+        "originals_revenue": originals_revenue,
+        "regular_revenue": regular_revenue,
     }
 
     vip_recipients = []
@@ -20055,6 +20149,14 @@ def dashboard_login():
 
         if not next_url.startswith("/") or next_url.startswith("//"):
             next_url = "/dashboard"
+
+        # Door staff do not use the admin dashboard. Send them to check-in.
+        if role == "door" and (
+            next_url == "/dashboard"
+            or next_url.startswith("/dashboard/")
+            or next_url.startswith("/admin/")
+        ):
+            next_url = "/checkin"
 
         return redirect(next_url)
 

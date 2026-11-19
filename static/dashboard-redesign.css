@@ -28,6 +28,7 @@ body {
 .dashboard-shell {
   min-height: 100vh;
   display: flex;
+  align-items: flex-start;
 }
 
 .sidebar {
@@ -5045,6 +5046,106 @@ button[data-action="delete"]:hover {
 
 .sidebar-nav {
   flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.sidebar-group {
+  margin: 14px 14px 0;
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.event-website-schedule {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.event-public-link {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dashboard-staff-panel {
+  margin-top: 28px;
+}
+
+.dashboard-staff-form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  margin-bottom: 18px;
+}
+
+.dashboard-staff-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.dashboard-staff-form input,
+.dashboard-staff-form select {
+  width: 100%;
+  border: 1px solid rgba(214, 168, 79, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+.dashboard-staff-status {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--gold);
+}
+
+.dashboard-staff-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-staff-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dashboard-staff-row strong,
+.dashboard-staff-row span {
+  display: block;
+}
+
+.dashboard-staff-row span {
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+@media (max-width: 900px) {
+  .dashboard-staff-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 .sidebar-logout {
