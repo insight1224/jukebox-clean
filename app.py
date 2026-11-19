@@ -10423,20 +10423,11 @@ def build_event_ticket_catalog(event, event_date=None):
             },
         ]
 
-    # Automatically remove expired Part 4 Flash Sale tickets.
-    if event.get("name") == "Battle of the DJs Part 4":
-        if not flash_sale_active():
-            canonical_tickets = [
-                ticket for ticket in canonical_tickets
-                if ticket["key"] not in ("flash_ga", "flash_vip")
-            ]
-
     # Saturday Spin — $5 Flash Sale and regular $10 admission.
+    # The $5 ticket stays on the page after the deadline so guests can see it ended.
     if event.get("name") == "The Saturday Spin — The Jukebox Takeover":
-        canonical_tickets = []
-
-        if flash_sale_active():
-            canonical_tickets.append({
+        canonical_tickets = [
+            {
                 "key": "flash_ga",
                 "name": "Flash Sale General Admission",
                 "display_name": "Flash Sale GA — $5",
@@ -10445,14 +10436,14 @@ def build_event_ticket_catalog(event, event_date=None):
                     "Special $5 admission for Saturday, November 21. "
                     "Offer ends tonight, November 19, at 11:59 PM Eastern."
                 ),
-            })
-
-        canonical_tickets.append({
-            "key": "ga",
-            "name": "General Admission",
-            "display_name": "General Admission",
-            "description": "$10 admission for one guest. Ages 30+.",
-        })
+            },
+            {
+                "key": "ga",
+                "name": "General Admission",
+                "display_name": "General Admission",
+                "description": "$10 admission for one guest. Ages 30+.",
+            },
+        ]
 
     # Quiet Storm Live ticket configuration.
     if event.get("name") == "Quiet Storm Live — Neo Soul Meets R&B":
@@ -10487,9 +10478,10 @@ def build_event_ticket_catalog(event, event_date=None):
         ]
 
     # Friday Reset $5 Flash Sale — November 20 only.
+    # Kept visible after the deadline, but checkout will not sell it.
     if event.get("name") == "The Friday Reset":
         canonical_tickets = []
-        if flash_sale_active() and event_date == "2026-11-20":
+        if event_date == "2026-11-20":
             canonical_tickets = [
                 {
                     "key": "flash_ga",
@@ -10781,6 +10773,10 @@ def build_event_ticket_catalog(event, event_date=None):
             ):
                 remaining = 0
 
+            sale_ended = (
+                ticket.get("key") in ("flash_ga", "flash_vip")
+                and not flash_sale_active()
+            )
             catalog.append({
                 **ticket,
                 "price_cents": price_cents,
@@ -10791,6 +10787,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "sold_out": capacity > 0 and remaining <= 0,
                 "almost_gone": 0 < remaining <= 5,
                 "max_per_order": min(10, remaining) if remaining else 0,
+                "sale_ended": sale_ended,
             })
     finally:
         conn.close()
@@ -11175,6 +11172,12 @@ def ticket_checkout_create(event_name):
             return {
                 "success": False,
                 "error": "One of the selected ticket types is unavailable.",
+            }, 400
+
+        if ticket.get("sale_ended"):
+            return {
+                "success": False,
+                "error": "The flash sale has ended.",
             }, 400
 
         if ticket["sold_out"] or ticket["remaining"] < quantity:
@@ -12035,7 +12038,10 @@ def event_detail(event_name):
             "quantity": quantity,
             "remaining": remaining,
             "sold_out": remaining <= 0 and quantity > 0,
-            "almost_gone": 0 < remaining <= 5
+            "almost_gone": 0 < remaining <= 5,
+            "sale_ended": bool(
+                shared_catalog.get(key, {}).get("sale_ended")
+            ),
         })
 
     conn.close()

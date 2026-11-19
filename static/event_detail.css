@@ -1283,6 +1283,36 @@ font-size: 13px;
     box-shadow: 0 6px 20px rgba(220, 38, 38, 0.5);
 }
 
+.ticket-box.flash-sale-ticket.flash-sale-ended {
+    border-color: #6d6d6d;
+    background: #1c1c1c;
+    box-shadow: none;
+    transform: none;
+    filter: grayscale(1);
+    opacity: 0.78;
+}
+
+.flash-sale-ended .flash-sale-banner {
+    background: #4d4d4d;
+    color: #eeeeee;
+}
+
+.flash-sale-ended h3,
+.flash-sale-ended .flash-sale-price strong,
+.flash-sale-ended .flash-sale-savings {
+    color: #c8c8c8;
+}
+
+.flash-sale-ended .btn,
+.flash-sale-ended .btn.disabled {
+    background: #3a3a3a;
+    color: #e4e4e4;
+    border-color: #6d6d6d;
+    box-shadow: none;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
 @media (max-width: 600px) {
     .ticket-box.flash-sale-ticket {
         transform: none;
