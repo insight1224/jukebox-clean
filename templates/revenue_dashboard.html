@@ -405,6 +405,10 @@
                 Add Expense
               </button>
 
+              <a class="btn secondary" href="/dashboard/expenses">
+                Tax Expenses
+              </a>
+
               <button
                 class="btn secondary js-export-revenue-report"
                 type="button"
@@ -1146,7 +1150,7 @@
             <div>
               <p class="eyebrow">Expense Entry</p>
               <h3>Add Expense</h3>
-              <p>Record event expenses or general business expenses.</p>
+              <p>Record a quick expense here. For the payee, receipt, and tax-year report, use <a href="/dashboard/expenses">Expenses</a>.</p>
             </div>
             <button class="event-modal-close" type="button" id="expenseModalClose">Close</button>
           </div>
@@ -1188,16 +1192,19 @@
                       Expense Category
                       <select class="expenseCategory">
                         <option>Select Category</option>
-                        <option>Venue</option>
-                        <option>Staff</option>
-                        <option>DJ / Performer</option>
-                        <option>Security</option>
+                        <option>Advertising</option>
+                        <option>Contract labor</option>
+                        <option>Fees and commissions</option>
+                        <option>Rent and venue</option>
                         <option>Supplies</option>
-                        <option>Marketing</option>
-                        <option>Decor</option>
-                        <option>Food / Catering</option>
-                        <option>Donations</option>
-                        <option>Other</option>
+                        <option>Merchandise cost</option>
+                        <option>Equipment</option>
+                        <option>Meals</option>
+                        <option>Travel</option>
+                        <option>Software and subscriptions</option>
+                        <option>Insurance</option>
+                        <option>Legal and professional</option>
+                        <option>Other expenses</option>
                       </select>
                     </label>
 
@@ -1609,35 +1616,24 @@
       });
     }
 
-    const eventExpenseCategories = [
-      "Venue",
-      "Staff",
-      "DJ / Performer",
-      "Security",
+    const scheduleCCategories = [
+      "Advertising",
+      "Contract labor",
+      "Fees and commissions",
+      "Rent and venue",
       "Supplies",
-      "Marketing",
-      "Decor",
-      "Food / Catering",
-      "Other"
-    ];
-
-    const businessExpenseCategories = [
-      "Website Maintenance",
-      "Software / Subscriptions",
-      "Accounting / Bookkeeping",
-      "Marketing",
-      "Administrative",
-      "Contractor / Support",
+      "Merchandise cost",
+      "Equipment",
+      "Meals",
+      "Travel",
+      "Software and subscriptions",
       "Insurance",
-      "Professional Services",
-      "Office Supplies",
-      "Donations",
-      "Other Business Expense"
+      "Legal and professional",
+      "Other expenses"
     ];
 
     function getExpenseCategoryOptions() {
-      const selectedExpenseType = expenseType ? expenseType.value : "event";
-      const categories = selectedExpenseType === "business" ? businessExpenseCategories : eventExpenseCategories;
+      const categories = scheduleCCategories;
 
       return [
         '<option>Select Category</option>',
@@ -1675,16 +1671,7 @@
             Expense Category
             <select class="expenseCategory">
               <option>Select Category</option>
-              <option>Venue</option>
-              <option>Staff</option>
-              <option>DJ / Performer</option>
-              <option>Security</option>
-              <option>Supplies</option>
-              <option>Marketing</option>
-              <option>Decor</option>
-              <option>Food / Catering</option>
-                      <option>Donations</option>
-              <option>Other</option>
+              ${scheduleCCategories.map((category) => `<option>${category}</option>`).join("")}
             </select>
           </label>
 
@@ -1887,8 +1874,6 @@
 
         if (isCash) {
           payload.quantity = Number(financialEditQuantity.value || 0);
-        } else {
-          payload.payment_method = "Other";
         }
 
         try {

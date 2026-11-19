@@ -883,6 +883,14 @@ def init_db():
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    # Extra bookkeeping fields. Added only when missing, so older rows stay intact.
+    ensure_column("event_expenses", "expense_date", "TEXT")
+    ensure_column("event_expenses", "vendor", "TEXT")
+    ensure_column("event_expenses", "receipt_filename", "TEXT")
+    ensure_column("event_expenses", "receipt_original_name", "TEXT")
+    ensure_column("business_expenses", "vendor", "TEXT")
+    ensure_column("business_expenses", "receipt_filename", "TEXT")
+    ensure_column("business_expenses", "receipt_original_name", "TEXT")
 
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS event_tickets (
@@ -13827,8 +13835,9 @@ def api_business_expenses():
 
     category = (data.get("category") or "").strip()
     notes = (data.get("notes") or "").strip()
-    expense_date = (data.get("expense_date") or "").strip()
+    expense_date = (data.get("expense_date") or "").strip() or date.today().isoformat()
     payment_method = (data.get("payment_method") or "Other").strip() or "Other"
+    vendor = (data.get("vendor") or "").strip()
 
     try:
         amount = float(data.get("amount") or 0)
@@ -13848,10 +13857,12 @@ def api_business_expenses():
 
     cur.execute(
         """
-        INSERT INTO business_expenses (category, amount_cents, notes, expense_date, payment_method)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO business_expenses (
+            category, amount_cents, notes, expense_date, payment_method, vendor
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
         """,
-        (category, amount_cents, notes, expense_date, payment_method),
+        (category, amount_cents, notes, expense_date, payment_method, vendor),
     )
 
     expense_id = cur.lastrowid
@@ -13879,7 +13890,9 @@ def api_event_expenses():
     event_name = (data.get("event_name") or "").strip()
     category = (data.get("category") or "").strip()
     notes = (data.get("notes") or "").strip()
-    payment_method = (data.get("payment_method") or "Other").strip()
+    payment_method = (data.get("payment_method") or "Other").strip() or "Other"
+    expense_date = (data.get("expense_date") or "").strip() or date.today().isoformat()
+    vendor = (data.get("vendor") or "").strip()
 
     try:
         amount = float(data.get("amount") or 0)
@@ -13907,10 +13920,12 @@ def api_event_expenses():
 
     cur.execute(
         """
-        INSERT INTO event_expenses (event_name, category, amount_cents, notes, payment_method)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO event_expenses (
+            event_name, category, amount_cents, notes, payment_method, expense_date, vendor
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
-        (event_name, category, amount_cents, notes, payment_method),
+        (event_name, category, amount_cents, notes, payment_method, expense_date, vendor),
     )
 
     conn.commit()
@@ -13939,7 +13954,6 @@ def api_update_event_expense(expense_id):
     event_name = (data.get("event_name") or "").strip()
     category = (data.get("category") or "").strip()
     notes = (data.get("notes") or "").strip()
-    payment_method = (data.get("payment_method") or "Other").strip()
 
     try:
         amount = float(data.get("amount") or 0)
@@ -13965,13 +13979,36 @@ def api_update_event_expense(expense_id):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
+    assignments = [
+        "event_name = ?",
+        "category = ?",
+        "amount_cents = ?",
+        "notes = ?",
+    ]
+    params = [event_name, category, amount_cents, notes]
+
+    # Only change these when the form actually sent them, so an older
+    # edit screen cannot wipe a payee, date, or payment method.
+    if "payment_method" in data and (data.get("payment_method") or "").strip():
+        assignments.append("payment_method = ?")
+        params.append((data.get("payment_method") or "").strip())
+
+    if "expense_date" in data and (data.get("expense_date") or "").strip():
+        assignments.append("expense_date = ?")
+        params.append((data.get("expense_date") or "").strip())
+
+    if "vendor" in data:
+        assignments.append("vendor = ?")
+        params.append((data.get("vendor") or "").strip())
+
+    params.append(expense_id)
     cur.execute(
-        """
+        f"""
         UPDATE event_expenses
-        SET event_name = ?, category = ?, amount_cents = ?, notes = ?, payment_method = ?
+        SET {", ".join(assignments)}
         WHERE id = ?
         """,
-        (event_name, category, amount_cents, notes, payment_method, expense_id),
+        params,
     )
 
     if cur.rowcount == 0:
@@ -14001,6 +14038,18 @@ def api_delete_event_expense(expense_id):
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
+    receipt_name = ""
+    try:
+        cur.execute(
+            "SELECT receipt_filename FROM event_expenses WHERE id = ?",
+            (expense_id,),
+        )
+        receipt_row = cur.fetchone()
+        if receipt_row and receipt_row[0]:
+            receipt_name = receipt_row[0]
+    except sqlite3.OperationalError:
+        receipt_name = ""
+
     cur.execute("DELETE FROM event_expenses WHERE id = ?", (expense_id,))
 
     if cur.rowcount == 0:
@@ -14009,8 +14058,1045 @@ def api_delete_event_expense(expense_id):
 
     conn.commit()
     conn.close()
+    if receipt_name:
+        delete_expense_receipt(receipt_name)
 
     return {"status": "ok", "deleted_id": expense_id}, 200
+
+
+# -------------------------
+# TAX-SEASON EXPENSE ACCOUNT
+# Bookkeeping worksheet only. Not tax advice.
+# -------------------------
+
+SCHEDULE_C_CATEGORIES = [
+    {
+        "key": "advertising",
+        "label": "Advertising",
+        "line": "Schedule C, line 8",
+        "help": "Flyers, ads, boosted posts, and printing",
+    },
+    {
+        "key": "contract_labor",
+        "label": "Contract labor",
+        "line": "Schedule C, line 11",
+        "help": "DJs, performers, security, and other people paid as contractors",
+    },
+    {
+        "key": "fees",
+        "label": "Fees and commissions",
+        "line": "Schedule C, line 10",
+        "help": "Square fees, ticketing fees, and bank fees",
+    },
+    {
+        "key": "rent_venue",
+        "label": "Rent and venue",
+        "line": "Schedule C, line 20b",
+        "help": "Venue rental and other space you rent for events",
+    },
+    {
+        "key": "supplies",
+        "label": "Supplies",
+        "line": "Schedule C, line 22",
+        "help": "Decor, paper goods, and other event supplies",
+    },
+    {
+        "key": "merchandise",
+        "label": "Merchandise cost",
+        "line": "Schedule C, Part III (cost of goods)",
+        "help": "What you paid for shirts and other items you resell",
+    },
+    {
+        "key": "equipment",
+        "label": "Equipment",
+        "line": "Schedule C, line 13",
+        "help": "Speakers, lights, and other equipment. Your accountant decides how much can be deducted this year.",
+    },
+    {
+        "key": "meals",
+        "label": "Meals",
+        "line": "Schedule C, line 24b",
+        "help": "Business meals. The IRS often allows only part of the cost.",
+    },
+    {
+        "key": "travel",
+        "label": "Travel",
+        "line": "Schedule C, line 24a",
+        "help": "Travel for the business",
+    },
+    {
+        "key": "software",
+        "label": "Software and subscriptions",
+        "line": "Schedule C, line 18",
+        "help": "Website, email, and other software",
+    },
+    {
+        "key": "insurance",
+        "label": "Insurance",
+        "line": "Schedule C, line 15",
+        "help": "Business or event insurance",
+    },
+    {
+        "key": "professional",
+        "label": "Legal and professional",
+        "line": "Schedule C, line 17",
+        "help": "Bookkeeping, accounting, and other professional help",
+    },
+    {
+        "key": "other",
+        "label": "Other expenses",
+        "line": "Schedule C, line 27a",
+        "help": "Anything that does not fit the categories above",
+    },
+]
+
+SCHEDULE_C_BY_KEY = {item["key"]: item for item in SCHEDULE_C_CATEGORIES}
+SCHEDULE_C_BY_LABEL = {item["label"].lower(): item for item in SCHEDULE_C_CATEGORIES}
+
+# Older dashboard labels stay saved as they were. This only decides
+# which Schedule C line the report groups them under.
+LEGACY_EXPENSE_CATEGORY_MAP = {
+    "marketing": "advertising",
+    "advertising": "advertising",
+    "dj / performer": "contract_labor",
+    "dj/performer": "contract_labor",
+    "staff": "contract_labor",
+    "security": "contract_labor",
+    "contractor / support": "contract_labor",
+    "contract labor": "contract_labor",
+    "venue": "rent_venue",
+    "rent / venue": "rent_venue",
+    "rent and venue": "rent_venue",
+    "supplies": "supplies",
+    "decor": "supplies",
+    "office supplies": "supplies",
+    "merchandise cost": "merchandise",
+    "equipment": "equipment",
+    "food / catering": "meals",
+    "food/catering": "meals",
+    "meals": "meals",
+    "travel": "travel",
+    "software / subscriptions": "software",
+    "software and subscriptions": "software",
+    "website maintenance": "software",
+    "fees": "fees",
+    "fees and commissions": "fees",
+    "insurance": "insurance",
+    "accounting / bookkeeping": "professional",
+    "professional services": "professional",
+    "administrative": "professional",
+    "legal and professional": "professional",
+    "donations": "other",
+    "other": "other",
+    "other business expense": "other",
+    "other expenses": "other",
+}
+
+EXPENSE_PAYMENT_METHODS = [
+    "Cash",
+    "Debit or credit card",
+    "Cash App",
+    "Zelle",
+    "Square",
+    "Check",
+    "Other",
+]
+
+RECEIPT_ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png", "webp"}
+RECEIPT_MAX_BYTES = 12 * 1024 * 1024
+
+
+def persistent_data_dir():
+    """Folder that survives a Render restart. Local runs keep files beside the database."""
+    explicit = os.getenv("DATA_DIR", "").strip()
+    if explicit:
+        return explicit
+
+    database_dir = os.path.dirname(os.path.abspath(DB_PATH)) or "."
+    disk_root = "/var/data"
+    if os.path.isdir(disk_root) and os.access(disk_root, os.W_OK):
+        database_abs = os.path.abspath(database_dir)
+        disk_abs = os.path.abspath(disk_root)
+        if database_abs == disk_abs or database_abs.startswith(disk_abs + os.sep):
+            return database_dir
+        return disk_root
+
+    return database_dir
+
+
+def expense_receipt_dir():
+    configured = os.getenv("RECEIPT_UPLOAD_DIR", "").strip()
+    folder = configured or os.path.join(persistent_data_dir(), "expense_receipts")
+    os.makedirs(folder, exist_ok=True)
+    return folder
+
+
+def schedule_c_for_category(raw_category):
+    text = (raw_category or "").strip().lower()
+    if text in SCHEDULE_C_BY_LABEL:
+        return SCHEDULE_C_BY_LABEL[text]
+    key = LEGACY_EXPENSE_CATEGORY_MAP.get(text, "other")
+    return SCHEDULE_C_BY_KEY[key]
+
+
+def coerce_record_date(value):
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    raw = raw.replace("T", " ").split(" ", 1)[0]
+    return parse_event_date_value(raw)
+
+
+def money_from_cents(cents):
+    return round(int(cents or 0) / 100.0, 2)
+
+
+def safe_receipt_filename(filename):
+    name = os.path.basename((filename or "").strip())
+    if not re.fullmatch(r"[A-Za-z0-9_-]{8,80}\.(pdf|jpg|jpeg|png|webp)", name):
+        return ""
+    return name
+
+
+def receipt_file_path(filename):
+    safe_name = safe_receipt_filename(filename)
+    if not safe_name:
+        return ""
+    folder = os.path.abspath(expense_receipt_dir())
+    path = os.path.abspath(os.path.join(folder, safe_name))
+    if not path.startswith(folder + os.sep):
+        return ""
+    return path
+
+
+def delete_expense_receipt(filename):
+    path = receipt_file_path(filename)
+    if path and os.path.isfile(path):
+        try:
+            os.remove(path)
+        except OSError as exc:
+            print("[expenses] could not remove receipt:", exc)
+
+
+def save_expense_receipt(upload):
+    if not upload or not (upload.filename or "").strip():
+        return "", ""
+
+    original = os.path.basename(upload.filename.strip())
+    if "." not in original:
+        raise ValueError("Receipts need to be a PDF or a photo (JPG, PNG, or WEBP).")
+
+    extension = original.rsplit(".", 1)[1].lower()
+    if extension not in RECEIPT_ALLOWED_EXTENSIONS:
+        raise ValueError("Receipts need to be a PDF or a photo (JPG, PNG, or WEBP).")
+
+    payload = upload.read()
+    if not payload:
+        raise ValueError("That receipt file was empty.")
+    if len(payload) > RECEIPT_MAX_BYTES:
+        raise ValueError("Receipts need to be smaller than 12 MB.")
+
+    stored = f"{secrets.token_hex(16)}.{extension}"
+    destination = os.path.join(expense_receipt_dir(), stored)
+    with open(destination, "wb") as handle:
+        handle.write(payload)
+    return stored, original
+
+
+def load_expense_ledger():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT id, event_name, category, amount_cents, notes, payment_method,
+               expense_date, vendor, receipt_filename, receipt_original_name, created_at
+        FROM event_expenses
+        """
+    )
+    event_rows = [dict(row) for row in cur.fetchall()]
+
+    cur.execute(
+        """
+        SELECT id, category, amount_cents, notes, payment_method,
+               expense_date, vendor, receipt_filename, receipt_original_name, created_at
+        FROM business_expenses
+        """
+    )
+    business_rows = [dict(row) for row in cur.fetchall()]
+    conn.close()
+
+    ledger = []
+
+    for row in event_rows:
+        spent_on = coerce_record_date(row.get("expense_date")) or coerce_record_date(row.get("created_at"))
+        schedule = schedule_c_for_category(row.get("category"))
+        saved_category = (row.get("category") or "").strip()
+        ledger.append({
+            "source": "event",
+            "id": int(row["id"]),
+            "event_name": (row.get("event_name") or "").strip(),
+            "saved_category": saved_category,
+            "category_label": schedule["label"],
+            "schedule_line": schedule["line"],
+            "schedule_key": schedule["key"],
+            "amount": money_from_cents(row.get("amount_cents")),
+            "notes": (row.get("notes") or "").strip(),
+            "payment_method": (row.get("payment_method") or "").strip() or "Other",
+            "vendor": (row.get("vendor") or "").strip(),
+            "spent_on": spent_on,
+            "receipt_filename": safe_receipt_filename(row.get("receipt_filename")),
+            "receipt_original_name": (row.get("receipt_original_name") or "").strip(),
+        })
+
+    for row in business_rows:
+        spent_on = coerce_record_date(row.get("expense_date")) or coerce_record_date(row.get("created_at"))
+        schedule = schedule_c_for_category(row.get("category"))
+        saved_category = (row.get("category") or "").strip()
+        ledger.append({
+            "source": "business",
+            "id": int(row["id"]),
+            "event_name": "",
+            "saved_category": saved_category,
+            "category_label": schedule["label"],
+            "schedule_line": schedule["line"],
+            "schedule_key": schedule["key"],
+            "amount": money_from_cents(row.get("amount_cents")),
+            "notes": (row.get("notes") or "").strip(),
+            "payment_method": (row.get("payment_method") or "").strip() or "Other",
+            "vendor": (row.get("vendor") or "").strip(),
+            "spent_on": spent_on,
+            "receipt_filename": safe_receipt_filename(row.get("receipt_filename")),
+            "receipt_original_name": (row.get("receipt_original_name") or "").strip(),
+        })
+
+    ledger.sort(
+        key=lambda item: (
+            item["spent_on"] or date.min,
+            item["vendor"].lower(),
+            item["id"],
+        ),
+        reverse=True,
+    )
+    return ledger
+
+
+def _dated_amount(raw_date, amount):
+    spent_on = coerce_record_date(raw_date)
+    if not spent_on:
+        return None
+    return spent_on, round(float(amount or 0), 2)
+
+
+def load_period_income(start_date, end_date):
+    """Money recorded between two dates, using the same sources as the dashboard."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT event_name, created_at,
+               COALESCE(amount_cents, 0) AS amount_cents,
+               COALESCE(refunded_amount_cents, 0) AS refunded_amount_cents
+        FROM event_tickets
+        """
+    )
+    ticket_rows = [dict(row) for row in cur.fetchall()]
+
+    cur.execute(
+        """
+        SELECT event_name, category, notes, quantity, event_date, created_at, amount_cents
+        FROM event_cash_revenue
+        """
+    )
+    cash_rows = [dict(row) for row in cur.fetchall()]
+
+    cur.execute(
+        """
+        SELECT amount_cents, amount, paid_at, created_at
+        FROM membership_payments
+        """
+    )
+    membership_rows = [dict(row) for row in cur.fetchall()]
+
+    cur.execute(
+        """
+        SELECT total_cents, payment_status, paid_at, created_at
+        FROM merch_orders
+        """
+    )
+    merch_rows = [dict(row) for row in cur.fetchall()]
+
+    cur.execute(
+        """
+        SELECT tip_cents, created_at
+        FROM square_payment_log
+        """
+    )
+    tip_rows = [dict(row) for row in cur.fetchall()]
+    conn.close()
+
+    def in_period(day):
+        return bool(day and start_date <= day <= end_date)
+
+    income = {
+        "tickets": 0.0,
+        "door_and_cash": 0.0,
+        "memberships": 0.0,
+        "merchandise": 0.0,
+        "donations": 0.0,
+        "tips_and_other": 0.0,
+    }
+    income_by_event = {}
+
+    def add_event_income(event_name, amount):
+        label = (event_name or "").strip() or "Not tied to one event"
+        bucket = income_by_event.setdefault(label, {"income": 0.0, "expenses": 0.0})
+        bucket["income"] = round(bucket["income"] + amount, 2)
+
+    for row in ticket_rows:
+        net_cents = max(int(row["amount_cents"] or 0) - int(row["refunded_amount_cents"] or 0), 0)
+        if net_cents <= 0:
+            continue
+        parsed = _dated_amount(row.get("created_at"), money_from_cents(net_cents))
+        if not parsed or not in_period(parsed[0]):
+            continue
+        income["tickets"] = round(income["tickets"] + parsed[1], 2)
+        add_event_income(row.get("event_name"), parsed[1])
+
+    for row in cash_rows:
+        category = (row.get("category") or "").strip().lower()
+        notes = (row.get("notes") or "").strip().lower()
+        if category == "comp":
+            continue
+        amount = money_from_cents(row.get("amount_cents"))
+        if amount <= 0:
+            continue
+        parsed = _dated_amount(row.get("event_date") or row.get("created_at"), amount)
+        if not parsed or not in_period(parsed[0]):
+            continue
+
+        is_donation = "donation" in category or "donation" in notes
+        is_other = (
+            "vendor" in category
+            or "vendor" in notes
+            or "sponsor" in category
+            or "sponsor" in notes
+            or "other" in category
+        )
+        is_ticket = (
+            not is_donation
+            and not is_other
+            and (
+                "door" in category
+                or "door" in notes
+                or "ticket" in category
+                or "ticket" in notes
+                or "cash" in category
+                or int(row.get("quantity") or 0) > 0
+            )
+        )
+
+        if is_donation:
+            income["donations"] = round(income["donations"] + parsed[1], 2)
+        elif is_ticket:
+            income["door_and_cash"] = round(income["door_and_cash"] + parsed[1], 2)
+            add_event_income(row.get("event_name"), parsed[1])
+        else:
+            income["tips_and_other"] = round(income["tips_and_other"] + parsed[1], 2)
+            add_event_income(row.get("event_name"), parsed[1])
+
+    for row in membership_rows:
+        cents = int(row.get("amount_cents") or 0)
+        if cents <= 0:
+            cents = int(round(float(row.get("amount") or 0) * 100))
+        amount = money_from_cents(cents)
+        parsed = _dated_amount(row.get("paid_at") or row.get("created_at"), amount)
+        if not parsed or not in_period(parsed[0]) or parsed[1] <= 0:
+            continue
+        income["memberships"] = round(income["memberships"] + parsed[1], 2)
+
+    for row in merch_rows:
+        if (row.get("payment_status") or "").strip().lower() != "paid":
+            continue
+        parsed = _dated_amount(
+            row.get("paid_at") or row.get("created_at"),
+            money_from_cents(row.get("total_cents")),
+        )
+        if not parsed or not in_period(parsed[0]) or parsed[1] <= 0:
+            continue
+        income["merchandise"] = round(income["merchandise"] + parsed[1], 2)
+
+    for row in tip_rows:
+        parsed = _dated_amount(row.get("created_at"), money_from_cents(row.get("tip_cents")))
+        if not parsed or not in_period(parsed[0]) or parsed[1] <= 0:
+            continue
+        income["tips_and_other"] = round(income["tips_and_other"] + parsed[1], 2)
+
+    income["total"] = round(sum(income.values()), 2)
+    return income, income_by_event
+
+
+def tax_period_from_request():
+    today = date.today()
+    start_text = (request.args.get("start") or "").strip()
+    end_text = (request.args.get("end") or "").strip()
+    year_text = (request.args.get("year") or "").strip()
+
+    start_date = coerce_record_date(start_text)
+    end_date = coerce_record_date(end_text)
+
+    if start_date and end_date and start_date <= end_date:
+        label = (
+            f"{start_date.strftime('%B')} {start_date.day}, {start_date.year}"
+            f" – {end_date.strftime('%B')} {end_date.day}, {end_date.year}"
+        )
+        if start_date == date(start_date.year, 1, 1) and end_date == date(start_date.year, 12, 31):
+            label = f"Tax year {start_date.year}"
+        return start_date, end_date, label
+
+    year = today.year
+    if year_text.isdigit():
+        year = int(year_text)
+    return date(year, 1, 1), date(year, 12, 31), f"Tax year {year}"
+
+
+def build_tax_report(start_date, end_date, period_label):
+    expenses = [
+        item for item in load_expense_ledger()
+        if item["spent_on"] and start_date <= item["spent_on"] <= end_date
+    ]
+    expenses.sort(key=lambda item: (item["spent_on"], item["vendor"].lower(), item["id"]))
+
+    income, income_by_event = load_period_income(start_date, end_date)
+
+    category_totals = {
+        item["key"]: {
+            "label": item["label"],
+            "line": item["line"],
+            "amount": 0.0,
+            "count": 0,
+        }
+        for item in SCHEDULE_C_CATEGORIES
+    }
+    month_totals = {}
+    event_totals = {}
+
+    for item in expenses:
+        category_totals[item["schedule_key"]]["amount"] = round(
+            category_totals[item["schedule_key"]]["amount"] + item["amount"],
+            2,
+        )
+        category_totals[item["schedule_key"]]["count"] += 1
+
+        month_key = item["spent_on"].strftime("%Y-%m")
+        month_label = item["spent_on"].strftime("%B %Y")
+        month_bucket = month_totals.setdefault(
+            month_key,
+            {"label": month_label, "amount": 0.0, "count": 0},
+        )
+        month_bucket["amount"] = round(month_bucket["amount"] + item["amount"], 2)
+        month_bucket["count"] += 1
+
+        event_label = item["event_name"] or "Not tied to one event"
+        event_bucket = event_totals.setdefault(event_label, {"expenses": 0.0, "count": 0})
+        event_bucket["expenses"] = round(event_bucket["expenses"] + item["amount"], 2)
+        event_bucket["count"] += 1
+
+        income_bucket = income_by_event.setdefault(event_label, {"income": 0.0, "expenses": 0.0})
+        income_bucket["expenses"] = round(income_bucket.get("expenses", 0.0) + item["amount"], 2)
+
+    expense_total = round(sum(item["amount"] for item in expenses), 2)
+    net = round(income["total"] - expense_total, 2)
+
+    category_rows = [
+        row for row in category_totals.values()
+        if row["count"] or row["amount"]
+    ]
+    month_rows = [month_totals[key] for key in sorted(month_totals)]
+
+    event_rows = []
+    event_names = set(event_totals) | set(income_by_event)
+    for name in sorted(event_names, key=lambda value: value.lower()):
+        spent = event_totals.get(name, {}).get("expenses", 0.0)
+        earned = income_by_event.get(name, {}).get("income", 0.0)
+        count = event_totals.get(name, {}).get("count", 0)
+        if spent == 0 and earned == 0:
+            continue
+        event_rows.append({
+            "name": name,
+            "income": round(earned, 2),
+            "expenses": round(spent, 2),
+            "net": round(earned - spent, 2),
+            "count": count,
+        })
+
+    income_lines = [
+        {"label": "Ticket sales recorded on the website", "amount": income["tickets"]},
+        {"label": "Door, cash, and other ticket money", "amount": income["door_and_cash"]},
+        {"label": "Membership payments", "amount": income["memberships"]},
+        {"label": "Shirt and merch sales", "amount": income["merchandise"]},
+        {"label": "Donations", "amount": income["donations"]},
+        {"label": "Tips and other income", "amount": income["tips_and_other"]},
+    ]
+
+    return {
+        "start": start_date,
+        "end": end_date,
+        "label": period_label,
+        "expenses": expenses,
+        "expense_total": expense_total,
+        "expense_count": len(expenses),
+        "income": income,
+        "income_lines": [line for line in income_lines if line["amount"]],
+        "net": net,
+        "category_rows": category_rows,
+        "month_rows": month_rows,
+        "event_rows": event_rows,
+        "undated_count": 0,
+    }
+
+
+def expense_form_context():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT name
+        FROM events
+        WHERE name IS NOT NULL AND TRIM(name) <> ''
+        ORDER BY event_date DESC, name ASC
+        """
+    )
+    event_names = []
+    for row in cur.fetchall():
+        name = (row["name"] or "").strip()
+        if name and name not in event_names:
+            event_names.append(name)
+    conn.close()
+    return {
+        "categories": SCHEDULE_C_CATEGORIES,
+        "payment_methods": EXPENSE_PAYMENT_METHODS,
+        "event_names": event_names,
+    }
+
+
+def read_expense_form():
+    source = (request.form.get("source") or "business").strip().lower()
+    if source not in {"event", "business"}:
+        source = "business"
+
+    event_name = (request.form.get("event_name") or "").strip()
+    if event_name == "Not for one event":
+        event_name = ""
+
+    category_label = (request.form.get("category") or "").strip()
+    schedule = SCHEDULE_C_BY_LABEL.get(category_label.lower())
+    vendor = (request.form.get("vendor") or "").strip()
+    notes = (request.form.get("notes") or "").strip()
+    payment_method = (request.form.get("payment_method") or "").strip()
+    expense_date = coerce_record_date(request.form.get("expense_date"))
+
+    try:
+        amount = round(float(request.form.get("amount") or 0), 2)
+    except (TypeError, ValueError):
+        amount = 0
+
+    errors = []
+    if not expense_date:
+        errors.append("Enter the date you paid this.")
+    if not vendor:
+        errors.append("Enter who you paid.")
+    if amount <= 0:
+        errors.append("Enter an amount greater than zero.")
+    if not schedule:
+        errors.append("Choose a category.")
+    if payment_method not in EXPENSE_PAYMENT_METHODS:
+        errors.append("Choose how you paid.")
+    if event_name:
+        source = "event"
+    else:
+        source = "business"
+
+    return {
+        "source": source,
+        "id": (request.form.get("expense_id") or "").strip(),
+        "event_name": event_name,
+        "category": schedule["label"] if schedule else category_label,
+        "vendor": vendor,
+        "notes": notes,
+        "payment_method": payment_method,
+        "expense_date": expense_date.isoformat() if expense_date else "",
+        "amount": amount,
+        "remove_receipt": (request.form.get("remove_receipt") or "") == "1",
+        "errors": errors,
+    }
+
+
+def write_expense_record(form, receipt_filename="", receipt_original_name="", replace_receipt=False):
+    amount_cents = int(round(form["amount"] * 100))
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+
+    existing_id = 0
+    existing_source = ""
+    if form["id"]:
+        try:
+            existing_source, existing_raw_id = form["id"].split("-", 1)
+            existing_id = int(existing_raw_id)
+        except (ValueError, AttributeError):
+            existing_source, existing_id = "", 0
+        if existing_source not in {"event", "business"}:
+            existing_source, existing_id = "", 0
+
+    previous_receipt = ""
+    if existing_id:
+        table = "event_expenses" if existing_source == "event" else "business_expenses"
+        cur.execute(
+            f"SELECT receipt_filename FROM {table} WHERE id = ?",
+            (existing_id,),
+        )
+        found = cur.fetchone()
+        if not found:
+            conn.close()
+            raise ValueError("That expense could not be found.")
+        previous_receipt = found[0] or ""
+
+    if not replace_receipt:
+        receipt_filename = previous_receipt
+        if previous_receipt and not receipt_original_name:
+            table = "event_expenses" if existing_source == "event" else "business_expenses"
+            if existing_id:
+                cur.execute(
+                    f"SELECT receipt_original_name FROM {table} WHERE id = ?",
+                    (existing_id,),
+                )
+                original_row = cur.fetchone()
+                receipt_original_name = (original_row[0] if original_row else "") or ""
+
+    if form["remove_receipt"] and not replace_receipt:
+        receipt_filename = ""
+        receipt_original_name = ""
+
+    if form["source"] == "event":
+        values = (
+            form["event_name"],
+            form["category"],
+            amount_cents,
+            form["notes"],
+            form["payment_method"],
+            form["expense_date"],
+            form["vendor"],
+            receipt_filename,
+            receipt_original_name,
+        )
+        if existing_id and existing_source == "event":
+            cur.execute(
+                """
+                UPDATE event_expenses
+                SET event_name = ?, category = ?, amount_cents = ?, notes = ?,
+                    payment_method = ?, expense_date = ?, vendor = ?,
+                    receipt_filename = ?, receipt_original_name = ?
+                WHERE id = ?
+                """,
+                values + (existing_id,),
+            )
+            new_id = existing_id
+        else:
+            if existing_id and existing_source == "business":
+                cur.execute("DELETE FROM business_expenses WHERE id = ?", (existing_id,))
+            cur.execute(
+                """
+                INSERT INTO event_expenses (
+                    event_name, category, amount_cents, notes, payment_method,
+                    expense_date, vendor, receipt_filename, receipt_original_name
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                values,
+            )
+            new_id = cur.lastrowid
+        saved_source = "event"
+    else:
+        values = (
+            form["category"],
+            amount_cents,
+            form["notes"],
+            form["expense_date"],
+            form["payment_method"],
+            form["vendor"],
+            receipt_filename,
+            receipt_original_name,
+        )
+        if existing_id and existing_source == "business":
+            cur.execute(
+                """
+                UPDATE business_expenses
+                SET category = ?, amount_cents = ?, notes = ?, expense_date = ?,
+                    payment_method = ?, vendor = ?,
+                    receipt_filename = ?, receipt_original_name = ?
+                WHERE id = ?
+                """,
+                values + (existing_id,),
+            )
+            new_id = existing_id
+        else:
+            if existing_id and existing_source == "event":
+                cur.execute("DELETE FROM event_expenses WHERE id = ?", (existing_id,))
+            cur.execute(
+                """
+                INSERT INTO business_expenses (
+                    category, amount_cents, notes, expense_date, payment_method,
+                    vendor, receipt_filename, receipt_original_name
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                values,
+            )
+            new_id = cur.lastrowid
+        saved_source = "business"
+
+    conn.commit()
+    conn.close()
+
+    if previous_receipt and previous_receipt != receipt_filename:
+        delete_expense_receipt(previous_receipt)
+
+    return saved_source, new_id
+
+
+@app.route("/dashboard/expenses", methods=["GET", "POST"])
+@requires_auth
+def dashboard_expenses():
+    context = expense_form_context()
+    message = (request.args.get("msg") or "").strip()
+    error = ""
+    form = {
+        "source": "business",
+        "id": "",
+        "event_name": "",
+        "category": "",
+        "vendor": "",
+        "notes": "",
+        "payment_method": "Cash",
+        "expense_date": date.today().isoformat(),
+        "amount": "",
+        "remove_receipt": False,
+        "errors": [],
+    }
+
+    if request.method == "POST":
+        form = read_expense_form()
+        receipt_filename = ""
+        receipt_original = ""
+        replace_receipt = False
+        if not form["errors"]:
+            try:
+                if request.files.get("receipt") and (request.files["receipt"].filename or "").strip():
+                    receipt_filename, receipt_original = save_expense_receipt(request.files["receipt"])
+                    replace_receipt = True
+                write_expense_record(
+                    form,
+                    receipt_filename,
+                    receipt_original,
+                    replace_receipt,
+                )
+            except ValueError as exc:
+                if replace_receipt and receipt_filename:
+                    delete_expense_receipt(receipt_filename)
+                form["errors"].append(str(exc))
+            else:
+                verb = "updated" if form["id"] else "saved"
+                return redirect(url_for("dashboard_expenses", msg=f"Expense {verb}."))
+
+        if form["errors"]:
+            error = " ".join(form["errors"])
+
+    editing = None
+    edit_token = (request.args.get("edit") or "").strip()
+    if request.method == "GET" and edit_token:
+        source, _, raw_id = edit_token.partition("-")
+        if source in {"event", "business"} and raw_id.isdigit():
+            for item in load_expense_ledger():
+                if item["source"] == source and item["id"] == int(raw_id):
+                    editing = item
+                    break
+        if editing:
+            form = {
+                "source": editing["source"],
+                "id": f"{editing['source']}-{editing['id']}",
+                "event_name": editing["event_name"],
+                "category": editing["category_label"] if editing["saved_category"].lower() == editing["category_label"].lower() else editing["saved_category"],
+                "vendor": editing["vendor"],
+                "notes": editing["notes"],
+                "payment_method": editing["payment_method"] if editing["payment_method"] in EXPENSE_PAYMENT_METHODS else "Other",
+                "expense_date": editing["spent_on"].isoformat() if editing["spent_on"] else "",
+                "amount": f"{editing['amount']:.2f}",
+                "remove_receipt": False,
+                "errors": [],
+                "receipt_original_name": editing["receipt_original_name"],
+                "receipt_filename": editing["receipt_filename"],
+            }
+            # Keep a category that was saved in older words so the owner can see it.
+            if form["category"].lower() not in SCHEDULE_C_BY_LABEL:
+                form["category"] = editing["category_label"]
+
+    year_text = (request.args.get("year") or "").strip()
+    ledger = load_expense_ledger()
+    if year_text.isdigit():
+        year = int(year_text)
+        ledger = [
+            item for item in ledger
+            if item["spent_on"] and item["spent_on"].year == year
+        ]
+
+    years = sorted({
+        item["spent_on"].year
+        for item in load_expense_ledger()
+        if item["spent_on"]
+    } | {date.today().year, date.today().year - 1})
+
+    return render_template(
+        "expenses_dashboard.html",
+        form=form,
+        editing=editing,
+        ledger=ledger,
+        message=message,
+        error=error,
+        years=years,
+        selected_year=year_text,
+        **context,
+    )
+
+
+@app.route("/dashboard/expenses/<source>/<int:expense_id>/delete", methods=["POST"])
+@requires_auth
+def dashboard_delete_expense(source, expense_id):
+    if source not in {"event", "business"}:
+        return redirect(url_for("dashboard_expenses", msg="That expense could not be found."))
+
+    table = "event_expenses" if source == "event" else "business_expenses"
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute(f"SELECT receipt_filename FROM {table} WHERE id = ?", (expense_id,))
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return redirect(url_for("dashboard_expenses", msg="That expense could not be found."))
+
+    cur.execute(f"DELETE FROM {table} WHERE id = ?", (expense_id,))
+    conn.commit()
+    conn.close()
+    if row[0]:
+        delete_expense_receipt(row[0])
+    return redirect(url_for("dashboard_expenses", msg="Expense removed."))
+
+
+@app.route("/dashboard/expenses/receipt/<filename>")
+@requires_auth
+def dashboard_expense_receipt(filename):
+    path = receipt_file_path(filename)
+    if not path or not os.path.isfile(path):
+        return Response("Receipt not found", 404)
+    return send_from_directory(
+        expense_receipt_dir(),
+        os.path.basename(path),
+        as_attachment=False,
+    )
+
+
+@app.route("/dashboard/expenses/report")
+@requires_auth
+def dashboard_expense_report():
+    start_date, end_date, label = tax_period_from_request()
+    report = build_tax_report(start_date, end_date, label)
+    years = list(range(date.today().year, date.today().year - 6, -1))
+    query = request.query_string.decode()
+    return render_template(
+        "expense_tax_report.html",
+        report=report,
+        years=years,
+        export_query=query,
+    )
+
+
+@app.route("/dashboard/expenses/report/print")
+@requires_auth
+def dashboard_expense_report_print():
+    start_date, end_date, label = tax_period_from_request()
+    report = build_tax_report(start_date, end_date, label)
+    return render_template(
+        "expense_tax_report_print.html",
+        report=report,
+        prepared_on=date.today(),
+    )
+
+
+@app.route("/dashboard/expenses/report.csv")
+@requires_auth
+def dashboard_expense_report_csv():
+    start_date, end_date, label = tax_period_from_request()
+    report = build_tax_report(start_date, end_date, label)
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow([
+        "Bookkeeping worksheet for your accountant. This is not tax advice and it is not a tax return.",
+    ])
+    writer.writerow(["Business", "The Jukebox Lounge NC"])
+    writer.writerow(["Period", label])
+    writer.writerow(["Start", start_date.isoformat()])
+    writer.writerow(["End", end_date.isoformat()])
+    writer.writerow([])
+    writer.writerow(["Income"])
+    writer.writerow(["Type", "Amount"])
+    for line in report["income_lines"]:
+        writer.writerow([line["label"], f"{line['amount']:.2f}"])
+    writer.writerow(["Total income", f"{report['income']['total']:.2f}"])
+    writer.writerow(["Total expenses", f"{report['expense_total']:.2f}"])
+    writer.writerow(["Income minus expenses", f"{report['net']:.2f}"])
+    writer.writerow([])
+    writer.writerow(["Expenses by category"])
+    writer.writerow(["Category", "Tax form line", "Amount", "Number of expenses"])
+    for row in report["category_rows"]:
+        writer.writerow([row["label"], row["line"], f"{row['amount']:.2f}", row["count"]])
+    writer.writerow([])
+    writer.writerow([
+        "Date",
+        "Who you paid",
+        "Amount",
+        "Category",
+        "Tax form line",
+        "Category as originally saved",
+        "Event",
+        "How you paid",
+        "Notes",
+        "Receipt file",
+    ])
+    for item in report["expenses"]:
+        writer.writerow([
+            item["spent_on"].isoformat(),
+            item["vendor"] or "Not recorded",
+            f"{item['amount']:.2f}",
+            item["category_label"],
+            item["schedule_line"],
+            item["saved_category"],
+            item["event_name"] or "Not tied to one event",
+            item["payment_method"],
+            item["notes"],
+            item["receipt_original_name"],
+        ])
+
+    payload = buffer.getvalue().encode("utf-8-sig")
+    filename = f"jukebox-expenses-{start_date.isoformat()}-to-{end_date.isoformat()}.csv"
+    return Response(
+        payload,
+        mimetype="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.route("/api/event-cash-revenue", methods=["POST"])
