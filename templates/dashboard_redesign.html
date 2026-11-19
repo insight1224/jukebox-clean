@@ -70,7 +70,17 @@
               </button>
             </div>
 
-            <span id="syncSquareStatus" class="sync-square-status"></span>
+            <span id="syncSquareStatus" class="sync-square-status">
+              {% if not square_connected %}
+                Square is not connected, so these totals do not include live sales yet.
+              {% elif square_sync.last_error %}
+                Last Square sync failed: {{ square_sync.last_error }}
+              {% elif square_sync.last_success_at %}
+                Last synced {{ square_sync.last_success_label or square_sync.last_success_at }}. {{ square_sync.last_summary }}
+              {% else %}
+                Square has not synced yet. Use Sync Square to pull real sales.
+              {% endif %}
+            </span>
             <span id="syncEventbriteStatus" class="sync-square-status"></span>
           </div>
         </div>
@@ -542,7 +552,7 @@
           }
 
           if (syncSquareStatus) {
-            syncSquareStatus.textContent = `Synced ${result.processed || 0} new payments. Refreshing...`;
+            syncSquareStatus.textContent = `Imported ${result.processed || 0} new sales. ${result.duplicates || 0} were already saved. ${result.unmatched || 0} still need a match. Refreshing...`;
           }
 
           setTimeout(() => {
@@ -552,7 +562,7 @@
           console.error(error);
 
           if (syncSquareStatus) {
-            syncSquareStatus.textContent = "Sync failed. Check login or server logs.";
+            syncSquareStatus.textContent = error.message || "Square sync failed. Check the server logs.";
           }
 
           syncSquareButton.disabled = false;
