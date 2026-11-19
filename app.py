@@ -5,6 +5,7 @@ import hmac
 import io
 import json
 import os
+import threading
 import time
 import secrets
 import sqlite3
@@ -568,6 +569,18 @@ def init_db():
         amount_cents INTEGER,
         tip_cents INTEGER DEFAULT 0,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS square_sync_state (
+        id INTEGER PRIMARY KEY CHECK (id = 1),
+        last_attempt_at TEXT,
+        last_success_at TEXT,
+        last_error TEXT,
+        last_summary TEXT,
+        payments_seen INTEGER DEFAULT 0,
+        payments_imported INTEGER DEFAULT 0
     )
     """)
 
@@ -1426,7 +1439,18 @@ init_db()   # ✅ AFTER function exists
 SQUARE_SIGNATURE_KEY = os.getenv("SQUARE_SIGNATURE_KEY", "")
 SQUARE_WEBHOOK_URL = os.getenv("SQUARE_WEBHOOK_URL", "")
 SQUARE_ACCESS_TOKEN = os.getenv("SQUARE_ACCESS_TOKEN", "").strip()
-SQUARE_ENV = os.getenv("SQUARE_ENV", "sandbox").strip()
+# Live Render deploys should talk to the real Square account unless a
+# sandbox was requested on purpose. A blank value used to mean sandbox,
+# which made a production token fail quietly.
+_square_env_raw = os.getenv("SQUARE_ENV", "").strip().lower()
+if _square_env_raw in ("production", "prod", "live"):
+    SQUARE_ENV = "production"
+elif _square_env_raw in ("sandbox", "test"):
+    SQUARE_ENV = "sandbox"
+elif os.getenv("RENDER"):
+    SQUARE_ENV = "production"
+else:
+    SQUARE_ENV = "sandbox"
 if SQUARE_ENV == "sandbox":
     SQUARE_BASE_URL = "https://connect.squareupsandbox.com"
 else:
@@ -1438,11 +1462,22 @@ STRICT_WEBHOOK_SIGNATURE = os.getenv("STRICT_WEBHOOK_SIGNATURE", "0") == "1"
 SQUARE_SKIP_WEBHOOK_SIGNATURE = os.getenv("SQUARE_SKIP_WEBHOOK_SIGNATURE", "0") == "1"
 IS_PRODUCTION = os.getenv("FLASK_ENV", "").lower() == "production"
 MEMBERSHIP_AMOUNT_CENTS = int(os.getenv("SQUARE_MEMBERSHIP_AMOUNT_CENTS", "0") or "0")
-SQUARE_SYNC_LIMIT = int(os.getenv("SQUARE_SYNC_LIMIT", "100") or "100")
+# 0 means "keep paging until Square has no more results."
+SQUARE_SYNC_LIMIT = int(os.getenv("SQUARE_SYNC_LIMIT", "0") or "0")
+SQUARE_SYNC_BEGIN_TIME = os.getenv("SQUARE_SYNC_BEGIN_TIME", "2019-01-01T00:00:00Z").strip() or "2019-01-01T00:00:00Z"
+SQUARE_AUTO_SYNC_MINUTES = int(os.getenv("SQUARE_AUTO_SYNC_MINUTES", "30") or "30")
+SQUARE_API_VERSION = "2025-01-23"
 EVENTBRITE_PRIVATE_TOKEN = os.getenv("EVENTBRITE_PRIVATE_TOKEN", "").strip()
 EVENTBRITE_ORGANIZATION_ID = os.getenv("EVENTBRITE_ORGANIZATION_ID", "").strip()
 EVENTBRITE_SYNC_LIMIT = int(os.getenv("EVENTBRITE_SYNC_LIMIT", "300") or "300")
 EVENTBRITE_BASE_URL = "https://www.eventbriteapi.com/v3"
+
+print(
+    "[square-sync] startup "
+    f"token={'yes' if SQUARE_ACCESS_TOKEN else 'no'} "
+    f"env={SQUARE_ENV} "
+    f"location={os.getenv('SQUARE_LOCATION_ID', '').strip() or 'all active locations'}"
+, flush=True)
 
 WEB_TICKET_TYPES = {
     "early_bird": {"label": "Early Bird", "amount_cents": 1300},
@@ -3122,6 +3157,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
     base_url = BASE_URL
     print("QR BASE URL:", BASE_URL)
     created_ticket_ids = []
+    paid_at = (payment.get("created_at") or payment.get("updated_at") or "").strip() or None
 
     order = square_retrieve_order((payment.get("order_id") or "").strip())
     line_items = order.get("line_items", []) if isinstance(order, dict) else []
@@ -3186,8 +3222,8 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                         """
                         INSERT INTO event_tickets (
                             name, email, ticket_type, amount_cents, ticket_id, status,
-                            payment_id, checkin_url, qr_url, event_name, checked_in
-                        ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?, 0)
+                            payment_id, checkin_url, qr_url, event_name, checked_in, created_at
+                        ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?, 0, COALESCE(?, CURRENT_TIMESTAMP))
                         """,
                         (
                             full_name,
@@ -3199,6 +3235,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                             checkin_url,
                             qr_url,
                             line_event_name,
+                            paid_at,
                         ),
                     )
                     created_ticket_ids.append(ticket_id)
@@ -3248,8 +3285,8 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                 """
                 INSERT INTO event_tickets (
                     name, email, ticket_type, amount_cents, ticket_id, status,
-                    payment_id, checkin_url, qr_url, event_name, checked_in
-                ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?, 0)
+                    payment_id, checkin_url, qr_url, event_name, checked_in, created_at
+                ) VALUES (?, ?, ?, ?, ?, 'not_checked_in', ?, ?, ?, ?, 0, COALESCE(?, CURRENT_TIMESTAMP))
                 """,
                 (
                     full_name,
@@ -3261,6 +3298,7 @@ def create_ticket_from_square_payment(cursor, payment, amount_cents, email):
                     checkin_url,
                     qr_url,
                     event_name,
+                    paid_at,
                 ),
             )
             created.append(ticket_id)
@@ -3756,53 +3794,201 @@ def classify_square_payment(cursor, payment, amount_cents, note_blob):
     return "unmatched", None
 
 
-def square_list_payments(limit=100):
+_square_order_cache = {}
+_square_sync_guard = threading.Lock()
+
+
+def square_log(message):
+    print(f"[square-sync] {message}", flush=True)
+
+
+def square_clear_order_cache():
+    _square_order_cache.clear()
+
+
+def square_api_get(path, params=None):
+    """GET a Square endpoint. Returns (payload, error_message)."""
     if not SQUARE_ACCESS_TOKEN:
-        return []
-
-    target_limit = max(1, int(limit or 100))
-    per_page = min(target_limit, 100)
-    payments = []
-    cursor = None
-
-    while len(payments) < target_limit:
-        params = f"sort_order=DESC&limit={per_page}"
-        if cursor:
-            params += f"&cursor={urllib.parse.quote(cursor)}"
-
-        endpoint = f"{square_base_url()}/v2/payments?{params}"
-        req = urlrequest.Request(
-            endpoint,
-            headers={
-                "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
-                "Square-Version": "2024-11-20",
-                "Content-Type": "application/json",
-            },
-            method="GET",
+        return None, (
+            "Square is not connected. Add SQUARE_ACCESS_TOKEN on Render, "
+            "and set SQUARE_ENV to production for the live account."
         )
 
-        try:
-            with urlrequest.urlopen(req, timeout=20) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-                page_payments = payload.get("payments", []) or []
-                payments.extend(page_payments)
-                cursor = payload.get("cursor")
+    try:
+        response = requests.get(
+            f"{square_base_url()}{path}",
+            headers={
+                "Authorization": f"Bearer {SQUARE_ACCESS_TOKEN}",
+                "Square-Version": SQUARE_API_VERSION,
+                "Content-Type": "application/json",
+            },
+            params=params or {},
+            timeout=30,
+        )
+    except requests.RequestException as exc:
+        square_log(f"could not reach Square for {path}: {exc}")
+        return None, "Could not reach Square. Try Sync Square again in a few minutes."
 
-                if not cursor or not page_payments:
-                    break
-        except urlerror.HTTPError as exc:
-            print("Square list payments HTTP error:", exc.code)
-            break
-        except Exception as exc:
-            print("Square list payments error:", exc)
-            break
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = {}
 
-    return payments[:target_limit]
+    if response.ok:
+        return payload, ""
+
+    errors = payload.get("errors") or []
+    detail = ""
+    if errors and isinstance(errors[0], dict):
+        detail = (errors[0].get("detail") or errors[0].get("code") or "").strip()
+    square_log(f"Square HTTP {response.status_code} on {path}: {detail or 'no detail'}")
+    if response.status_code in (401, 403):
+        return None, (
+            "Square rejected the access token. Check SQUARE_ACCESS_TOKEN, "
+            "and set SQUARE_ENV to production for the live account."
+        )
+    return None, detail or f"Square returned an error ({response.status_code})."
+
+
+def square_configured_location_ids():
+    many = os.getenv("SQUARE_LOCATION_IDS", "").strip()
+    if many:
+        return [part.strip() for part in many.split(",") if part.strip()]
+    single = os.getenv("SQUARE_LOCATION_ID", "").strip()
+    if single:
+        return [single]
+    return []
+
+
+def square_location_ids():
+    configured = square_configured_location_ids()
+    if configured:
+        return configured, ""
+
+    payload, error = square_api_get("/v2/locations")
+    if error:
+        return [], error
+
+    ids = []
+    for location in payload.get("locations") or []:
+        if (location.get("status") or "ACTIVE").upper() != "ACTIVE":
+            continue
+        location_id = (location.get("id") or "").strip()
+        if location_id:
+            ids.append(location_id)
+    square_log(f"using {len(ids)} active Square location(s)")
+    return ids, ""
+
+
+def square_collect_pages(path, params, list_key, limit=None):
+    """Page through a Square list endpoint until the cursor runs out."""
+    collected = []
+    cursor = None
+    pages = 0
+
+    while True:
+        page_params = dict(params)
+        page_params["limit"] = 100
+        if cursor:
+            page_params["cursor"] = cursor
+
+        payload, error = square_api_get(path, page_params)
+        if error:
+            return collected, error
+
+        page_rows = payload.get(list_key) or []
+        collected.extend(page_rows)
+        pages += 1
+        square_log(f"{path} page {pages}: {len(page_rows)} {list_key}")
+
+        if limit and len(collected) >= limit:
+            return collected[:limit], ""
+
+        cursor = (payload.get("cursor") or "").strip()
+        if not cursor or not page_rows:
+            return collected, ""
+
+
+def square_list_payments(begin_time, location_ids=None, limit=None):
+    """Return every completed-window payment, paging through each location."""
+    targets = list(location_ids or [])
+    if not targets:
+        targets = [None]
+
+    collected = []
+    seen = set()
+
+    for location_id in targets:
+        params = {
+            "sort_order": "ASC",
+            "begin_time": begin_time,
+        }
+        if location_id:
+            params["location_id"] = location_id
+
+        page_rows, error = square_collect_pages(
+            "/v2/payments",
+            params,
+            "payments",
+            limit=None if not limit else max(0, limit - len(collected)),
+        )
+        if error and not page_rows:
+            return collected, error
+
+        for payment in page_rows:
+            payment_id = (payment.get("id") or "").strip()
+            if not payment_id or payment_id in seen:
+                continue
+            seen.add(payment_id)
+            collected.append(payment)
+            if limit and len(collected) >= limit:
+                return collected, error or ""
+
+        if error:
+            return collected, error
+
+    return collected, ""
+
+
+def square_list_refunds(begin_time, location_ids=None):
+    targets = list(location_ids or [])
+    if not targets:
+        targets = [None]
+
+    collected = []
+    seen = set()
+
+    for location_id in targets:
+        params = {
+            "sort_order": "ASC",
+            "begin_time": begin_time,
+        }
+        if location_id:
+            params["location_id"] = location_id
+
+        page_rows, error = square_collect_pages("/v2/refunds", params, "refunds")
+        if error and not page_rows:
+            return collected, error
+
+        for refund in page_rows:
+            refund_id = (refund.get("id") or "").strip()
+            if not refund_id or refund_id in seen:
+                continue
+            seen.add(refund_id)
+            collected.append(refund)
+
+        if error:
+            return collected, error
+
+    return collected, ""
 
 
 def square_retrieve_order(order_id):
     if not SQUARE_ACCESS_TOKEN or not order_id:
         return {}
+
+    if order_id in _square_order_cache:
+        return _square_order_cache[order_id]
 
     endpoint = f"{square_base_url()}/v2/orders/{order_id}"
     req = urlrequest.Request(
@@ -3818,11 +4004,14 @@ def square_retrieve_order(order_id):
     try:
         with urlrequest.urlopen(req, timeout=20) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
-            return payload.get("order", {}) or {}
+            order = payload.get("order", {}) or {}
+            _square_order_cache[order_id] = order
+            return order
     except urlerror.HTTPError as exc:
-        print("Square retrieve order HTTP error:", exc.code)
+        square_log(f"order {order_id} HTTP {exc.code}")
     except Exception as exc:
-        print("Square retrieve order error:", exc)
+        square_log(f"order {order_id} error: {exc}")
+    _square_order_cache[order_id] = {}
     return {}
 
 
@@ -4646,35 +4835,287 @@ def extract_quantity_from_payment(payment):
 
 
 
-def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False, dry_run=False):
-    payments = square_list_payments(limit=limit)
-    if not payments:
-        return {
-            "processed": 0,
-            "tickets": 0,
-            "memberships": 0,
-            "duplicates": 0,
-            "unmatched": 0,
-            "total_seen": 0,
-            "details": [],
-        }
+def square_payment_is_merch(payment):
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+    if not line_items:
+        return False
 
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
+    catalog_names = []
+    try:
+        catalog_names = [item["name"].strip().lower() for item in get_merch_catalog() if item.get("name")]
+    except Exception:
+        catalog_names = []
+
+    hints = ("shirt", "tee", "t-shirt", "tshirt", "hoodie", "merch")
+    for item in line_items:
+        name = ((item or {}).get("name") or "").strip().lower()
+        if not name:
+            continue
+        if any(hint in name for hint in hints):
+            return True
+        if any(product_name and product_name in name for product_name in catalog_names):
+            return True
+    return False
+
+
+def record_square_merch_order(cursor, payment, amount_cents, email):
+    """Save a Square shirt sale once. Re-syncing the same payment does not add another order."""
+    payment_id = (payment.get("id") or "").strip()
+    if not payment_id:
+        return False
+
+    cursor.execute(
+        "SELECT id FROM merch_orders WHERE square_payment_id = ?",
+        (payment_id,),
+    )
+    if cursor.fetchone():
+        return False
+
+    order = square_retrieve_order((payment.get("order_id") or "").strip())
+    line_items = order.get("line_items", []) if isinstance(order, dict) else []
+    cart = []
+    for item in line_items:
+        name = ((item or {}).get("name") or "Shirt").strip()
+        quantity = parse_line_item_quantity(item)
+        total_money = ((item or {}).get("total_money") or {}).get("amount")
+        try:
+            line_cents = int(total_money)
+        except (TypeError, ValueError):
+            line_cents = 0
+        cart.append({
+            "name": name,
+            "quantity": quantity,
+            "price_cents": line_cents,
+        })
+
+    if not cart:
+        cart.append({
+            "name": "Square merchandise",
+            "quantity": 1,
+            "price_cents": int(amount_cents or 0),
+        })
+
+    billing = payment.get("billing_address") or {}
+    name = " ".join(
+        part for part in (
+            (billing.get("first_name") or "").strip(),
+            (billing.get("last_name") or "").strip(),
+        ) if part
+    ) or "Square customer"
+    buyer_email = (email or payment.get("buyer_email_address") or "").strip().lower() or "no-email@example.com"
+    paid_at = (payment.get("created_at") or "").strip() or None
+    order_number = f"SQ-{payment_id[-10:]}"
+
+    cursor.execute(
+        """
+        INSERT INTO merch_orders (
+            order_number, customer_name, customer_email, fulfillment_method,
+            cart_json, subtotal_cents, shipping_cents, tax_cents, total_cents,
+            square_payment_id, payment_status, order_status, paid_at,
+            manual_payment_method, manual_payment_notes, created_at
+        ) VALUES (?, ?, ?, 'Pickup', ?, ?, 0, 0, ?, ?, 'paid', 'New', ?, 'Square', 'Imported from Square', COALESCE(?, CURRENT_TIMESTAMP))
+        """,
+        (
+            order_number,
+            name,
+            buyer_email,
+            json.dumps(cart),
+            int(amount_cents or 0),
+            int(amount_cents or 0),
+            payment_id,
+            paid_at,
+            paid_at,
+        ),
+    )
+    square_log(f"saved merch order {order_number} for payment {payment_id}")
+    return True
+
+
+def apply_square_refund_to_merch(cursor, refund):
+    payment_id = str((refund or {}).get("payment_id") or "").strip()
+    status = str((refund or {}).get("status") or "").strip().upper()
+    amount_cents = int((((refund or {}).get("amount_money") or {}).get("amount")) or 0)
+    if not payment_id or status != "COMPLETED" or amount_cents <= 0:
+        return False
+
+    cursor.execute(
+        """
+        SELECT id, total_cents, payment_status
+        FROM merch_orders
+        WHERE square_payment_id = ?
+        """,
+        (payment_id,),
+    )
+    row = cursor.fetchone()
+    if not row:
+        return False
+
+    current_status = str(row[2] or "").strip().lower()
+    if current_status == "refunded":
+        return False
+    if amount_cents < int(row[1] or 0):
+        return False
+
+    cursor.execute(
+        "UPDATE merch_orders SET payment_status = 'Refunded' WHERE id = ?",
+        (row[0],),
+    )
+    square_log(f"marked merch payment {payment_id} refunded")
+    return True
+
+
+def read_square_sync_state():
+    empty = {
+        "last_attempt_at": "",
+        "last_success_at": "",
+        "last_success_label": "",
+        "last_error": "",
+        "last_summary": "",
+        "payments_seen": 0,
+        "payments_imported": 0,
+    }
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute("SELECT * FROM square_sync_state WHERE id = 1").fetchone()
+        conn.close()
+    except sqlite3.Error:
+        return empty
+    if not row:
+        return empty
+    raw_success = row["last_success_at"] or ""
+    friendly = raw_success
+    try:
+        stamped = datetime.strptime(raw_success.replace("Z", ""), "%Y-%m-%dT%H:%M:%S")
+        friendly = stamped.strftime("%b %d, %Y at %H:%M UTC")
+    except ValueError:
+        pass
+    return {
+        "last_attempt_at": row["last_attempt_at"] or "",
+        "last_success_at": raw_success,
+        "last_success_label": friendly,
+        "last_error": row["last_error"] or "",
+        "last_summary": row["last_summary"] or "",
+        "payments_seen": int(row["payments_seen"] or 0),
+        "payments_imported": int(row["payments_imported"] or 0),
+    }
+
+
+def write_square_sync_state(success, error_message, summary):
+    now = datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+    summary_text = (
+        f"Seen {summary.get('total_seen', 0)}, "
+        f"new {summary.get('processed', 0)}, "
+        f"already saved {summary.get('duplicates', 0)}, "
+        f"need a match {summary.get('unmatched', 0)}, "
+        f"refunds {summary.get('refunds', 0)}."
+    )
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        previous = conn.execute(
+            "SELECT last_success_at FROM square_sync_state WHERE id = 1"
+        ).fetchone()
+        last_success = previous[0] if previous and previous[0] else None
+        if success:
+            last_success = now
+        conn.execute(
+            """
+            INSERT INTO square_sync_state (
+                id, last_attempt_at, last_success_at, last_error, last_summary,
+                payments_seen, payments_imported
+            ) VALUES (1, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                last_attempt_at = excluded.last_attempt_at,
+                last_success_at = excluded.last_success_at,
+                last_error = excluded.last_error,
+                last_summary = excluded.last_summary,
+                payments_seen = excluded.payments_seen,
+                payments_imported = excluded.payments_imported
+            """,
+            (
+                now,
+                last_success,
+                "" if success else (error_message or "Square sync failed."),
+                summary_text,
+                int(summary.get("total_seen") or 0),
+                int(summary.get("processed") or 0),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except sqlite3.Error as exc:
+        square_log(f"could not save sync status: {exc}")
+
+
+def square_sync_begin_time(full_history):
+    if full_history:
+        return SQUARE_SYNC_BEGIN_TIME
+    state = read_square_sync_state()
+    last_success = coerce_record_date(state.get("last_success_at"))
+    if not last_success:
+        return SQUARE_SYNC_BEGIN_TIME
+    start = last_success - timedelta(days=3)
+    return start.strftime("%Y-%m-%dT00:00:00Z")
+
+
+def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, dry_run=False, full_history=None, reason="manual"):
+    square_clear_order_cache()
+    if full_history is None:
+        full_history = bool(full_resync) or not read_square_sync_state().get("last_success_at")
+
     counts = {
         "processed": 0,
         "tickets": 0,
         "memberships": 0,
+        "merch": 0,
         "duplicates": 0,
         "unmatched": 0,
-        "total_seen": len(payments),
+        "refunds": 0,
+        "total_seen": 0,
         "details": [],
+        "error": "",
+        "status": "ok",
     }
 
-    if full_resync and not dry_run:
-        cursor.execute("UPDATE ticket_types SET sold = 0")
-        cursor.execute("DELETE FROM memberships WHERE source = 'square'")
-        cursor.execute("DELETE FROM square_payment_log WHERE category IN ('ticket','membership')")
+    if not SQUARE_ACCESS_TOKEN:
+        counts["error"] = (
+            "Square is not connected. Add SQUARE_ACCESS_TOKEN on Render, "
+            "and set SQUARE_ENV to production for the live account."
+        )
+        counts["status"] = "error"
+        square_log(counts["error"])
+        if not dry_run:
+            write_square_sync_state(False, counts["error"], counts)
+        return counts
+
+    location_ids, location_error = square_location_ids()
+    if location_error and not location_ids:
+        counts["error"] = location_error
+        counts["status"] = "error"
+        if not dry_run:
+            write_square_sync_state(False, location_error, counts)
+        return counts
+
+    begin_time = square_sync_begin_time(full_history)
+    page_limit = int(limit or 0) or None
+    square_log(
+        f"start reason={reason} env={SQUARE_ENV} "
+        f"history={'full' if full_history else 'recent'} "
+        f"begin={begin_time} locations={','.join(location_ids) if location_ids else 'all'}"
+    )
+
+    payments, list_error = square_list_payments(begin_time, location_ids, page_limit)
+    counts["total_seen"] = len(payments)
+    if list_error and not payments:
+        counts["error"] = list_error
+        counts["status"] = "error"
+        if not dry_run:
+            write_square_sync_state(False, list_error, counts)
+        return counts
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
     for payment in payments:
         payment_id = (payment.get("id") or "").strip()
@@ -4687,7 +5128,7 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
 
         amount_cents = int(payment.get("amount_money", {}).get("amount") or 0)
 
-        if (not full_resync) and already_logged_payment(cursor, payment_id):
+        if already_logged_payment(cursor, payment_id):
             if not dry_run:
                 cursor.execute(
                     """
@@ -4710,15 +5151,24 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
         )
         email = (payment.get("buyer_email_address") or "").strip()
 
-        kind, ticket_name = classify_square_payment(cursor, payment, amount_cents, note_blob)
+        if square_payment_is_merch(payment):
+            kind, ticket_name = "merch", None
+        else:
+            kind, ticket_name = classify_square_payment(cursor, payment, amount_cents, note_blob)
         ticket_hit = False
         membership_hit = False
         ticket_created = False
+        merch_hit = False
 
         if kind == "ignored_test":
             continue
 
-        if kind in ("ticket", "unmatched"):
+        if kind == "merch":
+            if dry_run:
+                merch_hit = True
+            else:
+                merch_hit = record_square_merch_order(cursor, payment, amount_cents, email)
+        elif kind in ("ticket", "unmatched"):
             if dry_run:
                 ticket_created = (kind == "ticket")
                 ticket_hit = (kind == "ticket")
@@ -4733,24 +5183,31 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
             else:
                 membership_hit = apply_membership_from_square(cursor, payment, amount_cents, note_blob, email)
 
-        if ticket_hit or membership_hit or ticket_created:
+        if ticket_hit or membership_hit or ticket_created or merch_hit:
+            if merch_hit:
+                logged_category = "merch"
+            elif ticket_hit or ticket_created:
+                logged_category = "ticket"
+            else:
+                logged_category = "membership"
             if not dry_run:
                 log_square_payment(
                     cursor,
                     payment_id,
-                    "ticket" if (ticket_hit or ticket_created) else "membership",
+                    logged_category,
                     amount_cents,
                     square_tip_cents(payment),
                 )
             counts["processed"] += 1
             counts["tickets"] += 1 if (ticket_hit or ticket_created) else 0
             counts["memberships"] += 1 if membership_hit else 0
+            counts["merch"] += 1 if merch_hit else 0
             if include_diagnostics and len(counts["details"]) < 120:
                 counts["details"].append(
                     {
                         "payment_id": payment_id,
                         "amount_cents": amount_cents,
-                        "category": "ticket" if (ticket_hit or ticket_created) else "membership",
+                        "category": logged_category,
                         "ticket_name": ticket_name,
                         "note": note_blob[:180],
                         "email": email,
@@ -4758,6 +5215,15 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
                 )
         else:
             counts["unmatched"] += 1
+            if not dry_run:
+                log_unmapped_square_payment(
+                    cursor,
+                    payment,
+                    amount_cents,
+                    email,
+                    "Could not match this Square payment to an event, membership, or shirt",
+                    None,
+                )
             if include_diagnostics and len(counts["details"]) < 120:
                 counts["details"].append(
                     {
@@ -4770,10 +5236,80 @@ def sync_square_payments(limit=100, full_resync=False, include_diagnostics=False
                     }
                 )
 
+        if not dry_run and counts["total_seen"] and (counts["processed"] + counts["duplicates"] + counts["unmatched"]) % 25 == 0:
+            conn.commit()
+
+    refunds, refund_error = square_list_refunds(begin_time, location_ids)
+    for refund in refunds:
+        if (refund.get("status") or "").strip().upper() != "COMPLETED":
+            continue
+        if dry_run:
+            counts["refunds"] += 1
+            continue
+        try:
+            result = sync_square_refund_webhook(cursor, refund, event_type="refund.updated")
+            if apply_square_refund_to_merch(cursor, refund) or (result or {}).get("status") == "COMPLETED":
+                counts["refunds"] += 1
+        except Exception as exc:
+            square_log(f"refund {refund.get('id')} failed: {exc}")
+
     if not dry_run:
         conn.commit()
     conn.close()
+
+    if list_error or refund_error:
+        counts["error"] = list_error or refund_error
+        counts["status"] = "error"
+        square_log(f"finished with error: {counts['error']}")
+    else:
+        square_log(
+            f"finished seen={counts['total_seen']} new={counts['processed']} "
+            f"duplicates={counts['duplicates']} unmatched={counts['unmatched']} "
+            f"refunds={counts['refunds']}"
+        )
+
+    if not dry_run:
+        write_square_sync_state(counts["status"] == "ok", counts["error"], counts)
     return counts
+
+
+def maybe_start_square_sync(reason="dashboard"):
+    """Keep Square sales fresh without making the owner wait on the page."""
+    if not SQUARE_ACCESS_TOKEN or SQUARE_AUTO_SYNC_MINUTES < 0:
+        return
+    if not _square_sync_guard.acquire(blocking=False):
+        return
+
+    state = read_square_sync_state()
+    last_success = coerce_record_date(state.get("last_success_at"))
+    if last_success and SQUARE_AUTO_SYNC_MINUTES == 0:
+        _square_sync_guard.release()
+        return
+    if last_success:
+        age_minutes = (datetime.utcnow().date() - last_success).days * 24 * 60
+        # coerce_record_date drops the clock, so also compare the raw timestamp when possible.
+        try:
+            stamped = datetime.strptime(state["last_success_at"].replace("Z", ""), "%Y-%m-%dT%H:%M:%S")
+            age_minutes = (datetime.utcnow() - stamped).total_seconds() / 60
+        except (ValueError, TypeError):
+            pass
+        if age_minutes < SQUARE_AUTO_SYNC_MINUTES:
+            _square_sync_guard.release()
+            return
+
+    full_history = not bool(state.get("last_success_at"))
+
+    def runner():
+        try:
+            sync_square_payments(full_history=full_history, reason=reason)
+        except Exception as exc:
+            square_log(f"background sync failed: {exc}")
+            traceback.print_exc()
+        finally:
+            _square_sync_guard.release()
+
+    threading.Thread(target=runner, name="square-sync", daemon=True).start()
+    square_log(f"background sync queued ({'full history' if full_history else 'recent sales'})")
 
 # -------------------------
 # EVENTS DATA
@@ -5233,9 +5769,19 @@ Limited availability. Secure your tickets early!""",
 
 
 
+@app.context_processor
+def inject_square_sync_status():
+    return {
+        "square_connected": bool(SQUARE_ACCESS_TOKEN),
+        "square_env_label": "live account" if SQUARE_ENV == "production" else "sandbox test account",
+        "square_sync": read_square_sync_state(),
+    }
+
+
 @app.route("/dashboard")
 @requires_auth
 def dashboard():
+    maybe_start_square_sync("dashboard")
     return admin_dashboard_redesign()
 
 
@@ -9014,8 +9560,7 @@ def sync_square_refund_webhook(cursor, refund, event_type="refund.updated"):
 @app.route("/webhook/square", methods=["POST"], strict_slashes=False)
 @app.route("/square-webhook", methods=["POST"], strict_slashes=False)
 def square_webhook():
-    print("🔥 WEBHOOK HIT")
-    print("=== WEBHOOK START ===")
+    print("[square-webhook] received", flush=True)
 
     raw_body = request.get_data(as_text=True)
     print("[headers]:", dict(request.headers))
@@ -11523,23 +12068,29 @@ def test_lead():
 @requires_auth
 def square_sync():
     mode = (request.args.get("mode") or "").strip().lower()
-    full_resync = mode == "full"
+    full_history = mode != "recent"
     summary = sync_square_payments(
         limit=SQUARE_SYNC_LIMIT,
-        full_resync=full_resync,
+        full_history=full_history,
         include_diagnostics=True,
+        reason="button",
     )
+    status_code = 200 if summary.get("status") == "ok" else 502
     return {
-        "status": "ok",
-        "mode": "full" if full_resync else "incremental",
+        "status": summary.get("status") or "ok",
+        "error": summary.get("error") or "",
+        "mode": "full" if full_history else "recent",
         "total_seen": summary["total_seen"],
         "processed": summary["processed"],
         "tickets": summary["tickets"],
         "memberships": summary["memberships"],
+        "merch": summary.get("merch", 0),
         "duplicates": summary["duplicates"],
         "unmatched": summary["unmatched"],
+        "refunds": summary.get("refunds", 0),
+        "last_synced": read_square_sync_state().get("last_success_at") or "",
         "details": summary["details"],
-    }, 200
+    }, status_code
 
 
 @app.route("/square-sync-report")
@@ -13712,7 +14263,7 @@ def admin_dashboard_redesign():
         dashboard_overview=dashboard_overview,
         dashboard_search_items=dashboard_search_items,
         kpi_breakdowns=kpi_breakdowns,
-        square_connected=True,
+        square_connected=bool(SQUARE_ACCESS_TOKEN),
         dashboard_preview_summary=dashboard_preview_summary,
         staff_users=staff_users,
         auth_role=(session.get("auth_role") or "").strip().lower(),
@@ -15011,6 +15562,7 @@ def dashboard_expense_receipt(filename):
 @app.route("/dashboard/expenses/report")
 @requires_auth
 def dashboard_expense_report():
+    maybe_start_square_sync("tax-report")
     start_date, end_date, label = tax_period_from_request()
     report = build_tax_report(start_date, end_date, label)
     years = list(range(date.today().year, date.today().year - 6, -1))
@@ -16298,6 +16850,7 @@ def income_summary_report():
 @app.route("/admin/dashboard-redesign/revenue")
 @requires_auth
 def admin_dashboard_revenue():
+    maybe_start_square_sync("revenue")
     metrics, events, dashboard_preview_summary = get_live_dashboard_data(include_past=True)
 
     conn = sqlite3.connect(DB_PATH)
@@ -16939,7 +17492,7 @@ def admin_dashboard_revenue():
         archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=True,
+        square_connected=bool(SQUARE_ACCESS_TOKEN),
         dashboard_preview_summary=dashboard_preview_summary,
         revenue_export_rows=revenue_export_rows,
     )
@@ -17868,7 +18421,7 @@ def admin_dashboard_events():
         archived_suggestions=[],
         vip_recipients=[],
         membership_recipients=[],
-        square_connected=True,
+        square_connected=bool(SQUARE_ACCESS_TOKEN),
         dashboard_preview_summary=dashboard_preview_summary,
         events_kpi_breakdowns=events_kpi_breakdowns,
         event_ticket_types=event_ticket_types,
@@ -19603,7 +20156,7 @@ def admin_dashboard_messages():
         archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=True,
+        square_connected=bool(SQUARE_ACCESS_TOKEN),
         dashboard_preview_summary=dashboard_preview_summary,
     )
 
@@ -19931,7 +20484,7 @@ def admin_dashboard_members():
         archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=True,
+        square_connected=bool(SQUARE_ACCESS_TOKEN),
         dashboard_preview_summary=dashboard_preview_summary,
     )
 
@@ -20166,7 +20719,7 @@ def admin_dashboard_contacts():
         archived_suggestions=[],
         vip_recipients=vip_recipients,
         membership_recipients=membership_recipients,
-        square_connected=True,
+        square_connected=bool(SQUARE_ACCESS_TOKEN),
         dashboard_preview_summary=dashboard_preview_summary,
     )
 

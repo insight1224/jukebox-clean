@@ -31,6 +31,14 @@
 {% include "partials/dashboard_sidebar.html" %}
 
     <main class="main-content" id="top">
+      {% if not square_connected %}
+      <div class="expense-banner error">Square is not connected, so revenue only includes sales saved by hand. Add the Square token on Render, then use Sync Square on the dashboard.</div>
+      {% elif square_sync.last_error %}
+      <div class="expense-banner error">Square sync failed: {{ square_sync.last_error }}</div>
+      {% elif square_sync.last_success_at %}
+      <div class="expense-banner success">Square sales are included. Last synced {{ square_sync.last_success_label or square_sync.last_success_at }}.</div>
+      {% endif %}
+
       <header class="revenue-command-header">
         <div class="revenue-command-copy">
           <p class="eyebrow">Revenue Dashboard</p>

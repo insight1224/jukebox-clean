@@ -11,6 +11,14 @@
     {% include "partials/dashboard_sidebar.html" %}
 
     <main class="main-content">
+      {% if not square_connected %}
+      <div class="expense-banner error">Square is not connected, so the income on this report does not include live Square sales yet.</div>
+      {% elif square_sync.last_error %}
+      <div class="expense-banner error">Square sync failed: {{ square_sync.last_error }} Income may be missing recent sales.</div>
+      {% elif square_sync.last_success_at %}
+      <div class="expense-banner success">Income includes Square sales. Last synced {{ square_sync.last_success_label or square_sync.last_success_at }}.</div>
+      {% endif %}
+
       <header class="topbar">
         <div>
           <p class="eyebrow">Events &amp; Money</p>
