@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jukebox Lounge NC | Tax-Year Expense Report</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
+</head>
+<body>
+  <div class="dashboard-shell">
+    {% include "partials/dashboard_sidebar.html" %}
+
+    <main class="main-content">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Events &amp; Money</p>
+          <h2>Tax-Year Report</h2>
+          <p class="subtext">
+            {{ report.label }}. Hand this to your accountant or use it while you file.
+            This is a bookkeeping worksheet, not tax advice, and it is not a tax return.
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <a class="btn secondary" href="/dashboard/expenses">Add or edit expenses</a>
+          <a class="btn secondary" href="/dashboard/expenses/report.csv?{{ export_query }}">Download CSV</a>
+          <a class="btn primary" href="/dashboard/expenses/report/print?{{ export_query }}" target="_blank" rel="noopener">Print or save as PDF</a>
+        </div>
+      </header>
+
+      <section class="section-panel">
+        <form class="tax-report-filters" method="get" action="/dashboard/expenses/report">
+          <label>
+            Tax year
+            <select name="year" onchange="if (this.value) { this.form.start.value=''; this.form.end.value=''; this.form.submit(); }">
+              <option value="">Custom dates</option>
+              {% for year in years %}
+              <option value="{{ year }}" {% if report.label == 'Tax year ' ~ year %}selected{% endif %}>{{ year }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>
+            From
+            <input type="date" name="start" value="{{ report.start.isoformat() }}">
+          </label>
+          <label>
+            Through
+            <input type="date" name="end" value="{{ report.end.isoformat() }}">
+          </label>
+          <button class="btn primary" type="submit">Show this period</button>
+        </form>
+      </section>
+
+      <section class="dashboard-overview-grid tax-report-totals">
+        <div class="dashboard-kpi-card">
+          <div class="dashboard-kpi-copy">
+            <p>Money in</p>
+            <h3>${{ "%.2f"|format(report.income.total) }}</h3>
+            <span>Recorded in this period</span>
+          </div>
+        </div>
+        <div class="dashboard-kpi-card">
+          <div class="dashboard-kpi-copy">
+            <p>Money out</p>
+            <h3>${{ "%.2f"|format(report.expense_total) }}</h3>
+            <span>{{ report.expense_count }} expense{{ '' if report.expense_count == 1 else 's' }}</span>
+          </div>
+        </div>
+        <div class="dashboard-kpi-card dashboard-total-card">
+          <div class="dashboard-kpi-copy">
+            <p>Income minus expenses</p>
+            <h3>${{ "%.2f"|format(report.net) }}</h3>
+            <span>For this period only</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Income</p>
+            <h3>Money that came in</h3>
+            <p>These are the same sales already saved in the dashboard, limited to this period. Ticket sales use the day the sale was saved. Door and cash entries use the event date when one was saved.</p>
+          </div>
+        </div>
+        {% if report.income_lines %}
+        <table class="tax-expense-table">
+          <tbody>
+            {% for line in report.income_lines %}
+            <tr>
+              <td>{{ line.label }}</td>
+              <td>${{ "%.2f"|format(line.amount) }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+              <td><strong>Total income</strong></td>
+              <td><strong>${{ "%.2f"|format(report.income.total) }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        {% else %}
+        <p class="event-website-schedule">No income was recorded in this period.</p>
+        {% endif %}
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Schedule C</p>
+            <h3>Expenses by category</h3>
+            <p>The line names are there so your accountant can match this to Schedule C. They are not a filing instruction.</p>
+          </div>
+        </div>
+        {% if report.category_rows %}
+        <table class="tax-expense-table">
+          <thead>
+            <tr>
+              <th>Category</th>
+              <th>Where it usually goes</th>
+              <th>Expenses</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report.category_rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>{{ row.line }}</td>
+              <td>{{ row.count }}</td>
+              <td>${{ "%.2f"|format(row.amount) }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+              <td colspan="3"><strong>Total expenses</strong></td>
+              <td><strong>${{ "%.2f"|format(report.expense_total) }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+        {% else %}
+        <p class="event-website-schedule">No expenses were recorded in this period.</p>
+        {% endif %}
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Months</p>
+            <h3>Expenses by month</h3>
+          </div>
+        </div>
+        {% if report.month_rows %}
+        <table class="tax-expense-table">
+          <thead>
+            <tr><th>Month</th><th>Expenses</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.month_rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>{{ row.count }}</td>
+              <td>${{ "%.2f"|format(row.amount) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="event-website-schedule">No monthly expenses in this period.</p>
+        {% endif %}
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Events</p>
+            <h3>Income and expenses by event</h3>
+            <p>Event income here is ticket, door, and cash money tied to that night. Memberships, shirts, and tips stay in the income total above.</p>
+          </div>
+        </div>
+        {% if report.event_rows %}
+        <table class="tax-expense-table">
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Income</th>
+              <th>Expenses</th>
+              <th>Income minus expenses</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in report.event_rows %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>${{ "%.2f"|format(row.income) }}</td>
+              <td>${{ "%.2f"|format(row.expenses) }}</td>
+              <td>${{ "%.2f"|format(row.net) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="event-website-schedule">Nothing was tied to an event in this period.</p>
+        {% endif %}
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Detail</p>
+            <h3>Every expense</h3>
+          </div>
+        </div>
+        {% if report.expenses %}
+        <div class="table-wrap">
+          <table class="tax-expense-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Who you paid</th>
+                <th>Category</th>
+                <th>Event</th>
+                <th>How you paid</th>
+                <th>Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in report.expenses %}
+              <tr>
+                <td>{{ item.spent_on.strftime('%b') }} {{ item.spent_on.day }}, {{ item.spent_on.year }}</td>
+                <td>
+                  {{ item.vendor or "Not recorded" }}
+                  {% if item.notes %}<small>{{ item.notes }}</small>{% endif %}
+                  {% if item.saved_category|lower != item.category_label|lower %}
+                  <small>Originally saved as {{ item.saved_category }}</small>
+                  {% endif %}
+                </td>
+                <td>{{ item.category_label }}<small>{{ item.schedule_line }}</small></td>
+                <td>{{ item.event_name or "Not one event" }}</td>
+                <td>{{ item.payment_method }}</td>
+                <td>${{ "%.2f"|format(item.amount) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="event-website-schedule">No expense lines in this period.</p>
+        {% endif %}
+      </section>
+    </main>
+  </div>
+</body>
+</html>

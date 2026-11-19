@@ -5148,6 +5148,169 @@ button[data-action="delete"]:hover {
   }
 }
 
+.expense-banner {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.expense-banner.success {
+  background: rgba(97, 194, 124, 0.12);
+  color: #b7ebc4;
+}
+
+.expense-banner.error {
+  background: rgba(217, 108, 79, 0.16);
+  color: #ffc7b8;
+}
+
+.tax-expense-form,
+.tax-report-filters {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+  align-items: end;
+}
+
+.tax-report-filters {
+  grid-template-columns: 180px 180px 180px auto;
+}
+
+.tax-expense-form label,
+.tax-report-filters label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tax-expense-form input,
+.tax-expense-form select,
+.tax-expense-form textarea,
+.tax-report-filters input,
+.tax-report-filters select {
+  width: 100%;
+  border: 1px solid rgba(214, 168, 79, 0.35);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 12px 14px;
+  font-size: 15px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.tax-expense-wide {
+  grid-column: 1 / -1;
+}
+
+.tax-expense-form small,
+.tax-expense-table small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.tax-expense-check {
+  display: flex !important;
+  grid-template-columns: none;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+}
+
+.tax-expense-check input {
+  width: auto;
+}
+
+.tax-expense-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.expense-year-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.expense-year-links a {
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid rgba(214, 168, 79, 0.28);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.expense-year-links a.active,
+.expense-year-links a:hover {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.tax-expense-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tax-expense-table th,
+.tax-expense-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid rgba(214, 168, 79, 0.16);
+  vertical-align: top;
+}
+
+.tax-expense-table th {
+  color: var(--gold);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tax-expense-row-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tax-expense-row-actions a,
+.tax-expense-row-actions button {
+  background: none;
+  border: 0;
+  color: var(--gold);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.tax-report-totals {
+  margin: 18px 0;
+}
+
+@media (max-width: 800px) {
+  .tax-expense-form,
+  .tax-report-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sidebar-logout {
   margin-top: auto;
   padding-top: 18px;
