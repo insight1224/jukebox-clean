@@ -1,0 +1,37 @@
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-logo-wrap">
+      <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
+    </div>
+    <div>
+      <h1>Jukebox Lounge</h1>
+      <p>Admin Dashboard</p>
+    </div>
+  </div>
+
+  <nav class="sidebar-nav" aria-label="Dashboard">
+    <p class="sidebar-group">Overview</p>
+    <a href="/dashboard" class="{{ 'active' if request.path == '/dashboard' else '' }}">Dashboard</a>
+
+    <p class="sidebar-group">Events &amp; Money</p>
+    <a href="/dashboard/events" class="{{ 'active' if request.path.startswith('/dashboard/events') else '' }}">Events</a>
+    <a href="/dashboard/ticket-orders" class="{{ 'active' if request.path.startswith('/dashboard/ticket-orders') else '' }}">Ticket Orders</a>
+    <a href="/admin/unmapped-square" class="{{ 'active' if request.path.startswith('/admin/unmapped-square') else '' }}">Unmatched Tickets</a>
+    <a href="/dashboard/revenue" class="{{ 'active' if request.path.startswith('/dashboard/revenue') or request.path.startswith('/dashboard/income-summary') else '' }}">Revenue</a>
+    <a href="/dashboard/merch-orders" class="{{ 'active' if request.path.startswith('/dashboard/merch-orders') else '' }}">Merch Orders</a>
+
+    <p class="sidebar-group">People</p>
+    <a href="/dashboard/messages" class="{{ 'active' if request.path.startswith('/dashboard/messages') else '' }}">Messages</a>
+    <a href="/dashboard/members" class="{{ 'active' if request.path.startswith('/dashboard/members') else '' }}">Members</a>
+    <a href="/dashboard/contacts" class="{{ 'active' if request.path.startswith('/dashboard/contacts') else '' }}">Contact Log</a>
+    <a href="/dashboard/email-campaigns" class="{{ 'active' if request.path.startswith('/dashboard/email-campaigns') else '' }}">Email Campaigns</a>
+
+    <p class="sidebar-group">Website</p>
+    <a href="/dashboard/gallery" class="{{ 'active' if request.path.startswith('/dashboard/gallery') else '' }}">Photo Gallery</a>
+  </nav>
+
+  <div class="sidebar-logout">
+    <a href="/" class="sidebar-website-link">Back to Website</a>
+    <a href="/dashboard/logout">Log Out</a>
+  </div>
+</aside>

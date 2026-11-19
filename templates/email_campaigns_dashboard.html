@@ -211,36 +211,7 @@
 </head>
 <body>
   <div class="dashboard-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-logo-wrap">
-          <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
-        </div>
-        <div>
-          <h1>Jukebox Lounge</h1>
-          <p>Admin Preview</p>
-        </div>
-      </div>
-
-      <nav class="sidebar-nav">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/dashboard/events">Events</a>
-        <a href="/dashboard/revenue">Revenue</a>
-        <a href="/dashboard/messages">Messages</a>
-        <a href="/dashboard/members">Members</a>
-        <a href="/dashboard/ticket-orders">Ticket Orders</a>
-        <a href="/dashboard/merch-orders">Merch Orders</a>
-        <a href="/dashboard/email-campaigns" class="active">Email Campaigns</a>
-        <a href="/dashboard/gallery">Gallery Manager</a>
-        <a href="/dashboard/contacts">Contact Log</a>
-        <a href="/admin/unmapped-square">Unmapped Tickets</a>
-      </nav>
-
-      <div class="sidebar-logout">
-        <a href="/" class="sidebar-website-link">Back to Website</a>
-        <a href="/dashboard/logout">Log Out</a>
-      </div>
-    </aside>
+{% include "partials/dashboard_sidebar.html" %}
 
     <main class="main-content" id="top">
       <header class="topbar">

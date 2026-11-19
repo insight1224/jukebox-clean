@@ -3,41 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Jukebox Lounge NC | Dashboard Redesign</title>
+  <title>Jukebox Lounge NC | Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='dashboard-redesign.css') }}">
 </head>
 <body>
   <div class="dashboard-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-logo-wrap">
-          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
-        </div>
-        <div>
-          <h1>Jukebox Lounge</h1>
-          <p>Admin Dashboard</p>
-        </div>
-      </div>
-
-                        <nav class="sidebar-nav">
-        <a href="/dashboard" class="active">Dashboard</a>
-        <a href="/dashboard/events">Events</a>
-        <a href="/dashboard/revenue">Revenue</a>
-        <a href="/dashboard/messages">Messages</a>
-        <a href="/dashboard/members">Members</a>
-        <a href="/dashboard/ticket-orders">Ticket Orders</a>
-        <a href="/dashboard/merch-orders">Merch Orders</a>
-        <a href="/dashboard/email-campaigns">Email Campaigns</a>
-        <a href="/dashboard/gallery">Gallery Manager</a>
-        <a href="/dashboard/contacts">Contact Log</a>
-              <a href="/admin/unmapped-square">Unmapped Tickets</a>
-      </nav>
-
-      <div class="sidebar-logout">
-        <a href="/" class="sidebar-website-link">Back to Website</a>
-        <a href="/dashboard/logout">Log Out</a>
-      </div>
-    </aside>
+{% include "partials/dashboard_sidebar.html" %}
 
     <main class="main-content" id="top">
       <header class="topbar dashboard-command-header">
@@ -110,9 +81,9 @@
 
         <a class="dashboard-kpi-card" href="/dashboard/events">
           <div class="dashboard-kpi-copy">
-            <p>Events</p>
+            <p>Upcoming Events</p>
             <h3>{{ dashboard_preview_summary.upcoming_events_count }}</h3>
-            <span>Currently listed</span>
+            <span>Shown in the lineup below</span>
           </div>
           <span class="dashboard-kpi-arrow">→</span>
         </a>
@@ -241,9 +212,9 @@
 
         <a class="dashboard-kpi-card" href="/dashboard/contacts">
           <div class="dashboard-kpi-copy">
-            <p>Vendors</p>
+            <p>Saved Vendors</p>
             <h3>{{ dashboard_overview.vendor_contacts }}</h3>
-            <span>Active vendor contacts</span>
+            <span>Vendor contacts on file</span>
           </div>
           <span class="dashboard-kpi-arrow">→</span>
         </a>
@@ -284,10 +255,17 @@
                 <div>
                   <h4>{{ event.name }}</h4>
                   <p>
+                    {% set pretty_date = event.date|event_date_label %}
+                    {% set shown_date = pretty_date or event.date or "Date not set" %}
+                    {{ shown_date }}
+                    <span>·</span>
                     {{ event.total_tickets_sold }} tickets sold
                     <span>·</span>
                     ${{ "%.2f"|format(event.total_revenue) }} revenue
                   </p>
+                  {% if event.website_schedule and shown_date not in event.website_schedule and event.website_schedule not in shown_date %}
+                  <p class="event-website-schedule">On the website: {{ event.website_schedule }}</p>
+                  {% endif %}
                 </div>
               </div>
 
@@ -324,8 +302,8 @@
 
           <div class="dashboard-summary-stats">
             <div>
-              <strong>{{ metrics.contact_messages }}</strong>
-              <span>Contact Messages</span>
+              <strong>{{ metrics.contact_messages + (metrics.event_suggestions or 0) }}</strong>
+              <span>Inquiries &amp; Ideas</span>
             </div>
 
             <div>
@@ -400,6 +378,64 @@
 
       </section>
 
+      {% if auth_role == 'admin' %}
+      <section class="section-panel dashboard-staff-panel" id="staff-logins">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Access</p>
+            <h3>Staff Logins</h3>
+            <p>
+              Add a login for someone who helps you. Managers and bookkeepers can use this dashboard.
+              Door staff are taken to the check-in list when they sign in.
+            </p>
+          </div>
+        </div>
+
+        <form id="staffUserForm" class="dashboard-staff-form">
+          <label>
+            Name
+            <input id="staffName" type="text" autocomplete="off" required>
+          </label>
+          <label>
+            Username
+            <input id="staffUsername" type="text" autocomplete="off" required>
+          </label>
+          <label>
+            Password
+            <input id="staffPassword" type="password" autocomplete="new-password" required>
+          </label>
+          <label>
+            Role
+            <select id="staffRole">
+              <option value="manager">Manager</option>
+              <option value="door">Door staff</option>
+              <option value="bookkeeper">Bookkeeper</option>
+            </select>
+          </label>
+          <button class="btn primary" type="submit">Add Login</button>
+          <p id="staffUserStatus" class="dashboard-staff-status" role="status"></p>
+        </form>
+
+        <div class="dashboard-staff-list">
+          {% for staff in staff_users %}
+          <div class="dashboard-staff-row">
+            <div>
+              <strong>{{ staff.name }}</strong>
+              <span>{{ staff.username }} · {{ staff.role }}</span>
+            </div>
+            {% if staff.active %}
+            <button class="js-deactivate-staff" type="button" data-staff-id="{{ staff.id }}">Turn Off</button>
+            {% else %}
+            <span class="badge">Off</span>
+            {% endif %}
+          </div>
+          {% else %}
+          <p class="event-website-schedule">No extra staff logins yet. Your owner login still works.</p>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
 
       <div class="event-modal-overlay" id="kpiBreakdownModalOverlay">
         <div class="event-modal dashboard-kpi-modal">
@@ -453,7 +489,7 @@
             <div>
               <p class="eyebrow">Dashboard Search</p>
               <h3 id="searchResultsTitle">Search Results</h3>
-              <p>Preview results from events, guests, members, messages, contacts, and reports.</p>
+              <p>Results from events, guests, members, messages, contacts, and reports.</p>
             </div>
             <button class="event-modal-close" type="button" id="searchResultsClose">Close</button>
           </div>
@@ -1989,7 +2025,7 @@ const addNewEventButton = document.getElementById("addNewEventButton");
         searchResultsList.innerHTML = `
           <div class="empty-state">
             <h4>No results found</h4>
-            <p>No preview results matched "${query}".</p>
+            <p>Nothing on the dashboard matched "${query}".</p>
           </div>
         `;
         return;

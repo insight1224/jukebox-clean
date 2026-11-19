@@ -8,36 +8,7 @@
 </head>
 <body>
   <div class="dashboard-shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="brand-logo-wrap">
-          <img src="{{ url_for('static', filename='images/logo-home-new.png') }}" alt="Jukebox Lounge logo" class="brand-logo">
-        </div>
-        <div>
-          <h1>Jukebox Lounge</h1>
-          <p>Events Preview</p>
-        </div>
-      </div>
-
-                        <nav class="sidebar-nav">
-        <a href="/dashboard">Dashboard</a>
-        <a href="/dashboard/events" class="active">Events</a>
-        <a href="/dashboard/revenue">Revenue</a>
-        <a href="/dashboard/messages">Messages</a>
-        <a href="/dashboard/members">Members</a>
-        <a href="/dashboard/ticket-orders">Ticket Orders</a>
-        <a href="/dashboard/merch-orders">Merch Orders</a>
-        <a href="/dashboard/email-campaigns">Email Campaigns</a>
-        <a href="/dashboard/gallery">Gallery Manager</a>
-        <a href="/dashboard/contacts">Contact Log</a>
-              <a href="/admin/unmapped-square">Unmapped Tickets</a>
-      </nav>
-
-      <div class="sidebar-logout">
-        <a href="/" class="sidebar-website-link">Back to Website</a>
-        <a href="/dashboard/logout">Log Out</a>
-      </div>
-    </aside>
+{% include "partials/dashboard_sidebar.html" %}
 
     <main class="main-content" id="top">
       <header class="events-command-header">
@@ -46,6 +17,7 @@
           <h2>Event Management</h2>
           <p class="subtext">
             Manage events, attendance, guest lists, check-in, and ticket activity.
+            Saving an event here tracks tickets and check-in. It does not publish a new page on the public website.
           </p>
         </div>
 
@@ -55,6 +27,10 @@
             href="/dashboard"
           >
             Back to Dashboard
+          </a>
+
+          <a class="btn secondary" href="/events" target="_blank" rel="noopener">
+            View Public Events
           </a>
 
           <button
@@ -79,7 +55,7 @@
           <div class="dashboard-kpi-copy">
             <p>Events</p>
             <h3>{{ events|length }}</h3>
-            <span>Currently listed</span>
+            <span>Upcoming and past, on this page</span>
           </div>
 
           <span class="dashboard-kpi-arrow">→</span>
@@ -159,7 +135,15 @@
           {% for event in events %}
           {% if event.status_label != "Completed" %}
           <div class="table-row">
-            <span>{{ event.name }}</span>
+            <span>
+              {{ event.name }}
+              {% if event.website_schedule and (event.date or '') not in event.website_schedule and event.website_schedule not in (event.date or '') %}
+              <small class="event-website-schedule">On the website: {{ event.website_schedule }}</small>
+              {% endif %}
+              {% if event.public_url %}
+              <a class="event-public-link" href="{{ event.public_url }}" target="_blank" rel="noopener">View event page</a>
+              {% endif %}
+            </span>
             <span>{{ event.date }}</span>
             <span><span class="badge {{ event.badge_class }}">{{ event.status_label }}</span></span>
             <span>{{ event.total_tickets_sold }} sold</span>
@@ -488,7 +472,7 @@
               <button class="js-event-action-guest-list" type="button" data-guest-target="guest-list-modal-{{ loop.index }}" data-guest-event-name="{{ event.name }}">Guest List</button>
               <button class="js-event-action-vip-list" type="button" data-vip-target="vip-list-modal-{{ loop.index }}" data-vip-event-name="{{ event.name }}">VIP List</button>
               <button class="js-event-action-checkin" type="button" data-checkin-target="checkin-modal-{{ loop.index }}" data-checkin-name="{{ event.name }}">Check-In</button>
-              <button class="js-event-action-notes" type="button" data-event-name="{{ event.name }}">Notes</button>
+              <button class="js-event-action-notes" type="button" data-event-name="{{ event.name }}" data-event-notes="{{ (event.notes or '')|tojson|e }}">Notes</button>
 
               <a
                 class="event-detail-transaction-link"
@@ -788,7 +772,7 @@
             <button class="btn primary" type="button" id="eventNoteSave">Save Note</button>
 
             <div class="note-preview" id="eventNotePreview">
-              No event note saved in this preview yet.
+              Notes are saved with the event and stay here after you leave this page.
             </div>
           </div>
         </div>
@@ -800,7 +784,7 @@
             <div>
               <p class="eyebrow" id="addEventModalEyebrow">Event Setup</p>
               <h3 id="addEventModalTitle">Add New Event</h3>
-              <p id="addEventModalDescription">Create the event and configure how tickets should be tracked.</p>
+              <p id="addEventModalDescription">Save the name, date, and ticket types used for check-in, sales, and revenue. This does not create a new page on the public website.</p>
             </div>
             <button class="event-modal-close" type="button" id="addEventModalClose">Close</button>
           </div>
@@ -1856,24 +1840,70 @@
     const eventNoteSave = document.getElementById("eventNoteSave");
     const eventNotePreview = document.getElementById("eventNotePreview");
 
+    let activeNoteEventName = "";
+
+    function readEventNote(button) {
+      const raw = button.getAttribute("data-event-notes") || "\"\"";
+      try {
+        return JSON.parse(raw) || "";
+      } catch (error) {
+        return "";
+      }
+    }
+
     document.querySelectorAll(".js-event-action-notes").forEach((button) => {
       button.addEventListener("click", () => {
         eventModalOverlay.classList.remove("active");
-        eventNoteModalTitle.textContent = button.getAttribute("data-event-name") + " Notes";
-        eventNoteText.value = "";
+        activeNoteEventName = button.getAttribute("data-event-name") || "";
+        eventNoteModalTitle.textContent = activeNoteEventName + " Notes";
+        eventNoteText.value = readEventNote(button);
+        eventNotePreview.textContent = eventNoteText.value
+          ? "Saved note loaded."
+          : "No note saved for this event yet.";
         eventNoteModalOverlay.classList.add("active");
       });
     });
 
-    eventNoteSave.addEventListener("click", () => {
+    eventNoteSave.addEventListener("click", async () => {
       const note = eventNoteText.value.trim();
 
-      if (!note) {
-        eventNotePreview.textContent = "Please enter a note before saving.";
+      if (!activeNoteEventName) {
+        eventNotePreview.textContent = "Open an event note before saving.";
         return;
       }
 
-      eventNotePreview.textContent = eventNoteModalTitle.textContent + ": " + note;
+      eventNoteSave.disabled = true;
+      eventNotePreview.textContent = "Saving note...";
+
+      try {
+        const response = await fetch("/api/events/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: activeNoteEventName,
+            notes: note
+          })
+        });
+        const result = await response.json();
+
+        if (!response.ok || !result.ok) {
+          throw new Error(result.error || "Unable to save note.");
+        }
+
+        const encoded = JSON.stringify(result.notes || "");
+        document.querySelectorAll(".js-event-action-notes").forEach((button) => {
+          if (button.getAttribute("data-event-name") === activeNoteEventName) {
+            button.setAttribute("data-event-notes", encoded);
+          }
+        });
+        eventNotePreview.textContent = note
+          ? "Note saved."
+          : "Note cleared.";
+      } catch (error) {
+        eventNotePreview.textContent = error.message || "Unable to save note.";
+      } finally {
+        eventNoteSave.disabled = false;
+      }
     });
 
     eventNoteModalClose.addEventListener("click", () => {
