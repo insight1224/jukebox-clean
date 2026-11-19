@@ -128,9 +128,10 @@
 
             {% if friday_reset_occurrences %}
                 {% for occurrence in friday_reset_occurrences %}
-                <div class="ticket-box {% if occurrence.date|string == '2026-11-20' %}flash-sale-ticket{% endif %}">
-                    {% if occurrence.date|string == '2026-11-20' %}
-                    <div class="flash-sale-banner">🔥 FLASH SALE — ENDS NOV 17 AT 11:59 PM!</div>
+                {% set nov20_sale = flash_sale_active and occurrence.date|string == '2026-11-20' %}
+                <div class="ticket-box {% if nov20_sale %}flash-sale-ticket{% endif %}">
+                    {% if nov20_sale %}
+                    <div class="flash-sale-banner">🔥 FLASH SALE — ENDS TONIGHT (NOV 19) AT 11:59 PM!</div>
                     {% endif %}
                     <h3>{{ occurrence.label }}</h3>
 
@@ -142,7 +143,7 @@
                         Music by Legendary DJ Ease • Ages 30+
                     </p>
 
-                    {% if occurrence.date|string == '2026-11-20' %}
+                    {% if nov20_sale %}
                     <p class="flash-sale-price">
                         <span class="flash-sale-original">$10.00</span>
                         <strong>$5.00</strong>
@@ -161,7 +162,7 @@
                             event_date=occurrence.date
                         ) }}"
                     >
-                        {% if occurrence.date|string == '2026-11-20' %}
+                        {% if nov20_sale %}
                         GRAB YOUR $5 TICKET
                         {% else %}
                         Select This Friday
@@ -169,7 +170,7 @@
                     </a>
                 </div>
 
-                {% if occurrence.date|string == '2026-11-20' %}
+                {% if nov20_sale %}
                 <div class="ticket-box">
                     <h3>General Admission</h3>
                     <p>{{ occurrence.label }}</p>
@@ -214,7 +215,7 @@
             ">
                 {% if t.name in ["Flash Sale General Admission", "Flash Sale VIP Booth"] %}
                 <div class="flash-sale-banner">
-                    🔥 FLASH SALE — ENDS NOV 17 AT 11:59 PM!
+                    🔥 FLASH SALE — ENDS TONIGHT (NOV 19) AT 11:59 PM!
                 </div>
                 {% endif %}
 

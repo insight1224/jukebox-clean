@@ -1286,8 +1286,8 @@ def init_db():
         )
         """, (event, name, price, max_q, event, name))
 
-    # Reserve 25 existing Part 4 GA tickets for the $10 flash sale.
-    # Only adjust the original 340-ticket allocation.
+    # Older databases had split admissions out of this pool.
+    # Put them back on the shared 340 general-admission tickets. There is no separate flash-sale cap.
     cursor.execute(
         """
         UPDATE ticket_types
@@ -5715,7 +5715,7 @@ Limited availability. Secure your tickets early!""",
             "Join Jukebox Lounge NC for an unforgettable celebration "
             "of music, talent, and competition at The Pickleback "
             "in Durham, North Carolina.\n\n"
-            "Flash Sale GA: $10 (first 25 tickets) | "
+            "Flash Sale GA: $10 | "
             "Early Bird: $15 | General Admission: $18 | "
             "VIP Booths: $250 | Admission at the door: $20."
         ),
@@ -10327,9 +10327,9 @@ def buy_ticket():
 from urllib.parse import unquote
 
 # Shared deadline for Jukebox November Flash Sales.
-# Sale remains active through November 17, 2026, 11:59 PM EST.
+# Sale remains active through November 19, 2026, 11:59 PM Eastern.
 FLASH_SALE_CUTOFF = datetime(
-    2026, 11, 18, 0, 0,
+    2026, 11, 20, 0, 0,
     tzinfo=ZoneInfo("America/New_York"),
 )
 
@@ -10391,7 +10391,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "key": "flash_ga",
                 "name": "Flash Sale General Admission",
                 "display_name": "Flash Sale GA — $10",
-                "description": "Special $10 admission through November 17 at 11:59 PM EST.",
+                "description": "Special $10 admission through tonight, November 19, at 11:59 PM Eastern.",
             },
             {
                 "key": "early",
@@ -10412,7 +10412,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "flash_price": 175.00,
                 "description": (
                     "One reserved VIP booth for up to six guests. "
-                    "Save $75 through November 17 at 11:59 PM Eastern."
+                    "Save $75 through tonight, November 19, at 11:59 PM Eastern."
                 ),
             },
             {
@@ -10443,7 +10443,7 @@ def build_event_ticket_catalog(event, event_date=None):
                 "flash_price": 5.00,
                 "description": (
                     "Special $5 admission for Saturday, November 21. "
-                    "Offer ends November 17 at 11:59 PM EST."
+                    "Offer ends tonight, November 19, at 11:59 PM Eastern."
                 ),
             })
 
@@ -10498,7 +10498,7 @@ def build_event_ticket_catalog(event, event_date=None):
                     "flash_price": 5.00,
                     "description": (
                         "Special $5 admission for Friday, November 20. "
-                        "Offer ends November 17 at 11:59 PM EST."
+                        "Offer ends tonight, November 19, at 11:59 PM Eastern."
                     ),
                 },
             ]
@@ -12059,6 +12059,7 @@ def event_detail(event_name):
         is_quiet_storm=is_quiet_storm,
         hero_flyer_url=hero_flyer_url,
         friday_reset_occurrences=friday_reset_occurrences,
+        flash_sale_active=flash_sale_active(),
         online_sales_closed=all_women_online_sales_closed(event),
     )
 
