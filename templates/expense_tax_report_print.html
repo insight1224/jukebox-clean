@@ -168,6 +168,38 @@
       </tbody>
     </table>
 
+    <h2>Expenses by who you paid</h2>
+    <table>
+      <thead><tr><th>Vendor</th><th class="num">Amount</th><th class="num">Share</th></tr></thead>
+      <tbody>
+        {% for row in report.vendor_rows %}
+        <tr>
+          <td>{{ row.label }}</td>
+          <td class="num">${{ "%.2f"|format(row.amount) }}</td>
+          <td class="num">{{ "%.1f"|format(row.percent) }}%</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">No vendor totals in this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Money in by source</h2>
+    <table>
+      <thead><tr><th>Source</th><th class="num">Amount</th><th class="num">Share</th></tr></thead>
+      <tbody>
+        {% for row in report.source_rows %}
+        <tr>
+          <td>{{ row.label }}</td>
+          <td class="num">${{ "%.2f"|format(row.amount) }}</td>
+          <td class="num">{{ "%.1f"|format(row.percent) }}%</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="3">No income in this period.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
     <h2>Expenses by month</h2>
     <table>
       <thead><tr><th>Month</th><th class="num">Amount</th></tr></thead>

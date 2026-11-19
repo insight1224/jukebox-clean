@@ -31,6 +31,7 @@
         <div class="topbar-actions">
           <a class="btn secondary" href="/dashboard/expenses">Add or edit expenses</a>
           <a class="btn secondary" href="/dashboard/expenses/report.csv?{{ export_query }}">Download CSV</a>
+          <a class="btn secondary" href="/dashboard/expenses/report.xlsx?{{ export_query }}">Download Excel</a>
           <a class="btn primary" href="/dashboard/expenses/report/print?{{ export_query }}" target="_blank" rel="noopener">Print or save as PDF</a>
         </div>
       </header>
@@ -126,6 +127,7 @@
               <th>Where it usually goes</th>
               <th>Expenses</th>
               <th>Total</th>
+              <th>Share</th>
             </tr>
           </thead>
           <tbody>
@@ -135,6 +137,7 @@
               <td>{{ row.line }}</td>
               <td>{{ row.count }}</td>
               <td>${{ "%.2f"|format(row.amount) }}</td>
+              <td>{{ "%.1f"|format(row.percent) }}%</td>
             </tr>
             {% endfor %}
             <tr>
@@ -158,7 +161,7 @@
         {% if report.month_rows %}
         <table class="tax-expense-table">
           <thead>
-            <tr><th>Month</th><th>Expenses</th><th>Total</th></tr>
+            <tr><th>Month</th><th>Expenses</th><th>Total</th><th>Share</th></tr>
           </thead>
           <tbody>
             {% for row in report.month_rows %}
@@ -166,12 +169,117 @@
               <td>{{ row.label }}</td>
               <td>{{ row.count }}</td>
               <td>${{ "%.2f"|format(row.amount) }}</td>
+              <td>{{ "%.1f"|format(row.percent) }}%</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
         {% else %}
         <p class="event-website-schedule">No monthly expenses in this period.</p>
+        {% endif %}
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Vendors</p>
+            <h3>Expenses by who you paid</h3>
+          </div>
+        </div>
+        {% if report.vendor_rows %}
+        <table class="tax-expense-table">
+          <thead>
+            <tr><th>Who you paid</th><th>Expenses</th><th>Total</th><th>Share</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.vendor_rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>{{ row.count }}</td>
+              <td>${{ "%.2f"|format(row.amount) }}</td>
+              <td>{{ "%.1f"|format(row.percent) }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="event-website-schedule">No vendor totals in this period.</p>
+        {% endif %}
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Income</p>
+            <h3>Money in by source</h3>
+            <p>Refunds are listed on their own so the net total is after money that was given back.</p>
+          </div>
+        </div>
+        {% if report.source_rows %}
+        <table class="tax-expense-table">
+          <thead>
+            <tr><th>Source</th><th>Net amount</th><th>Share of income</th></tr>
+          </thead>
+          <tbody>
+            {% for row in report.source_rows %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td>${{ "%.2f"|format(row.amount) }}</td>
+              <td>{{ "%.1f"|format(row.percent) }}%</td>
+            </tr>
+            {% endfor %}
+            {% if report.income.refunds %}
+            <tr>
+              <td>Refunds already removed from ticket sales</td>
+              <td>${{ "%.2f"|format(report.income.refunds) }}</td>
+              <td></td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="event-website-schedule">No income was recorded in this period.</p>
+        {% endif %}
+      </section>
+
+      <section class="section-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Income by month</p>
+            <h3>Money in by month</h3>
+          </div>
+        </div>
+        {% if report.revenue_month_rows %}
+        <div class="table-wrap">
+          <table class="tax-expense-table">
+            <thead>
+              <tr>
+                <th>Month</th>
+                <th>Tickets</th>
+                <th>Memberships</th>
+                <th>Merch</th>
+                <th>Other</th>
+                <th>Refunds</th>
+                <th>Net</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in report.revenue_month_rows %}
+              <tr>
+                <td>{{ row.label }}</td>
+                <td>${{ "%.2f"|format(row.tickets) }}</td>
+                <td>${{ "%.2f"|format(row.memberships) }}</td>
+                <td>${{ "%.2f"|format(row.merchandise) }}</td>
+                <td>${{ "%.2f"|format(row.other) }}</td>
+                <td>${{ "%.2f"|format(row.refunds) }}</td>
+                <td>${{ "%.2f"|format(row.amount) }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="event-website-schedule">No monthly income in this period.</p>
         {% endif %}
       </section>
 

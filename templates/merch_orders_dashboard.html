@@ -560,8 +560,46 @@
             >
           </div>
 
+          <section class="panel" style="margin:18px 0;">
+            <h2>What is selling</h2>
+            <p class="subtext">Units and money for each shirt and size. Cancelled orders are left out. Paid orders only.</p>
+            <form method="get" action="/dashboard/merch-orders" class="inline-form" style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin:12px 0;">
+              <label>From
+                <input type="date" name="start" value="{{ breakdown_start }}">
+              </label>
+              <label>To
+                <input type="date" name="end" value="{{ breakdown_end }}">
+              </label>
+              <button class="btn" type="submit">Update</button>
+            </form>
+            {% if merch_breakdown %}
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Size</th>
+                    <th>Units</th>
+                    <th>Revenue</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in merch_breakdown %}
+                    <tr>
+                      <td>{{ row.name }}</td>
+                      <td>{{ row.size }}</td>
+                      <td>{{ row.units }}</td>
+                      <td>${{ '%.2f'|format(row.revenue_cents / 100) }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <p>No paid merch sales in this date range.</p>
+            {% endif %}
+          </section>
+
           <div class="message-filter-status">
-            <span id="merchOrderFilterLabel">Showing all orders</span>
+            <span id="merchOrderFilterLabel">Showing open orders</span>
             <button type="button" id="clearMerchOrderFilter">
               Clear Search & Filter
             </button>
@@ -572,11 +610,11 @@
           <button
             class="stat-card merch-order-filter-card active"
             type="button"
-            data-order-filter="all"
+            data-order-filter="open"
           >
-            <p>All Orders</p>
-            <h3>{{ stats.total_orders }}</h3>
-            <span>Every merch order</span>
+            <p>Open Orders</p>
+            <h3>{{ orders|rejectattr('order_status', 'equalto', 'Cancelled')|list|length }}</h3>
+            <span>Cancelled orders stay hidden until you choose Cancelled</span>
           </button>
 
           <button
@@ -710,6 +748,11 @@
                 ">
                   {{ order.order_status or 'New' }}
                 </span>
+                {% if (order.order_status or '') == 'Cancelled' %}
+                  <form method="post" action="/dashboard/merch-orders/{{ order.id }}/delete" style="display:inline;margin-left:8px;" onsubmit="return confirm('Delete this cancelled merch order? This cannot be undone.');">
+                    <button type="submit" class="btn secondary">Delete</button>
+                  </form>
+                {% endif %}
 
               </div>
 
@@ -1218,7 +1261,7 @@
       "merchOrderSearch"
     );
 
-    let activeMerchOrderStatus = "all";
+    let activeMerchOrderStatus = "open";
 
     function applyMerchOrderFilter(status = activeMerchOrderStatus) {
       activeMerchOrderStatus = status;
@@ -1236,7 +1279,9 @@
         ).toLowerCase();
 
         const matchesStatus =
-          status === "all" || cardStatus === status;
+          status === "all"
+          || (status === "open" && cardStatus !== "Cancelled")
+          || cardStatus === status;
 
         const matchesSearch =
           !searchTerm || searchableText.includes(searchTerm);
@@ -1259,7 +1304,7 @@
 
       if (merchOrderFilterLabel) {
         const statusLabel =
-          status === "all" ? "all" : status;
+          status === "all" ? "all" : status === "open" ? "open" : status;
 
         const searchLabel = searchTerm
           ? ` matching "${merchOrderSearch.value.trim()}"`
@@ -1287,8 +1332,10 @@
         merchOrderSearch.value = "";
       }
 
-      applyMerchOrderFilter("all");
+      applyMerchOrderFilter("open");
     });
+
+    applyMerchOrderFilter("open");
 
     document.querySelectorAll(
       ".merch-status-form"
