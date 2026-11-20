@@ -7176,8 +7176,6 @@ def checkin_page():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
-    enforce_vip_group_capacity(cursor)
-    conn.commit()
 
     cursor.execute("""
         SELECT event_name
