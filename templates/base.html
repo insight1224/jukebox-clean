@@ -79,13 +79,13 @@
     <nav class="navbar">
       <a
         class="logo"
-        href="{{ '/checkin' if session.get('auth_role') == 'door' else '/dashboard/login' }}"
+        href="{{ '/checkin' if session.get('auth_role') == 'door' and request.path in ['/checkin', '/scan'] else '/dashboard/login' }}"
         aria-label="The Jukebox Lounge NC"
       >
         The Jukebox Lounge NC
       </a>
 
-      {% if session.get("auth_role") == "door" %}
+      {% if session.get("auth_role") == "door" and request.path in ["/checkin", "/scan"] %}
       <div class="door-staff-nav" style="display:flex;align-items:center;gap:20px;margin-left:auto;">
         <span style="color:#d9af35;font-weight:600;">Door Staff</span>
         <a href="{{ url_for('dashboard_logout') }}" style="color:#fff;text-decoration:none;font-weight:600;">Logout</a>
@@ -115,7 +115,7 @@
     </nav>
     {% block content %}{% endblock %}
 
-    {% if session.get("auth_role") != "door" %}
+    {% if session.get("auth_role") != "door" or request.path not in ["/checkin", "/scan"] %}
     <footer class="site-footer">
       <div class="footer-wrap">
         <div>
