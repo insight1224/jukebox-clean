@@ -71,5 +71,47 @@
   <div class="box red">❌ Invalid Ticket</div>
 {% endif %}
 
+
+<div class="checkin-next-actions">
+  <a href="{{ url_for('scan') }}" class="checkin-next-button primary">
+    Scan Next Ticket
+  </a>
+  <a href="{{ url_for('checkin_page') }}" class="checkin-next-button secondary">
+    Guest List
+  </a>
+</div>
+
+<style>
+  .checkin-next-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin: 36px auto;
+    padding: 0 20px;
+  }
+
+  .checkin-next-button {
+    display: inline-block;
+    padding: 16px 24px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: bold;
+    min-width: 160px;
+  }
+
+  .checkin-next-button.primary {
+    background: #f5c542;
+    color: #111;
+  }
+
+  .checkin-next-button.secondary {
+    background: #333;
+    color: white;
+    border: 1px solid #777;
+  }
+</style>
+
 </body>
 </html>

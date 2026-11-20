@@ -7170,27 +7170,81 @@ def contact():
 @requires_roles("admin", "manager", "door")
 def checkin_page():
     message = request.args.get("msg", "").strip()
+    role = (session.get("auth_role") or "").strip().lower()
+
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
+
     enforce_vip_group_capacity(cursor)
     conn.commit()
-    cursor.execute(
-        """
-        SELECT
-            id,
-            event_name,
-            COALESCE(NULLIF(TRIM(customer_name), ''), name) AS name,
-            ticket_type,
-            quantity,
-            checked_in_count,
-            status
-        FROM attendees
-        ORDER BY COALESCE(NULLIF(TRIM(customer_name), ''), name) COLLATE NOCASE ASC
-        """
-    )
-    attendees = cursor.fetchall()
+
+    cursor.execute("""
+        SELECT event_name
+        FROM (
+            SELECT TRIM(event_name) AS event_name
+            FROM attendees
+            WHERE event_name IS NOT NULL
+              AND TRIM(event_name) != ''
+
+            UNION
+
+            SELECT TRIM(event_name) AS event_name
+            FROM event_tickets
+            WHERE event_name IS NOT NULL
+              AND TRIM(event_name) != ''
+        )
+        ORDER BY event_name COLLATE NOCASE
+    """)
+    available_events = [row["event_name"] for row in cursor.fetchall()]
+
+    requested_event = request.args.get("event")
+    if requested_event is not None:
+        requested_event = requested_event.strip()
+        if requested_event in available_events:
+            session["checkin_event"] = requested_event
+        else:
+            session.pop("checkin_event", None)
+
+    selected_event = session.get("checkin_event", "")
+    if selected_event not in available_events:
+        selected_event = ""
+        session.pop("checkin_event", None)
+
+    if role == "door" and not selected_event:
+        attendees = []
+    elif selected_event:
+        cursor.execute("""
+            SELECT
+                id,
+                event_name,
+                COALESCE(NULLIF(TRIM(customer_name), ''), name) AS name,
+                ticket_type,
+                quantity,
+                checked_in_count,
+                status
+            FROM attendees
+            WHERE TRIM(event_name) = ?
+            ORDER BY COALESCE(NULLIF(TRIM(customer_name), ''), name) COLLATE NOCASE ASC
+        """, (selected_event,))
+        attendees = cursor.fetchall()
+    else:
+        cursor.execute("""
+            SELECT
+                id,
+                event_name,
+                COALESCE(NULLIF(TRIM(customer_name), ''), name) AS name,
+                ticket_type,
+                quantity,
+                checked_in_count,
+                status
+            FROM attendees
+            ORDER BY COALESCE(NULLIF(TRIM(customer_name), ''), name) COLLATE NOCASE ASC
+        """)
+        attendees = cursor.fetchall()
+
     conn.close()
+
     normalized_attendees = []
     for row in attendees:
         item = dict(row)
@@ -7198,7 +7252,6 @@ def checkin_page():
         quantity = max(1, int(item.get("quantity") or 1))
         checked_in_count = max(0, int(item.get("checked_in_count") or 0))
 
-        # VIP rows are group tickets by default.
         if "vip" in ticket_type.lower() and quantity < 6:
             quantity = 6
 
@@ -7215,8 +7268,13 @@ def checkin_page():
         item["status"] = status
         normalized_attendees.append(item)
 
-    return render_template("checkin.html", attendees=normalized_attendees, message=message)
-
+    return render_template(
+        "checkin.html",
+        attendees=normalized_attendees,
+        available_events=available_events,
+        selected_event=selected_event,
+        message=message,
+    )
 
 @app.route("/checkin/add", methods=["POST"])
 @requires_roles("admin", "manager")
@@ -7363,6 +7421,8 @@ def delete_checkin_attendee(id):
 @app.route("/checkin/<int:id>")
 @requires_roles("admin", "manager", "door")
 def checkin_attendee(id):
+    if not door_can_checkin_attendee(id):
+        return "Selected event does not match this attendee.", 403
     update_attendee_checkin_count(id, 1)
     return redirect("/checkin")
 
@@ -7370,8 +7430,30 @@ def checkin_attendee(id):
 @app.route("/reset-checkin/<int:id>")
 @requires_roles("admin", "manager", "door")
 def reset_checkin(id):
+    if not door_can_checkin_attendee(id):
+        return "Selected event does not match this attendee.", 403
     update_attendee_checkin_count(id, -1)
     return redirect("/checkin")
+
+
+def door_can_checkin_attendee(attendee_id):
+    """Allow Door Staff to update only attendees in their selected event."""
+    if (session.get("auth_role") or "").strip().lower() != "door":
+        return True
+
+    selected_event = (session.get("checkin_event") or "").strip()
+    if not selected_event:
+        return False
+
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        row = conn.execute(
+            "SELECT event_name FROM attendees WHERE id = ?",
+            (attendee_id,),
+        ).fetchone()
+        return bool(row and str(row[0] or "").strip() == selected_event)
+    finally:
+        conn.close()
 
 
 def update_attendee_checkin_count(attendee_id, delta):
@@ -7431,6 +7513,9 @@ def checkin_action(id):
     delta = 1 if action == "checkin" else -1 if action == "undo" else 0
     if delta == 0:
         return {"ok": False, "error": "invalid_action"}, 400
+    if not door_can_checkin_attendee(id):
+        return {"ok": False, "error": "wrong_event_or_no_selection"}, 403
+
     updated = update_attendee_checkin_count(id, delta)
     if not updated:
         return {"ok": False, "error": "not_found"}, 404
@@ -13007,6 +13092,7 @@ def tickets_purchase():
 
 
 @app.route("/checkin/<ticket_id>")
+@requires_roles("admin", "manager", "door")
 def checkin(ticket_id):
     import sqlite3
     from urllib.parse import unquote
@@ -13049,6 +13135,25 @@ def checkin(ticket_id):
     checked_in_flag = int(row[3] or 0)
     event_name = str(row[6] or "").strip()
     event_date = str(row[7] or "").strip()
+
+    role = (session.get("auth_role") or "").strip().lower()
+    if role == "door":
+        selected_event = (session.get("checkin_event") or "").strip()
+
+        if not selected_event:
+            conn.close()
+            return (
+                "Please select an event on the check-in page before scanning tickets.",
+                403,
+            )
+
+        if event_name != selected_event:
+            conn.close()
+            return (
+                "This ticket belongs to a different event. "
+                "No check-in was recorded.",
+                403,
+            )
     free_shot_eligible = int(row[8] or 0) == 1
     refund_status = (row[9] or "Not Refunded").strip().lower()
 
@@ -13320,6 +13425,7 @@ def debug_square():
 
 
 @app.route("/debug-ticket/<ticket_id>")
+@requires_roles("admin")
 def debug_ticket(ticket_id):
     import sqlite3
     from urllib.parse import unquote
@@ -13352,6 +13458,7 @@ def debug_ticket(ticket_id):
 
 
 @app.route("/tickets/<email>")
+@requires_roles("admin", "manager")
 def tickets_by_email(email):
     normalized_email = (email or "").strip().lower()
     conn = sqlite3.connect(DB_PATH)
@@ -13448,7 +13555,17 @@ def resend_customer_tickets(email):
 @app.route('/scan')
 @requires_roles("admin", "manager", "door")
 def scan():
-    return render_template('scan.html')
+    role = (session.get("auth_role") or "").strip().lower()
+    selected_event = (session.get("checkin_event") or "").strip()
+
+    if role == "door" and not selected_event:
+        return redirect(url_for("checkin_page", msg="Please select an event before scanning tickets."))
+
+    return render_template(
+        "scan.html",
+        selected_event=selected_event,
+        role=role,
+    )
 
 
 @app.route('/admin/generate-qr/<ticket_id>')

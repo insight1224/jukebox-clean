@@ -50,6 +50,43 @@
         </form>
         {% endif %}
 
+        <form method="GET" action="{{ url_for('checkin_page') }}"
+              class="event-selector-form"
+              style="margin:24px 0;display:flex;flex-direction:column;gap:10px;">
+
+            <label for="checkinEvent" style="font-weight:700;">
+                Select Event
+            </label>
+
+            <select id="checkinEvent"
+                    name="event"
+                    onchange="this.form.submit()"
+                    style="width:100%;padding:14px;border-radius:8px;">
+
+                <option value="">
+                    {% if session.get("auth_role") == "door" %}
+                    -- Choose an event --
+                    {% else %}
+                    -- All Events --
+                    {% endif %}
+                </option>
+
+                {% for event_name in available_events %}
+                <option value="{{ event_name }}"
+                    {% if selected_event == event_name %}selected{% endif %}>
+                    {{ event_name }}
+                </option>
+                {% endfor %}
+
+            </select>
+        </form>
+
+        {% if session.get("auth_role") == "door" and not selected_event %}
+        <p class="upload-message">
+            Please select an event above to view its guest list.
+        </p>
+        {% endif %}
+
         <input
             type="text"
             id="attendeeSearch"

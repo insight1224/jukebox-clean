@@ -17,11 +17,62 @@
         h1 {
             margin-top: 20px;
         }
-    </style>
+
+    .scanner-event-info {
+        margin: 18px auto;
+        padding: 16px;
+        max-width: 360px;
+        border: 1px solid #f5c542;
+        border-radius: 10px;
+        background: #171717;
+    }
+
+    .scanner-event-info p {
+        margin: 0 0 8px;
+        color: #ccc;
+        font-size: 15px;
+    }
+
+    .scanner-event-info h2 {
+        margin: 0;
+        color: #f5c542;
+        font-size: 22px;
+    }
+
+    .scanner-navigation {
+        margin: 18px auto 24px;
+    }
+
+    .scanner-navigation a {
+        display: inline-block;
+        padding: 12px 20px;
+        border-radius: 8px;
+        background: #f5c542;
+        color: #111;
+        text-decoration: none;
+        font-weight: bold;
+    }
+
+</style>
 </head>
 <body>
 
 <h1>Scan Ticket</h1>
+
+<div class="scanner-event-info">
+  {% if selected_event %}
+    <p>Currently Checking In:</p>
+    <h2>{{ selected_event }}</h2>
+  {% else %}
+    <p>Scanning Tickets — All Events</p>
+  {% endif %}
+</div>
+
+<div class="scanner-navigation">
+  <a href="{{ url_for('checkin_page') }}">
+    {{ 'Change Event' if role == 'door' else 'Guest List / Change Event' }}
+  </a>
+</div>
 
 <div id="reader"></div>
 
