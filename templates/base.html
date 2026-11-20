@@ -78,12 +78,19 @@
 
     <nav class="navbar">
       <a
-  class="logo"
-  href="/dashboard/login"
-  aria-label="Open Jukebox Lounge dashboard"
->
-  The Jukebox Lounge NC
-</a>
+        class="logo"
+        href="{{ '/checkin' if session.get('auth_role') == 'door' else '/dashboard/login' }}"
+        aria-label="The Jukebox Lounge NC"
+      >
+        The Jukebox Lounge NC
+      </a>
+
+      {% if session.get("auth_role") == "door" %}
+      <div class="door-staff-nav" style="display:flex;align-items:center;gap:20px;margin-left:auto;">
+        <span style="color:#d9af35;font-weight:600;">Door Staff</span>
+        <a href="{{ url_for('dashboard_logout') }}" style="color:#fff;text-decoration:none;font-weight:600;">Logout</a>
+      </div>
+      {% else %}
       <button
         class="menu-toggle"
         type="button"
@@ -104,9 +111,11 @@
         <a class="nav-link" href="/sponsors">Partners</a>
         <a class="nav-link" href="/membership">Membership</a>
       </div>
+      {% endif %}
     </nav>
     {% block content %}{% endblock %}
 
+    {% if session.get("auth_role") != "door" %}
     <footer class="site-footer">
       <div class="footer-wrap">
         <div>
@@ -136,6 +145,7 @@
         <p>&copy; 2026 The Jukebox Lounge NC. All rights reserved.</p>
       </div>
     </footer>
+    {% endif %}
 
     {% if request.path == "/" %}
     <script src="https://w.soundcloud.com/player/api.js"></script>
