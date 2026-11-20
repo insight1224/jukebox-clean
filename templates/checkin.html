@@ -32,12 +32,15 @@
         <p class="upload-message">{{ message }}</p>
         {% endif %}
 
+        {% if session.get("auth_role") in ["admin", "manager"] %}
         <form class="upload-form" action="{{ url_for('upload_attendees') }}" method="POST" enctype="multipart/form-data">
             <input type="text" name="event_name" placeholder="Event Name (default: Battle of the DJs)">
             <input type="file" name="attendee_csv" accept=".csv" required>
             <button type="submit" class="btn btn-checkin">Upload CSV</button>
         </form>
+        {% endif %}
 
+        {% if session.get("auth_role") in ["admin", "manager"] %}
         <form class="upload-form" action="{{ url_for('add_attendee_manual') }}" method="POST">
             <input type="text" name="event_name" placeholder="Event Name (ex: Battle of the DJs)" required>
             <input type="text" name="customer_name" placeholder="Customer Name" required>
@@ -45,6 +48,7 @@
             <input type="number" name="quantity" min="1" value="1" required>
             <button type="submit" class="btn btn-checkin">Add Ticket Manually</button>
         </form>
+        {% endif %}
 
         <input
             type="text"
@@ -101,8 +105,10 @@
                                 <button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>
                                 {% endif %}
 
+                                {% if session.get("auth_role") in ["admin", "manager"] %}
                                 <button type="button" class="btn btn-edit-ticket js-edit-ticket">Edit</button>
                                 <button type="button" class="btn btn-delete-ticket js-delete-ticket">Delete</button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -114,6 +120,7 @@
 </section>
 
 <script>
+const canManageTickets = {{ (session.get("auth_role") in ["admin", "manager"]) | tojson }};
 const searchInput = document.getElementById("attendeeSearch");
 
 searchInput.addEventListener("input", function () {
@@ -152,8 +159,10 @@ function actionMarkup(checked, qty) {
     html += '<button type="button" class="btn btn-undo js-checkin" data-action="undo">Undo</button>';
   }
 
-  html += '<button type="button" class="btn btn-edit-ticket js-edit-ticket">Edit</button>';
-  html += '<button type="button" class="btn btn-delete-ticket js-delete-ticket">Delete</button>';
+  if (canManageTickets) {
+    html += '<button type="button" class="btn btn-edit-ticket js-edit-ticket">Edit</button>';
+    html += '<button type="button" class="btn btn-delete-ticket js-delete-ticket">Delete</button>';
+  }
   html += "</div>";
 
   return html;

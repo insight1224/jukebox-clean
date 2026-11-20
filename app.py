@@ -7219,7 +7219,7 @@ def checkin_page():
 
 
 @app.route("/checkin/add", methods=["POST"])
-@requires_roles("admin", "manager", "door")
+@requires_roles("admin", "manager")
 def add_attendee_manual():
     event_name = (request.form.get("event_name") or "").strip() or "Battle of the DJs"
     customer_name = (request.form.get("customer_name") or "").strip()
@@ -7253,7 +7253,7 @@ def add_attendee_manual():
 
 
 @app.route("/checkin-edit/<int:id>", methods=["POST"])
-@requires_roles("admin", "manager", "door")
+@requires_roles("admin", "manager")
 def edit_checkin_attendee(id):
     event_name = (request.form.get("event_name") or "").strip()
     customer_name = (request.form.get("customer_name") or "").strip()
@@ -7340,7 +7340,7 @@ def edit_checkin_attendee(id):
 
 
 @app.route("/checkin-delete/<int:id>", methods=["POST"])
-@requires_roles("admin", "manager", "door")
+@requires_roles("admin", "manager")
 def delete_checkin_attendee(id):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -7489,6 +7489,7 @@ def admin_storage_status():
 
 
 @app.route("/upload-attendees", methods=["POST"])
+@requires_roles("admin", "manager")
 def upload_attendees():
     event_name = "Battle of the DJs"
     file = request.files.get("attendee_csv")
@@ -13451,6 +13452,7 @@ def scan():
 
 
 @app.route('/admin/generate-qr/<ticket_id>')
+@requires_roles("admin", "manager")
 def generate_qr(ticket_id):
     import qrcode
     from io import BytesIO
@@ -22207,7 +22209,8 @@ def dashboard_login():
     next_url = (request.args.get("next") or "/dashboard").strip()
 
     if session.get("auth_role"):
-        return redirect("/dashboard")
+        role = (session.get("auth_role") or "").strip().lower()
+        return redirect("/checkin" if role == "door" else "/dashboard")
 
     return render_template(
         "dashboard_login.html",
