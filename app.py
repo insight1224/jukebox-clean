@@ -10563,44 +10563,10 @@ def build_event_ticket_catalog(event, event_date=None):
         },
     ]
 
-    # Battle of the DJs Part 4 — All-Women Edition.
+    # Battle of the DJs Part 4 — online ticket sales are closed.
+    # Door admission is $20, payable at the venue only.
     if event.get("name") == "Battle of the DJs Part 4":
-        canonical_tickets = [
-            {
-                "key": "flash_ga",
-                "name": "Flash Sale General Admission",
-                "display_name": "Flash Sale GA — $10",
-                "description": "Special $10 admission through tonight, November 19, at 11:59 PM Eastern.",
-            },
-            {
-                "key": "early",
-                "name": "Early Bird",
-                "display_name": "Early Bird",
-                "description": "$15 advance admission.",
-            },
-            {
-                "key": "ga",
-                "name": "General Admission",
-                "display_name": "General Admission",
-                "description": "$18 general admission. $20 at the door.",
-            },
-            {
-                "key": "flash_vip",
-                "name": "Flash Sale VIP Booth",
-                "display_name": "Flash Sale VIP Booth — $175",
-                "flash_price": 175.00,
-                "description": (
-                    "One reserved VIP booth for up to six guests. "
-                    "Save $75 through tonight, November 19, at 11:59 PM Eastern."
-                ),
-            },
-            {
-                "key": "vip",
-                "name": "VIP Booth",
-                "display_name": "VIP Booth",
-                "description": "$250 total per VIP booth, located inside, with seating for up to six guests.",
-            },
-        ]
+        canonical_tickets = []
 
     # Saturday Spin — $5 Flash Sale and regular $10 admission.
     # The $5 ticket stays on the page after the deadline so guests can see it ended.

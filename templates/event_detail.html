@@ -219,6 +219,13 @@
                 <p>${{ "%.2f"|format(12) }}</p>
                 <a class="btn" href="{{ event.ga_link }}" target="_blank" rel="noopener noreferrer">Get Tickets</a>
             </div>
+            {% elif event.name == "Battle of the DJs Part 4" %}
+            <div class="ticket-box">
+                <h3>Online Ticket Sales Closed</h3>
+                <p><strong>$20 Admission at the Door</strong></p>
+                <p>Tickets available at the venue only.</p>
+                <span class="btn disabled">Online Sales Closed</span>
+            </div>
             {% else %}
             {% for t in ticket_data %}
             <div class="ticket-box
