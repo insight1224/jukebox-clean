@@ -3630,6 +3630,10 @@ def is_membership_payment(amount_cents, note_blob):
     return any(term in (note_blob or "") for term in membership_terms)
 
 
+class SquareMembershipConflict(Exception):
+    """A Square payment has conflicting membership ownership."""
+
+
 def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email):
     # Membership revenue represents money actually collected.
     # Failed, pending, or canceled Square attempts must never create
@@ -3699,8 +3703,84 @@ def apply_membership_from_square(cursor, payment, amount_cents, note_blob, email
     )
     existing_member = cursor.fetchone()
 
+    # Check both ownership records before changing a membership.
+    cursor.execute(
+        "SELECT membership_id FROM membership_payments WHERE payment_id = ?",
+        (payment_id,),
+    )
+    history_row = cursor.fetchone()
+
+    cursor.execute(
+        "SELECT id FROM memberships WHERE payment_id = ?",
+        (payment_id,),
+    )
+    owner_row = cursor.fetchone()
+
+    history_owner = history_row[0] if history_row else None
+    payment_owner = owner_row[0] if owner_row else None
+
+    if history_owner is not None and payment_owner is not None:
+        if history_owner != payment_owner:
+            raise SquareMembershipConflict(
+                f"Payment {payment_id} has conflicting ownership: "
+                f"history={history_owner}, membership={payment_owner}"
+            )
+
+    if history_owner is not None:
+        # The payment was recorded previously, even if its Square log is missing.
+        return True
+
+    if payment_owner is not None:
+        if not existing_member or existing_member[0] != payment_owner:
+            raise SquareMembershipConflict(
+                f"Payment {payment_id} belongs to membership {payment_owner}"
+            )
+
     if existing_member:
         membership_id = existing_member[0]
+
+        cursor.execute(
+            "SELECT last_payment_at FROM memberships WHERE id = ?",
+            (membership_id,),
+        )
+        last_payment_row = cursor.fetchone()
+        last_paid_at = last_payment_row[0] if last_payment_row else None
+
+        def normalized_payment_time(value):
+            if not value:
+                return None
+            try:
+                from datetime import timezone
+                parsed = datetime.fromisoformat(
+                    str(value).strip().replace("Z", "+00:00")
+                )
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                return parsed.astimezone(timezone.utc)
+            except (TypeError, ValueError):
+                return None
+
+        incoming_time = normalized_payment_time(paid_at)
+        previous_time = normalized_payment_time(last_paid_at)
+
+        if incoming_time and previous_time and incoming_time < previous_time:
+            # Preserve the current renewal while recording older revenue.
+            cursor.execute(
+                '''
+                INSERT OR IGNORE INTO membership_payments (
+                    membership_id, name, email, amount, amount_cents,
+                    payment_id, source, paid_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, 'square',
+                        COALESCE(NULLIF(?, ''), CURRENT_TIMESTAMP))
+                ''',
+                (
+                    membership_id, name, clean_email, amount_dollars,
+                    amount_cents, payment_id, paid_at,
+                ),
+            )
+            return True
+
         existing_name = (existing_member[1] or "").strip()
 
         if existing_name and existing_name.lower() != "member":
@@ -5084,6 +5164,7 @@ def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, 
         "merch": 0,
         "duplicates": 0,
         "unmatched": 0,
+        "membership_conflicts": 0,
         "refunds": 0,
         "total_seen": 0,
         "details": [],
@@ -5194,7 +5275,20 @@ def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, 
             if dry_run:
                 membership_hit = True
             else:
-                membership_hit = apply_membership_from_square(cursor, payment, amount_cents, note_blob, email)
+                try:
+                    membership_hit = apply_membership_from_square(
+                        cursor, payment, amount_cents, note_blob, email
+                    )
+                except SquareMembershipConflict as exc:
+                    counts["membership_conflicts"] += 1
+                    square_log(f"Membership conflict: {exc}")
+                    if include_diagnostics and len(counts["details"]) < 120:
+                        counts["details"].append({
+                            "payment_id": payment_id,
+                            "category": "membership_conflict",
+                            "reason": str(exc),
+                        })
+                    continue
 
         if ticket_hit or membership_hit or ticket_created or merch_hit:
             if merch_hit:
