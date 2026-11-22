@@ -5102,6 +5102,7 @@ def write_square_sync_state(success, error_message, summary):
         f"new {summary.get('processed', 0)}, "
         f"already saved {summary.get('duplicates', 0)}, "
         f"need a match {summary.get('unmatched', 0)}, "
+        f"membership conflicts {summary.get('membership_conflicts', 0)}, "
         f"refunds {summary.get('refunds', 0)}."
     )
     try:

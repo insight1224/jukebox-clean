@@ -552,7 +552,7 @@
           }
 
           if (syncSquareStatus) {
-            syncSquareStatus.textContent = `Imported ${result.processed || 0} new sales. ${result.duplicates || 0} were already saved. ${result.unmatched || 0} still need a match. Refreshing...`;
+            syncSquareStatus.textContent = `Imported ${result.processed || 0} new sales. ${result.duplicates || 0} were already saved. ${result.unmatched || 0} still need a match. ${result.membership_conflicts || 0} membership payment conflicts need review. Refreshing...`;
           }
 
           setTimeout(() => {
