@@ -507,10 +507,13 @@ def init_db():
     ensure_column("memberships", "name", "TEXT")
     ensure_column("memberships", "payment_id", "TEXT")
     ensure_column("memberships", "source", "TEXT DEFAULT 'square'")
-    cursor.execute("""
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_memberships_payment_id
-    ON memberships(payment_id)
-    """)
+    try:
+        cursor.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_memberships_payment_id
+        ON memberships(payment_id)
+        """)
+    except sqlite3.IntegrityError:
+        print("[db] skipped unique membership payment index because some payment ids are already reused")
 
     # EVENT REQUESTS
     cursor.execute("""
@@ -5153,6 +5156,58 @@ def square_sync_begin_time(full_history):
     return start.strftime("%Y-%m-%dT00:00:00Z")
 
 
+def ensure_membership_columns(cursor):
+    """Add the membership columns Square sync writes, including on an older database."""
+    membership_columns = {
+        "email": "TEXT",
+        "amount": "REAL",
+        "status": "TEXT",
+        "name": "TEXT",
+        "payment_id": "TEXT",
+        "source": "TEXT",
+        "membership_group": "TEXT",
+        "started_at": "TEXT",
+        "last_payment_at": "TEXT",
+        "square_customer_id": "TEXT",
+        "square_subscription_id": "TEXT",
+        "square_subscription_status": "TEXT",
+        "membership_status_updated_at": "TEXT",
+    }
+    payment_columns = {
+        "membership_id": "INTEGER",
+        "name": "TEXT",
+        "email": "TEXT",
+        "amount": "REAL",
+        "amount_cents": "INTEGER",
+        "payment_id": "TEXT",
+        "source": "TEXT",
+        "paid_at": "TEXT",
+        "created_at": "TEXT",
+    }
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'memberships'"
+    )
+    if cursor.fetchone():
+        cursor.execute("PRAGMA table_info(memberships)")
+        existing = {row[1] for row in cursor.fetchall()}
+        for column_name, column_type in membership_columns.items():
+            if column_name not in existing:
+                cursor.execute(
+                    f"ALTER TABLE memberships ADD COLUMN {column_name} {column_type}"
+                )
+    cursor.execute(
+        "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'membership_payments'"
+    )
+    if cursor.fetchone():
+        cursor.execute("PRAGMA table_info(membership_payments)")
+        existing = {row[1] for row in cursor.fetchall()}
+        for column_name, column_type in payment_columns.items():
+            if column_name not in existing:
+                cursor.execute(
+                    f"ALTER TABLE membership_payments ADD COLUMN {column_name} {column_type}"
+                )
+
+
 def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, dry_run=False, full_history=None, reason="manual"):
     square_clear_order_cache()
     if full_history is None:
@@ -5167,6 +5222,7 @@ def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, 
         "unmatched": 0,
         "membership_conflicts": 0,
         "refunds": 0,
+        "skipped": 0,
         "total_seen": 0,
         "details": [],
         "error": "",
@@ -5211,8 +5267,10 @@ def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, 
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
+    ensure_membership_columns(cursor)
 
     for payment in payments:
+      try:
         payment_id = (payment.get("id") or "").strip()
         if not payment_id:
             continue
@@ -5343,9 +5401,25 @@ def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, 
                         "email": email,
                     }
                 )
+      except Exception as exc:
+        try:
+            conn.rollback()
+        except sqlite3.Error:
+            pass
+        payment_id = (payment.get("id") or "").strip()
+        message = f"{payment_id or 'unknown payment'}: {exc}"
+        counts["skipped"] += 1
+        square_log(f"skipped payment {message}")
+        if len(counts["error"]) < 500:
+            counts["error"] = (
+                f"{counts['error']} {message}".strip()
+                if counts["error"]
+                else f"{counts['skipped']} Square payment(s) were skipped so the rest of the sync could finish. {message}"
+            )
+        counts["status"] = "error"
 
-        if not dry_run and counts["total_seen"] and (counts["processed"] + counts["duplicates"] + counts["unmatched"]) % 25 == 0:
-            conn.commit()
+      if not dry_run and counts["total_seen"] and (counts["processed"] + counts["duplicates"] + counts["unmatched"] + counts["skipped"]) % 25 == 0:
+        conn.commit()
 
     refunds, refund_error = square_list_refunds(begin_time, location_ids)
     for refund in refunds:
@@ -5362,8 +5436,17 @@ def sync_square_payments(limit=0, full_resync=False, include_diagnostics=False, 
             square_log(f"refund {refund.get('id')} failed: {exc}")
 
     if not dry_run:
-        refresh_membership_statuses(cursor)
-        conn.commit()
+        try:
+            refresh_membership_statuses(cursor)
+            conn.commit()
+        except Exception as exc:
+            try:
+                conn.rollback()
+            except sqlite3.Error:
+                pass
+            counts["status"] = "error"
+            counts["error"] = f"{counts['error']} Membership status update failed: {exc}".strip()
+            square_log(counts["error"])
     conn.close()
 
     if list_error or refund_error:
@@ -7304,6 +7387,35 @@ def checkin_page():
         selected_event = ""
         session.pop("checkin_event", None)
 
+    if "event" not in request.args and not selected_event:
+        cursor.execute(
+            """
+            SELECT name, event_date
+            FROM events
+            WHERE name IS NOT NULL AND TRIM(name) <> ''
+            """
+        )
+        today = date.today()
+        dated = []
+        for row in cursor.fetchall():
+            event_name = (row["name"] or "").strip()
+            event_day = parse_event_date_value(row["event_date"])
+            if event_name in available_events and event_day:
+                dated.append((event_name, event_day))
+        for event_name, event_day in dated:
+            if event_day == today:
+                selected_event = event_name
+                break
+        if not selected_event:
+            upcoming = sorted(
+                (item for item in dated if item[1] >= today),
+                key=lambda item: item[1],
+            )
+            if upcoming:
+                selected_event = upcoming[0][0]
+        if selected_event:
+            session["checkin_event"] = selected_event
+
     if role == "door" and not selected_event:
         attendees = []
     elif selected_event:
@@ -7360,6 +7472,22 @@ def checkin_page():
         item["checked_in_count"] = checked_in_count
         item["status"] = status
         normalized_attendees.append(item)
+
+    def guest_name_key(item):
+        raw_name = (item.get("name") or "").strip()
+        if "," in raw_name:
+            last_name, first_name = raw_name.split(",", 1)
+        else:
+            parts = raw_name.split()
+            if len(parts) >= 2:
+                last_name = parts[-1]
+                first_name = " ".join(parts[:-1])
+            else:
+                last_name = raw_name
+                first_name = ""
+        return (last_name.strip().lower(), first_name.strip().lower(), raw_name.lower())
+
+    normalized_attendees.sort(key=guest_name_key)
 
     return render_template(
         "checkin.html",
@@ -12277,12 +12405,30 @@ def test_lead():
 def square_sync():
     mode = (request.args.get("mode") or "").strip().lower()
     full_history = mode != "recent"
-    summary = sync_square_payments(
-        limit=SQUARE_SYNC_LIMIT,
-        full_history=full_history,
-        include_diagnostics=True,
-        reason="button",
-    )
+    try:
+        summary = sync_square_payments(
+            limit=SQUARE_SYNC_LIMIT,
+            full_history=full_history,
+            include_diagnostics=True,
+            reason="button",
+        )
+    except Exception as exc:
+        traceback.print_exc()
+        square_log(f"button sync failed: {exc}")
+        summary = {
+            "status": "error",
+            "error": f"Square sync stopped: {exc}",
+            "total_seen": 0,
+            "processed": 0,
+            "tickets": 0,
+            "memberships": 0,
+            "merch": 0,
+            "duplicates": 0,
+            "unmatched": 0,
+            "refunds": 0,
+            "skipped": 0,
+            "details": [],
+        }
     status_code = 200 if summary.get("status") == "ok" else 502
     return {
         "status": summary.get("status") or "ok",
@@ -12296,8 +12442,9 @@ def square_sync():
         "duplicates": summary["duplicates"],
         "unmatched": summary["unmatched"],
         "refunds": summary.get("refunds", 0),
+        "skipped": summary.get("skipped", 0),
         "last_synced": read_square_sync_state().get("last_success_at") or "",
-        "details": summary["details"],
+        "details": summary.get("details") or [],
     }, status_code
 
 
